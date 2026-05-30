@@ -37,6 +37,7 @@ export async function importFromMoxfield(url: string): Promise<ParsedDeckEntry[]
 
   // Track commander names to avoid double-adding them from mainboard
   const commanderNames = new Set<string>();
+  const normalize = (n: string) => n.split('//')[0].trim().toLowerCase();
 
   // Moxfield v3 format:
   // - data.main = the commander (single card object with .name)
@@ -48,7 +49,7 @@ export async function importFromMoxfield(url: string): Promise<ParsedDeckEntry[]
     for (const [, entry] of Object.entries(
       data.boards.commanders.cards as Record<string, { quantity: number; card: { name: string } }>
     )) {
-      commanderNames.add(entry.card.name);
+      commanderNames.add(normalize(entry.card.name));
       entries.push({
         name: entry.card.name,
         quantity: entry.quantity,
@@ -57,7 +58,7 @@ export async function importFromMoxfield(url: string): Promise<ParsedDeckEntry[]
     }
   } else if (data.main?.name) {
     // Fall back to data.main for single commanders
-    commanderNames.add(data.main.name);
+    commanderNames.add(normalize(data.main.name));
     entries.push({
       name: data.main.name,
       quantity: 1,
@@ -71,7 +72,7 @@ export async function importFromMoxfield(url: string): Promise<ParsedDeckEntry[]
       data.boards.mainboard.cards as Record<string, { quantity: number; card: { name: string } }>
     )) {
       const cardName: string = entry.card.name;
-      if (commanderNames.has(cardName)) continue; // skip if already added as commander
+      if (commanderNames.has(normalize(cardName))) continue; // skip if already added as commander
       entries.push({
         name: cardName,
         quantity: entry.quantity,
@@ -114,11 +115,11 @@ export async function importFromArchidekt(url: string): Promise<ParsedDeckEntry[
 
   if (data.cards) {
     for (const card of data.cards) {
-      const category: string = card.categories?.[0] ?? '';
+      const isArchidektCommander = card.categories?.some((cat: string) => cat.toLowerCase().includes('commander')) ?? false;
       entries.push({
         name: card.card?.oracleCard?.name ?? card.card?.name ?? 'Unknown',
         quantity: card.quantity ?? 1,
-        isCommander: category.toLowerCase().includes('commander'),
+        isCommander: isArchidektCommander,
       });
     }
   }
@@ -253,4 +254,56 @@ export function detectImportSource(url: string): 'moxfield' | 'archidekt' | 'unk
   if (url.includes('moxfield.com')) return 'moxfield';
   if (url.includes('archidekt.com')) return 'archidekt';
   return 'unknown';
+}
+
+/** Parse Tabletop Simulator JSON deck files recursively */
+export function parseTTSJson(jsonText: string): ParsedDeckEntry[] {
+  const cardCounts: Record<string, number> = {};
+
+  try {
+    const parsed = JSON.parse(jsonText);
+
+    function traverse(obj: any) {
+      if (!obj || typeof obj !== 'object') return;
+
+      // If it's a card (has Nickname and Name === 'Card')
+      if (obj.Name === 'Card' && typeof obj.Nickname === 'string') {
+        const name = obj.Nickname.trim();
+        if (name) {
+          cardCounts[name] = (cardCounts[name] || 0) + 1;
+        }
+        return; // No need to traverse deeper into a card
+      }
+
+      // Traverse all keys recursively
+      for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          traverse(obj[key]);
+        }
+      }
+    }
+
+    if (parsed && Array.isArray(parsed.ObjectStates)) {
+      for (const subDeck of parsed.ObjectStates) {
+        // Skip tokens sub-deck which is exported at posX = 2.2
+        const posX = subDeck.Transform?.posX ?? 0;
+        if (Math.abs(posX - 2.2) < 0.1) {
+          continue;
+        }
+        traverse(subDeck);
+      }
+    } else {
+      traverse(parsed);
+    }
+  } catch (err) {
+    throw new Error('Invalid JSON format. Please upload a valid Tabletop Simulator deck file.');
+  }
+
+  const entries: ParsedDeckEntry[] = Object.entries(cardCounts).map(([name, quantity]) => ({
+    name,
+    quantity,
+    isCommander: false,
+  }));
+
+  return entries;
 }

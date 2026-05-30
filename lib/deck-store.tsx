@@ -58,7 +58,7 @@ type DeckAction =
   | { type: 'CLEAR_DECK' }
   | { type: 'UPDATE_CARD_DATA'; scryfallId: string; newCardData: ScryfallCard }
   | { type: 'UPDATE_DECK_STATS'; wins: number; losses: number }
-  | { type: 'BULK_ADD_CARDS'; cards: Array<{ card: ScryfallCard; quantity: number }> };
+  | { type: 'BULK_ADD_CARDS'; cards: Array<{ card: ScryfallCard; quantity: number; isCommander?: boolean }> };
 
 const STORE_STORAGE_KEY = 'mtg-commander-decks-store';
 
@@ -194,14 +194,25 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       if (!activeDeck) return state;
 
       let tempDeck = activeDeck;
-      for (const { card, quantity } of action.cards) {
-        const existing = tempDeck.cards.find((c) => c.scryfallId === card.id);
-        if (existing) {
+      let newCommanderId = tempDeck.commanderId;
+
+      for (const { card, quantity, isCommander } of action.cards) {
+        const existingIndex = tempDeck.cards.findIndex((c) => c.scryfallId === card.id);
+
+        if (isCommander) {
+          newCommanderId = card.id;
+        }
+
+        if (existingIndex > -1) {
           tempDeck = {
             ...tempDeck,
-            cards: tempDeck.cards.map((c) =>
-              c.scryfallId === card.id
-                ? { ...c, quantity: c.quantity + quantity }
+            cards: tempDeck.cards.map((c, idx) =>
+              idx === existingIndex
+                ? {
+                    ...c,
+                    quantity: c.quantity + quantity,
+                    isCommander: isCommander ? true : c.isCommander,
+                  }
                 : c
             ),
           };
@@ -212,13 +223,25 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
             quantity,
             scryfallData: card,
             category: getCardCategory(card),
-            isCommander: false,
+            isCommander: isCommander ?? false,
           };
           tempDeck = {
             ...tempDeck,
             cards: [...tempDeck.cards, newCard],
           };
         }
+      }
+
+      // If we have a new commander, make sure other cards are not marked as commander
+      if (newCommanderId) {
+        tempDeck = {
+          ...tempDeck,
+          commanderId: newCommanderId,
+          cards: tempDeck.cards.map((c) => ({
+            ...c,
+            isCommander: c.scryfallId === newCommanderId,
+          })),
+        };
       }
 
       return {

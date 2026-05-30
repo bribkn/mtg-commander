@@ -82,13 +82,24 @@ export function StatsPanel() {
       gameChangerCount += card.quantity;
     }
   }
+
+  // ── Lands & Opening Hand Expectations ─────────────────────────────────────
+  let landCount = 0;
+  for (const card of state.cards) {
+    if (card.category === 'Land') {
+      landCount += card.quantity;
+    }
+  }
+  const avgOpeningLands = totalCards > 0 ? ((landCount / totalCards) * 7).toFixed(2) : '—';
  
   return (
     <div className="space-y-6 p-4">
-      {/* Summary row - 2x2 grid for better space utilization in sidebar */}
+      {/* Summary row - 3x2 grid for better space utilization in sidebar */}
       <div className="grid grid-cols-2 gap-2.5">
         <StatBox label="Cards" value={String(totalCards)} sublabel="/100" highlight={totalCards === 100} />
         <StatBox label="Avg CMC" value={avgCmc} sublabel="non-land" />
+        <StatBox label="Lands" value={String(landCount)} sublabel="in deck" highlight={landCount >= 34 && landCount <= 40} />
+        <StatBox label="Opening Lands" value={avgOpeningLands} sublabel="avg in 7 cards" highlight={!isNaN(parseFloat(avgOpeningLands)) && parseFloat(avgOpeningLands) >= 2.3 && parseFloat(avgOpeningLands) <= 3.0} />
         <StatBox label="Unique" value={String(state.cards.length)} sublabel="cards" />
         <StatBox
           label="Game Changers"

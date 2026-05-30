@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Loader2, AlertCircle, Link, FileText, Wand2, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, Link, FileText, Wand2, CheckCircle2, FileJson } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
   importFromArchidekt,
   parseBulkText,
   detectImportSource,
+  parseTTSJson,
   ParsedDeckEntry,
 } from '@/lib/import';
 import {
@@ -55,6 +56,12 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
   const [bulkError, setBulkError] = useState('');
   const [bulkSuccess, setBulkSuccess] = useState('');
 
+  // TTS file import
+  const [ttsFile, setTtsFile] = useState<File | null>(null);
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsError, setTtsError] = useState('');
+  const [ttsSuccess, setTtsSuccess] = useState('');
+
   // Fuzzy correction state
   const [corrections, setCorrections] = useState<FuzzyCorrection[]>([]);
   const [correctionQueue, setCorrectionQueue] = useState<ParsedDeckEntry[]>([]);
@@ -73,6 +80,9 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
     setBulkText('');
     setBulkError('');
     setBulkSuccess('');
+    setTtsFile(null);
+    setTtsError('');
+    setTtsSuccess('');
     setCorrections([]);
     setCorrectionQueue([]);
     setCurrentCorrectionIndex(0);
@@ -90,22 +100,47 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
 
   // Process parsed entries: batch-fetch from Scryfall, handle not-found
   const processEntries = useCallback(async (entries: ParsedDeckEntry[]) => {
-    const names = entries.map((e) => e.name);
+    // Deduplicate entries by normalized name, prioritizing isCommander: true
+    const normalizedEntriesMap = new Map<string, ParsedDeckEntry>();
+    for (const entry of entries) {
+      const norm = entry.name.trim().toLowerCase().split('//')[0].trim();
+      const existing = normalizedEntriesMap.get(norm);
+      if (!existing) {
+        normalizedEntriesMap.set(norm, { ...entry });
+      } else {
+        if (entry.isCommander || existing.isCommander) {
+          existing.isCommander = true;
+          // Keep the commander quantity (usually 1), do not sum the mainboard copy's quantity
+          existing.quantity = entry.isCommander ? entry.quantity : existing.quantity;
+        } else {
+          // Sum quantities for non-commander duplicates (e.g. basic lands)
+          existing.quantity += entry.quantity;
+        }
+      }
+    }
+    const uniqueEntries = Array.from(normalizedEntriesMap.values());
+
+    const names = uniqueEntries.map((e) => e.name);
     const { found, notFound } = await getCardsBatch(names);
 
     // Map found cards back to entries
     const foundMap = new Map<string, ScryfallCard>();
     for (const card of found) {
       foundMap.set(card.name.toLowerCase(), card);
+      // Map front face name as well to handle double-faced card mismatches
+      const frontName = card.name.split('//')[0].trim().toLowerCase();
+      foundMap.set(frontName, card);
     }
 
     const resolvedCards: Array<{ card: ScryfallCard; quantity: number; isCommander: boolean }> = [];
     const needsFuzzy: ParsedDeckEntry[] = [];
 
-    for (const entry of entries) {
+    for (const entry of uniqueEntries) {
       const lower = entry.name.toLowerCase();
-      // Try exact match first
-      const exactCard = foundMap.get(lower);
+      const norm = entry.name.trim().toLowerCase().split('//')[0].trim();
+
+      // Try exact match or normalized front face match
+      const exactCard = foundMap.get(lower) || foundMap.get(norm);
       if (exactCard) {
         resolvedCards.push({
           card: exactCard,
@@ -117,9 +152,9 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
 
       // Check if it's in notFound
       const isNotFound = notFound.some(
-        (n) => typeof n === 'string' ? n.toLowerCase() === lower : false
+        (n) => typeof n === 'string' ? (n.toLowerCase() === lower || n.toLowerCase().split('//')[0].trim() === norm) : false
       );
-      if (isNotFound || !foundMap.has(lower)) {
+      if (isNotFound || (!foundMap.has(lower) && !foundMap.has(norm))) {
         needsFuzzy.push(entry);
       }
     }
@@ -196,6 +231,31 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
       setBulkError(err instanceof Error ? err.message : 'Import failed.');
     } finally {
       setBulkLoading(false);
+    }
+  }
+
+  // TTS JSON import handler
+  async function handleTtsImport() {
+    if (!ttsFile) return;
+    setTtsLoading(true);
+    setTtsError('');
+    setTtsSuccess('');
+    try {
+      const text = await ttsFile.text();
+      const entries = parseTTSJson(text);
+      if (entries.length === 0) {
+        setTtsError('No cards found in the Tabletop Simulator file.');
+        return;
+      }
+      const { addedCount, fuzzyNeeded } = await processEntries(entries);
+      if (fuzzyNeeded === 0) {
+        setTtsSuccess(`Successfully imported ${addedCount} cards from TTS file!`);
+        setTimeout(() => handleClose(), 1500);
+      }
+    } catch (err) {
+      setTtsError(err instanceof Error ? err.message : 'TTS import failed.');
+    } finally {
+      setTtsLoading(false);
     }
   }
 
@@ -420,6 +480,10 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
               <FileText className="w-4 h-4" />
               Bulk Text
             </TabsTrigger>
+            <TabsTrigger value="tts" className="flex-1 gap-2">
+              <FileJson className="w-4 h-4" />
+              TTS JSON
+            </TabsTrigger>
           </TabsList>
 
           {/* URL Import */}
@@ -504,6 +568,61 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</>
               ) : (
                 'Import Cards'
+              )}
+            </Button>
+          </TabsContent>
+
+          {/* TTS JSON File Upload */}
+          <TabsContent value="tts" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Upload a Tabletop Simulator JSON deck file (`.json`) exported from this builder or other TTS systems:
+              </p>
+              <div className="flex flex-col items-center justify-center border-2 border-dashed border-border/80 rounded-xl p-8 bg-secondary/15 hover:bg-secondary/25 hover:border-primary/50 transition-colors cursor-pointer relative group">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setTtsFile(file);
+                    setTtsError('');
+                    setTtsSuccess('');
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <FileJson className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                <span className="text-xs font-semibold text-foreground">
+                  {ttsFile ? ttsFile.name : 'Click to select or drag JSON file'}
+                </span>
+                <span className="text-[10px] text-muted-foreground mt-1">
+                  Supports .json files
+                </span>
+              </div>
+            </div>
+
+            {ttsError && (
+              <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>{ttsError}</p>
+              </div>
+            )}
+
+            {ttsSuccess && (
+              <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <p>{ttsSuccess}</p>
+              </div>
+            )}
+
+            <Button
+              onClick={handleTtsImport}
+              disabled={ttsLoading || !ttsFile}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              {ttsLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importing...</>
+              ) : (
+                'Import from TTS File'
               )}
             </Button>
           </TabsContent>
