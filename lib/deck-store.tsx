@@ -29,10 +29,19 @@ export interface SavedDeck {
   losses?: number; // Number of losses
 }
 
+export interface CustomCard {
+  id: string;
+  name: string;
+  imageUrl: string;
+  associatedScryfallId: string;
+  associatedName: string;
+}
+
 interface DeckState {
   decks: SavedDeck[];
   activeDeckId: string | null; // ID of currently open deck, null means dashboard
   savedCardbacks?: string[]; // Global registry of custom uploaded cardbacks
+  customCards?: CustomCard[]; // Global registry of custom cards
 }
 
 type DeckAction =
@@ -55,6 +64,8 @@ type DeckAction =
   | { type: 'SET_CUSTOM_CARDBACK'; url: string | null }
   | { type: 'SAVE_CARDBACK_URL'; url: string }
   | { type: 'DELETE_CARDBACK_URL'; url: string }
+  | { type: 'ADD_CUSTOM_CARD'; name: string; imageUrl: string; associatedScryfallId: string; associatedName: string }
+  | { type: 'DELETE_CUSTOM_CARD'; id: string }
   | { type: 'CLEAR_DECK' }
   | { type: 'UPDATE_CARD_DATA'; scryfallId: string; newCardData: ScryfallCard }
   | { type: 'UPDATE_DECK_STATS'; wins: number; losses: number }
@@ -424,6 +435,29 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       };
     }
 
+    case 'ADD_CUSTOM_CARD': {
+      const currentList = state.customCards || [];
+      const newCard: CustomCard = {
+        id: `custom-${Date.now()}`,
+        name: action.name,
+        imageUrl: action.imageUrl,
+        associatedScryfallId: action.associatedScryfallId,
+        associatedName: action.associatedName,
+      };
+      return {
+        ...state,
+        customCards: [...currentList, newCard],
+      };
+    }
+
+    case 'DELETE_CUSTOM_CARD': {
+      const currentList = state.customCards || [];
+      return {
+        ...state,
+        customCards: currentList.filter((c) => c.id !== action.id),
+      };
+    }
+
     case 'UPDATE_DECK_STATS': {
       if (!state.activeDeckId) return state;
       return {
@@ -493,6 +527,7 @@ const initialState: DeckState = {
   decks: [],
   activeDeckId: null,
   savedCardbacks: [],
+  customCards: [],
 };
 
 function init(initial: DeckState): DeckState {
@@ -503,6 +538,9 @@ function init(initial: DeckState): DeckState {
       const parsed = JSON.parse(stored);
       if (!parsed.savedCardbacks) {
         parsed.savedCardbacks = [];
+      }
+      if (!parsed.customCards) {
+        parsed.customCards = [];
       }
       return parsed;
     }
@@ -523,6 +561,7 @@ function init(initial: DeckState): DeckState {
           decks: [migratedDeck],
           activeDeckId: 'deck-migrated',
           savedCardbacks: [],
+          customCards: [],
         };
         localStorage.setItem(STORE_STORAGE_KEY, JSON.stringify(migratedState));
         localStorage.removeItem('mtg-commander-deck');
@@ -543,6 +582,7 @@ interface DeckContextValue {
   totalCards: number;
   commander: DeckCard | null;
   savedCardbacks: string[];
+  customCards: CustomCard[];
 }
 
 const DeckContext = createContext<DeckContextValue | null>(null);
@@ -563,6 +603,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const totalCards = activeDeck ? activeDeck.cards.reduce((sum, c) => sum + c.quantity, 0) : 0;
   const commander = activeDeck ? activeDeck.cards.find((c) => c.isCommander) ?? null : null;
   const savedCardbacks = state.savedCardbacks || [];
+  const customCards = state.customCards || [];
 
   return (
     <DeckContext.Provider
@@ -574,6 +615,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         totalCards,
         commander,
         savedCardbacks,
+        customCards,
       }}
     >
       {children}

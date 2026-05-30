@@ -151,7 +151,11 @@ export async function getCardsBatch(
   const chunkSize = 75;
   for (let i = 0; i < names.length; i += chunkSize) {
     const chunk = names.slice(i, i + chunkSize);
-    const identifiers = chunk.map((name) => ({ name }));
+    // For double-faced cards Scryfall's /cards/collection endpoint finds them
+    // reliably only by their front-face name; the full "X // Y" form can fail.
+    const identifiers = chunk.map((name) => ({
+      name: name.includes('//') ? name.split('//')[0].trim() : name,
+    }));
     try {
       const res = await fetch(`${SCRYFALL_BASE}/cards/collection`, {
         method: 'POST',

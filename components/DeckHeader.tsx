@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
@@ -9,11 +9,12 @@ interface DeckHeaderProps {
   onExport: () => void;
   onImportOpen: () => void;
   onCardbackOpen: () => void;
+  onCustomOpen: () => void;
   onClear: () => void;
   isExporting: boolean;
 }
 
-export function DeckHeader({ onExport, onImportOpen, onCardbackOpen, onClear, isExporting }: DeckHeaderProps) {
+export function DeckHeader({ onExport, onImportOpen, onCardbackOpen, onCustomOpen, onClear, isExporting }: DeckHeaderProps) {
   const { state, totalCards, commander, dispatch } = useDeck();
   const isValid = totalCards === 100;
   const isOver = totalCards > 100;
@@ -98,6 +99,17 @@ export function DeckHeader({ onExport, onImportOpen, onCardbackOpen, onClear, is
           >
             <Images className="w-4 h-4" />
             <span className="hidden sm:inline">Cardback</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCustomOpen}
+            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
+            title="Custom card library (Alters / Proxies)"
+          >
+            <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+            <span className="hidden sm:inline">Custom</span>
           </Button>
 
           <Button

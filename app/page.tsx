@@ -12,6 +12,7 @@ import { ImportModal } from '@/components/ImportModal';
 import { CardbackModal } from '@/components/CardbackModal';
 import { StatsPanel } from '@/components/StatsPanel';
 import { DeckDashboard } from '@/components/DeckDashboard';
+import { CustomCardsModal } from '@/components/CustomCardsModal';
 import { generateTTSExport, downloadJSON } from '@/lib/tts-export';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Pencil, Check, Crown } from 'lucide-react';
@@ -72,6 +73,7 @@ function AppContent() {
   const { state, activeDeckId, dispatch, commander } = useDeck();
   const [importOpen, setImportOpen] = useState(false);
   const [cardbackOpen, setCardbackOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   // Helper to extract banner background art (Prioritizes coverCardId, falls back to commander)
@@ -128,6 +130,7 @@ function AppContent() {
         createNewDeck={!activeDeckId}
       />
       <CardbackModal open={cardbackOpen} onClose={() => setCardbackOpen(false)} />
+      <CustomCardsModal open={customOpen} onClose={() => setCustomOpen(false)} />
     </>
   );
 
@@ -150,6 +153,7 @@ function AppContent() {
         onExport={handleExport}
         onImportOpen={() => setImportOpen(true)}
         onCardbackOpen={() => setCardbackOpen(true)}
+        onCustomOpen={() => setCustomOpen(true)}
         onClear={handleClear}
         isExporting={isExporting}
       />

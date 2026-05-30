@@ -116,12 +116,10 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
                 className="relative w-10 h-14 rounded overflow-hidden border border-border"
                 title={c.name}
               >
-                <Image
+                <img
                   src={getFrontImageUrl(c.scryfallData)}
                   alt={c.name}
-                  fill
-                  className="object-cover"
-                  sizes="40px"
+                  className="w-full h-full object-cover absolute inset-0 select-none"
                 />
               </div>
             ))}

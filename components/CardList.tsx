@@ -33,6 +33,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useDeck, DeckCard } from '@/lib/deck-store';
+import { CustomCardsModal } from './CustomCardsModal';
 import { CATEGORY_ORDER, CardCategory, getThumbnailUrl, ScryfallCard } from '@/lib/scryfall';
 
 // Mana symbol colors
@@ -85,12 +86,10 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
       {/* Thumbnail */}
       <div className="relative w-8 h-11 rounded shrink-0 overflow-hidden bg-secondary border border-border">
         {thumbnailUrl && !imgError ? (
-          <Image
+          <img
             src={thumbnailUrl}
             alt={card.name}
-            fill
-            className="object-cover"
-            sizes="32px"
+            className="w-full h-full object-cover absolute inset-0 select-none"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -365,12 +364,10 @@ function CategorySection({
                       }`}
                   >
                     {cardImg ? (
-                      <Image
+                      <img
                         src={cardImg}
                         alt={card.name}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 200px, 250px"
+                        className="w-full h-full object-cover absolute inset-0 select-none"
                         loading="lazy"
                       />
                     ) : (
@@ -507,12 +504,10 @@ function CategorySection({
                       }`}
                   >
                     {cardImg ? (
-                      <Image
+                      <img
                         src={cardImg}
                         alt={card.name}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 260px, 310px"
+                        className="w-full h-full object-cover absolute inset-0 select-none"
                         loading="lazy"
                       />
                     ) : (
@@ -637,12 +632,16 @@ function CategorySection({
 }
 
 export function CardList() {
-  const { state, totalCards, dispatch } = useDeck();
+  const { state, totalCards, customCards, dispatch } = useDeck();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterQuery, setFilterQuery] = useState('');
+  const [selectedCmc, setSelectedCmc] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedSubtype, setSelectedSubtype] = useState<string>('all');
 
   // Variant selector states
   const [variantCard, setVariantCard] = useState<DeckCard | null>(null);
+  const [isAddCustomOpen, setIsAddCustomOpen] = useState(false);
   const [printings, setPrintings] = useState<ScryfallCard[]>([]);
   const [loadingPrints, setLoadingPrints] = useState(false);
   const [printsError, setPrintsError] = useState('');
@@ -694,10 +693,66 @@ export function CardList() {
     );
   }
 
-  // Filter cards by name
-  const filteredCards = state.cards.filter((card) =>
-    card.name.toLowerCase().includes(filterQuery.toLowerCase())
-  );
+  // Dynamically extract all unique subtypes present in the deck's cards
+  const allSubtypes = Array.from(
+    new Set(
+      state.cards.flatMap((card) => {
+        const typeLine = card.scryfallData.type_line || '';
+        const typeLines = card.scryfallData.card_faces
+          ? card.scryfallData.card_faces.map((f) => f.type_line || '')
+          : [typeLine];
+
+        return typeLines.flatMap((line) => {
+          if (!line.includes('—')) return [];
+          const parts = line.split('—');
+          const rightPart = parts[1] || '';
+          return rightPart.trim().split(/\s+/).filter(Boolean);
+        });
+      })
+    )
+  ).sort();
+
+  // Filter cards by name, CMC, card type, and subtype
+  const filteredCards = state.cards.filter((card) => {
+    // Name filter
+    const matchesName = card.name.toLowerCase().includes(filterQuery.toLowerCase());
+    if (!matchesName) return false;
+
+    // CMC filter
+    if (selectedCmc !== 'all') {
+      const cardCmc = card.scryfallData.cmc ?? 0;
+      if (selectedCmc === '7+') {
+        if (cardCmc < 7) return false;
+      } else {
+        if (cardCmc !== parseInt(selectedCmc, 10)) return false;
+      }
+    }
+
+    // Type filter
+    if (selectedType !== 'all') {
+      if (card.category !== selectedType) return false;
+    }
+
+    // Subtype filter
+    if (selectedSubtype !== 'all') {
+      const typeLine = card.scryfallData.type_line || '';
+      const typeLines = card.scryfallData.card_faces
+        ? card.scryfallData.card_faces.map((f) => f.type_line || '')
+        : [typeLine];
+
+      const hasSubtype = typeLines.some((line) => {
+        if (!line.includes('—')) return false;
+        const parts = line.split('—');
+        const rightPart = parts[1] || '';
+        const subtypes = rightPart.trim().split(/\s+/).filter(Boolean);
+        return subtypes.includes(selectedSubtype);
+      });
+
+      if (!hasSubtype) return false;
+    }
+
+    return true;
+  });
 
   // Group cards by category
   const grouped = new Map<CardCategory, DeckCard[]>();
@@ -721,66 +776,138 @@ export function CardList() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* View Mode Selection & Local Filtering Bar */}
-      <div className="px-4 py-2 border-b border-border bg-secondary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <Input
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            placeholder="Filter cards in deck..."
-            className="pl-8 h-8 text-xs bg-secondary/50 border-border focus:border-primary/50 focus:ring-primary/20"
-          />
-          {filterQuery && (
+      <div className="px-4 py-3 border-b border-border bg-secondary/10 flex flex-col gap-3 shrink-0">
+        {/* Top Row: Search input and View Mode tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder="Filter cards in deck..."
+              className="pl-8 h-8 text-xs bg-secondary/50 border-border focus:border-primary/50 focus:ring-primary/20"
+            />
+            {filterQuery && (
+              <button
+                onClick={() => setFilterQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60 self-end sm:self-auto shrink-0">
             <button
-              onClick={() => setFilterQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setViewMode('grid')}
+              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'grid'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
-              <X className="w-3.5 h-3.5" />
+              <Grid className="w-3.5 h-3.5" />
+              <span>Visual Grid</span>
             </button>
-          )}
+            <button
+              onClick={() => setViewMode('stack')}
+              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'stack'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <Layers3 className="w-3.5 h-3.5" />
+              <span>Visual Stack</span>
+            </button>
+            <button
+              onClick={() => setViewMode('text')}
+              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'text'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <AlignJustify className="w-3.5 h-3.5" />
+              <span>List</span>
+            </button>
+            <button
+              onClick={() => setViewMode('condensed')}
+              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'condensed'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Condensed</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60 self-end sm:self-auto">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'grid'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-              }`}
-          >
-            <Grid className="w-3.5 h-3.5" />
-            <span>Visual Grid</span>
-          </button>
-          <button
-            onClick={() => setViewMode('stack')}
-            className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'stack'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-              }`}
-          >
-            <Layers3 className="w-3.5 h-3.5" />
-            <span>Visual Stack</span>
-          </button>
-          <button
-            onClick={() => setViewMode('text')}
-            className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'text'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-              }`}
-          >
-            <AlignJustify className="w-3.5 h-3.5" />
-            <span>List</span>
-          </button>
-          <button
-            onClick={() => setViewMode('condensed')}
-            className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'condensed'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-              }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            <span>Condensed</span>
-          </button>
+        {/* Bottom Row: Mana Value and Card Type filters */}
+        <div className="flex flex-col gap-2 border-t border-border/20 pt-2 bg-background/5 p-2 rounded-lg border border-border/30">
+          {/* Converted Mana Cost Filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Mana Value:</span>
+            <div className="flex flex-wrap gap-0.5 bg-secondary/30 p-0.5 rounded-md border border-border/40">
+              {['all', '0', '1', '2', '3', '4', '5', '6', '7+'].map((cmcVal) => {
+                const isActive = selectedCmc === cmcVal;
+                return (
+                  <button
+                    key={cmcVal}
+                    onClick={() => setSelectedCmc(cmcVal)}
+                    className={`h-5 px-2 rounded text-[9px] font-bold transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+                    }`}
+                  >
+                    {cmcVal === 'all' ? 'All' : cmcVal}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card Type Filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Card Type:</span>
+            <div className="flex flex-wrap gap-0.5 bg-secondary/30 p-0.5 rounded-md border border-border/40">
+              {['all', 'Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land', 'Other'].map((typeVal) => {
+                const isActive = selectedType === typeVal;
+                const displayLabel = typeVal === 'all' ? 'All' : typeVal === 'Planeswalker' ? 'PW' : typeVal;
+                return (
+                  <button
+                    key={typeVal}
+                    onClick={() => setSelectedType(typeVal)}
+                    className={`h-5 px-2 rounded text-[9px] font-bold transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+                    }`}
+                  >
+                    {displayLabel}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Subtype Filter */}
+          {allSubtypes.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Subtype:</span>
+              <select
+                value={selectedSubtype}
+                onChange={(e) => setSelectedSubtype(e.target.value)}
+                className="h-6 px-2 rounded text-[10px] font-bold bg-secondary/50 border border-border/40 text-foreground hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all w-full max-w-[160px]"
+              >
+                <option value="all">All Subtypes</option>
+                {allSubtypes.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -788,17 +915,35 @@ export function CardList() {
         <div className="pb-4">
           {/* Card count summary */}
           <div className="px-3 py-3 flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground">
-              {filterQuery ? (
-                <span>
-                  {filteredCards.length} filtered (of {state.cards.length})
-                </span>
-              ) : (
-                <span>{state.cards.length} unique cards</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">
+                {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || filterQuery ? (
+                  <span>
+                    {filteredCards.length} filtered (of {state.cards.length})
+                  </span>
+                ) : (
+                  <span>{state.cards.length} unique cards</span>
+                )}
+              </span>
+              {(selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || filterQuery) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-2 text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary gap-1 rounded-md"
+                  onClick={() => {
+                    setFilterQuery('');
+                    setSelectedCmc('all');
+                    setSelectedType('all');
+                    setSelectedSubtype('all');
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                  Clear Filters
+                </Button>
               )}
-            </span>
+            </div>
             <span className="text-sm font-mono text-muted-foreground">
-              {filterQuery ? (
+              {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || filterQuery ? (
                 <span>
                   {filteredCards.reduce((sum, c) => sum + c.quantity, 0)} total filtered
                 </span>
@@ -845,14 +990,129 @@ export function CardList() {
               <ImageIcon className="w-5 h-5 text-primary" />
               Art & Printing Variants
             </DialogTitle>
-            <DialogDescription>
-              Choose your preferred printing for{' '}
-              <strong className="text-foreground">{variantCard?.name}</strong>. This will update the
-              card art across the builder and exported files.
+            <DialogDescription className="flex flex-col sm:flex-row sm:items-start md:items-center justify-between gap-3 text-muted-foreground mt-1">
+              <span className="max-w-xl">
+                Choose your preferred printing for{' '}
+                <strong className="text-foreground">{variantCard?.name}</strong>. This will update the
+                card art across the builder and exported files.
+              </span>
+              {variantCard && (
+                <Button
+                  onClick={() => setIsAddCustomOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs border-dashed gap-1.5 shrink-0 text-primary border-primary/45 hover:bg-primary/5 hover:border-primary active:scale-95 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Custom Alter
+                </Button>
+              )}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto pr-1 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto pr-1 py-4 space-y-6">
+            {/* Custom Alters / Proxies Section */}
+            {variantCard && customCards && (
+              (() => {
+                const matchingCustomCards = customCards.filter(
+                  (c) =>
+                    c.associatedScryfallId === variantCard.scryfallId ||
+                    c.associatedName.toLowerCase() === variantCard.name.toLowerCase()
+                );
+                if (matchingCustomCards.length === 0) return null;
+
+                return (
+                  <div className="space-y-3 bg-secondary/10 p-3.5 rounded-xl border border-border/30 animate-fade-in-up">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                      Custom Alters & Proxies ({matchingCustomCards.length})
+                    </h3>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 justify-items-center">
+                      {matchingCustomCards.map((custom) => {
+                        const isCurrent =
+                          variantCard.scryfallData.image_uris?.normal === custom.imageUrl ||
+                          variantCard.scryfallData.card_faces?.[0]?.image_uris?.normal === custom.imageUrl;
+
+                        return (
+                          <div
+                            key={custom.id}
+                            onClick={() => {
+                              // Override the ScryfallCard image_uris with the custom URL
+                              const updatedScryfallData = {
+                                ...variantCard.scryfallData,
+                                image_uris: {
+                                  ...variantCard.scryfallData.image_uris,
+                                  small: custom.imageUrl,
+                                  normal: custom.imageUrl,
+                                  large: custom.imageUrl,
+                                  png: custom.imageUrl,
+                                  art_crop: custom.imageUrl,
+                                },
+                                // Support DFC card faces if present
+                                card_faces: variantCard.scryfallData.card_faces?.map((face, index) =>
+                                  index === 0
+                                    ? {
+                                        ...face,
+                                        image_uris: {
+                                          ...face.image_uris,
+                                          small: custom.imageUrl,
+                                          normal: custom.imageUrl,
+                                          large: custom.imageUrl,
+                                          png: custom.imageUrl,
+                                          art_crop: custom.imageUrl,
+                                        },
+                                      }
+                                    : face
+                                ),
+                              };
+                              dispatch({
+                                type: 'UPDATE_CARD_DATA',
+                                scryfallId: variantCard.scryfallId,
+                                newCardData: updatedScryfallData,
+                              });
+                              setVariantCard(null);
+                            }}
+                            className={`relative w-[150px] sm:w-[200px] aspect-[5/7] rounded-xl overflow-hidden cursor-pointer border transition-all duration-300 group/print ${
+                              isCurrent
+                                ? 'border-primary ring-2 ring-primary bg-primary/5 shadow-lg shadow-primary/20 scale-[1.03]'
+                                : 'border-border/60 hover:border-primary/50 hover:scale-[1.02]'
+                            }`}
+                          >
+                            <img
+                              src={custom.imageUrl}
+                              alt={custom.name}
+                              className="w-full h-full object-cover select-none"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://i.imgur.com/Hg8CwwU.jpeg';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/85 opacity-0 group-hover/print:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-2.5 text-center z-10">
+                              <span className="text-xs font-bold text-foreground leading-tight truncate">
+                                {custom.name}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground uppercase font-semibold font-mono mt-0.5">
+                                Custom Art Alter
+                              </span>
+                            </div>
+                            {isCurrent && (
+                              <div className="absolute top-2 right-2 bg-primary p-0.5 rounded-full z-10 flex items-center justify-center">
+                                <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2 pt-2 text-[10px] text-muted-foreground">
+                      <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                      <span>These are your local custom designs. Official printings from Scryfall are listed below.</span>
+                    </div>
+                    <Separator className="my-4 opacity-40" />
+                  </div>
+                );
+              })()
+            )}
+
             {loadingPrints ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -890,12 +1150,10 @@ export function CardList() {
                         }`}
                     >
                       {printImg ? (
-                        <Image
+                        <img
                           src={printImg}
                           alt={print.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 150px, 200px"
+                          className="w-full h-full object-cover absolute inset-0 select-none"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center p-2 text-center text-xs bg-secondary">
@@ -933,6 +1191,17 @@ export function CardList() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Custom Cards Modal for quick prepopulated adding */}
+      <CustomCardsModal
+        open={isAddCustomOpen}
+        onClose={() => setIsAddCustomOpen(false)}
+        prepopulatedCard={
+          variantCard
+            ? { id: variantCard.scryfallId, name: variantCard.name }
+            : null
+        }
+      />
     </div>
   );
 }
