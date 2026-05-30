@@ -37,7 +37,7 @@ interface DeckState {
 
 type DeckAction =
   | { type: 'LOAD_STORE'; state: DeckState }
-  | { type: 'CREATE_DECK'; name?: string }
+  | { type: 'CREATE_DECK'; name?: string; id?: string }
   | { type: 'DUPLICATE_DECK'; deckId: string }
   | { type: 'DELETE_DECK'; deckId: string }
   | { type: 'OPEN_DECK'; deckId: string }
@@ -68,7 +68,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       return action.state;
 
     case 'CREATE_DECK': {
-      const newId = `deck-${Date.now()}`;
+      const newId = action.id || `deck-${Date.now()}`;
       const newDeck: SavedDeck = {
         id: newId,
         deckName: action.name || 'New Commander Deck',

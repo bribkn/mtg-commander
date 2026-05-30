@@ -40,10 +40,12 @@ interface FuzzyCorrection {
 interface ImportModalProps {
   open: boolean;
   onClose: () => void;
+  /** If true, automatically creates a new deck before importing (used from the dashboard) */
+  createNewDeck?: boolean;
 }
 
-export function ImportModal({ open, onClose }: ImportModalProps) {
-  const { dispatch } = useDeck();
+export function ImportModal({ open, onClose, createNewDeck }: ImportModalProps) {
+  const { dispatch, activeDeckId } = useDeck();
 
   // URL import
   const [urlInput, setUrlInput] = useState('');
@@ -183,6 +185,13 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
     return { addedCount: resolvedCards.length, fuzzyNeeded: needsFuzzy.length };
   }, [dispatch]);
 
+  // Ensure there is an active deck to import into; creates one if createNewDeck is set
+  function ensureActiveDeck(name?: string) {
+    if (createNewDeck && !activeDeckId) {
+      dispatch({ type: 'CREATE_DECK', name: name || 'Imported Deck' });
+    }
+  }
+
   // URL import handler
   async function handleUrlImport() {
     if (!urlInput.trim()) return;
@@ -198,6 +207,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
       } else {
         throw new Error('Unsupported URL. Please use a Moxfield or Archidekt deck URL.');
       }
+      ensureActiveDeck();
       const { addedCount, fuzzyNeeded } = await processEntries(entries);
       if (fuzzyNeeded === 0) {
         setBulkSuccess(`Added ${addedCount} cards to your deck.`);
@@ -222,6 +232,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
         setBulkError('No cards found. Please check the format.');
         return;
       }
+      ensureActiveDeck();
       const { addedCount, fuzzyNeeded } = await processEntries(entries);
       if (fuzzyNeeded === 0) {
         setBulkSuccess(`Successfully added ${addedCount} cards!`);
@@ -247,6 +258,9 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
         setTtsError('No cards found in the Tabletop Simulator file.');
         return;
       }
+      // Derive deck name from the filename (strip extension)
+      const deckName = ttsFile.name.replace(/\.json$/i, '').trim() || 'Imported Deck';
+      ensureActiveDeck(deckName);
       const { addedCount, fuzzyNeeded } = await processEntries(entries);
       if (fuzzyNeeded === 0) {
         setTtsSuccess(`Successfully imported ${addedCount} cards from TTS file!`);

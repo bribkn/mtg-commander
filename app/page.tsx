@@ -79,7 +79,7 @@ function AppContent() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <DeckDashboard onImportOpen={() => setImportOpen(true)} />
-        <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+        <ImportModal open={importOpen} onClose={() => setImportOpen(false)} createNewDeck />
       </div>
     );
   }
