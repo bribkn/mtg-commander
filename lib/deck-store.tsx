@@ -71,7 +71,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       const newId = `deck-${Date.now()}`;
       const newDeck: SavedDeck = {
         id: newId,
-        deckName: action.name || 'Nuevo Mazo Commander',
+        deckName: action.name || 'New Commander Deck',
         cards: [],
         commanderId: null,
         coverCardId: null,
@@ -490,7 +490,7 @@ function init(initial: DeckState): DeckState {
       if (oldDeck && (oldDeck.cards || oldDeck.deckName)) {
         const migratedDeck: SavedDeck = {
           id: 'deck-migrated',
-          deckName: oldDeck.deckName || 'Mazo Migrado',
+          deckName: oldDeck.deckName || 'Migrated Deck',
           cards: oldDeck.cards || [],
           commanderId: oldDeck.commanderId || null,
           coverCardId: null,

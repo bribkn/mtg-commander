@@ -175,7 +175,7 @@ function AppContent() {
                 <div className="flex items-center gap-1.5 text-xs text-white/80 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                   <Crown className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
                   <span>
-                    Liderado por <strong className="text-white">{commander.name}</strong>
+                    Led by <strong className="text-white">{commander.name}</strong>
                   </span>
                 </div>
               )}

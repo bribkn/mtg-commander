@@ -18,6 +18,7 @@ import {
   Sparkles,
   Search,
   X,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -173,6 +174,17 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
           <ImageIcon className="w-3.5 h-3.5" />
         </Button>
 
+        {/* View Combos */}
+        <a
+          href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-6 h-6 rounded hover:bg-secondary text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
+          title="View Combos (Spellbook)"
+        >
+          <Zap className="w-3.5 h-3.5 text-amber-500 hover:scale-110 transition-transform" />
+        </a>
+
         {/* Quantity controls */}
         <Button
           variant="ghost"
@@ -313,6 +325,15 @@ function CategorySection({
                       >
                         <ImageIcon className="w-3 h-3" />
                       </button>
+                      <a
+                        href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-primary p-0.5 flex items-center justify-center transition-colors"
+                        title="View Combos"
+                      >
+                        <Zap className="w-3 h-3 text-amber-500 hover:scale-110 transition-transform" />
+                      </a>
                       <button
                         onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId })}
                         className="text-muted-foreground hover:text-destructive p-0.5"
@@ -419,6 +440,15 @@ function CategorySection({
                           >
                             <ImageIcon className="w-4 h-4" />
                           </button>
+                          <a
+                            href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors flex items-center justify-center"
+                            title="View Combos (Spellbook)"
+                          >
+                            <Zap className="w-4 h-4 text-amber-500 animate-pulse" />
+                          </a>
                           <button
                             onClick={() =>
                               dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId })
@@ -548,16 +578,25 @@ function CategorySection({
                           <button
                             onClick={() => onVariantOpen(card)}
                             className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
-                            title="Cambiar Arte"
+                            title="Change Art"
                           >
                             <ImageIcon className="w-4.5 h-4.5" />
                           </button>
+                          <a
+                            href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors flex items-center justify-center"
+                            title="View Combos (Spellbook)"
+                          >
+                            <Zap className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
+                          </a>
                           <button
                             onClick={() =>
                               dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId })
                             }
                             className="p-1 rounded bg-secondary/80 hover:bg-destructive/20 text-muted-foreground hover:text-red-400 transition-colors"
-                            title="Eliminar"
+                            title="Delete"
                           >
                             <Trash2 className="w-4.5 h-4.5" />
                           </button>

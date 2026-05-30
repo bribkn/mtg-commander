@@ -5,141 +5,140 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**MTG Commander TTS Builder** es un constructor de mazos interactivo, moderno y premium diseñado para la comunidad de Magic: The Gathering. Permite diseñar mazos Commander, personalizar el arte de las cartas, configurar reversos personalizados y exportar los mazos de manera impecable y directa a **Tabletop Simulator (TTS)** en formato JSON compatible.
+**MTG Commander TTS Builder** is a modern, high-performance, and visually stunning deck builder designed for the Magic: The Gathering community. It allows players to construct Commander decks, customize card printings and variants, configure custom cardback images, track deck performance stats, and seamlessly export decks directly into highly-compatible **Tabletop Simulator (TTS)** JSON formats.
 
-Todo esto está envuelto en una interfaz oscura cinemática y de alto rendimiento basada en un sistema de diseño rojo y negro de alta gama.
-
----
-
-## 🌟 Características Destacadas (Key Features)
-
-### 1. 🎴 Panel de Mazos Multipropósito (Multi-Deck Dashboard)
-* **Estética de Vidrio Esmerilado (Glassmorphic Design)**: Una pantalla de bienvenida espectacular con animaciones fluidas de entrada.
-* **Mosaico Dinámico**: Muestra tus mazos guardados usando el **arte de portada personalizado** recortado de Scryfall.
-* **Estadísticas en Tiempo Real**: Visualiza el número total de cartas, comandantes y tu porcentaje de victorias (**Winrate**) directamente en la tarjeta de cada mazo.
-* **Acciones Rápidas**: Duplica, elimina o edita tus mazos con un solo clic.
-
-### 2. 🌌 Banner Panorámico del Mazo (Panoramic Deck Hero Banner)
-* Un banner inmersivo en la parte superior del editor que se adapta automáticamente al arte ilustrado de tu comandante o de la carta que elijas como portada (`art_crop`).
-* **Edición en Línea**: Haz clic directamente sobre el título del mazo para renombrarlo instantáneamente en tiempo real.
-* **Efecto de Pulso de Comandante**: Muestra la corona del comandante con sutiles microanimaciones interactivas.
-
-### 3. 🛡️ Cuatro Vistas Premium de Cartas
-* **Grid Visual (Por Defecto)**: Una rejilla de alta resolución con cartas a tamaño completo (`200px` - `250px`) y un espaciado ultra ajustado (`gap-2`) para emular una carpeta física. Al pasar el cursor, revela un menú de controles donde puedes alterar cantidades, asignar comandante, definir portada o cambiar de arte.
-* **Visual Stack (Pila)**: Cartas superpuestas verticalmente que recrean la pila de cartas de una partida física. Al pasar el cursor sobre cualquier carta, esta se desplaza suavemente hacia arriba y adelante.
-* **Lista Detallada (Text View)**: Fila clásica con un diseño limpio de información de costes de maná, tipo de carta, miniaturas detalladas y controles completos de edición.
-* **Texto Condensado**: Una vista ultra compacta para mazos masivos, ideal para ver de un vistazo todo tu mazo con mínimas distracciones visuales.
-
-### 4. ⚡ Integración de Combos (Commander Spellbook)
-* Cada carta en cualquier vista incluye un botón interactivo de **Rayo Amarillo (`Zap`)**.
-* Dado que EDHREC obtiene todos sus datos de combos de **Commander Spellbook**, este botón te redirige de manera directa y optimizada a la consulta exacta de esa carta en el motor de combos oficial, detallando instrucciones paso a paso, identidades de color requeridas y piezas sustitutas sin tiempos de carga extras.
-
-### 5. 🖼️ Selector de Variantes de Arte (Widescreen Modal)
-* ¿Quieres tu *Sol Ring* de Beta, con arte promocional, o con el marco retro? Un botón de galería te abre un diálogo panorámico de pantalla completa (`max-w-5xl`) que consulta en vivo la API de Scryfall para traerte todas las impresiones históricas de esa carta.
-* Al seleccionar la variante, el arte se actualiza **instantáneamente** en la pila visual, en el banner panorámico del editor, en el panel del dashboard y en el archivo exportado para TTS.
-
-### 6. 🎨 Reverso Personalizado con Ajuste Proporcional (Custom Cardbacks)
-* El reverso por defecto se ha actualizado al icónico diseño de fantasía.
-* Puedes subir cualquier URL de imagen para tu reverso.
-* **Recorte Inteligente (`object-cover`)**: Si subes una imagen más ancha de lo normal, el constructor la ajustará proporcionalmente a una plantilla de carta vertical de Magic (proporción 5:7) sin estirarla ni deformarla.
-* **Galería de Reversos**: Guarda un registro de todos los reversos que has usado para poder seleccionarlos rápidamente o eliminarlos si ya no los necesitas.
-
-### 7. 🏆 Registro de Rendimiento y Winrate %
-* Registra tus victorias y derrotas en tiempo real directamente desde el panel de estadísticas del editor.
-* El constructor calcula y actualiza tu porcentaje de victorias y muestra una medalla dorada de rendimiento en la portada del mazo en el dashboard.
-
-### 8. 📝 Importación Inteligente en Bloques y Detección de Comandante
-* El importador masivo analiza tu lista por bloques de texto separados por líneas vacías.
-* **Detección Automática**: Si dejas una línea vacía y una carta aislada al final (o una sección corta), el sistema la detectará automáticamente como tu Comandante y le asignará la corona sin que tengas que hacerlo manualmente.
+All of this is wrapped in a cinematic dark-mode interface built on a premium red-and-black color palette with micro-animations.
 
 ---
 
-## 🛠️ Stack Tecnológico (Tech Stack)
+## 🌟 Key Features
 
-* **Framework**: [Next.js 16](https://nextjs.org) (App Router con Turbopack)
-* **Biblioteca Principal**: [React 19](https://react.dev)
-* **Estilos**: Tailwind CSS 4 & Custom Vanilla CSS Tokens
-* **Iconos**: [Lucide React](https://lucide.dev)
-* **Componentes base**: Shadcn UI & Radix Premier Primitives
-* **Base de datos**: Sincronización en tiempo real y persistencia en `localStorage` (sin base de datos externa para máxima privacidad).
+### 1. 🎴 Multi-Deck Dashboard
+* **Glassmorphic Design**: A premium landing page with fluid, hardware-accelerated grid layout cards and entrance transitions.
+* **Dynamic Art crops**: Shows saved decks using the **custom cover card crop** or falls back to your commander's illustration automatically.
+* **Real-time Performance stats**: Displays card counts, commander status, and calculated win rate percentage (**% WR**) right on each deck card.
+* **Quick Actions**: Duplicate, delete, or open decks in one click.
+
+### 2. 🌌 Panoramic Deck Hero Banner
+* An immersive banner at the top of the editor displaying a gorgeous, slightly-blurred art crop (`art_crop`) of the deck's active cover card or commander.
+* **Inline Renaming**: Double-click or tap the deck name to instantly edit the title in place with live saving.
+* **Commander Crown Subtitle**: Elegantly renders the commander's name under the title with a glowing, pulse-animated Lucide crown.
+
+### 3. 🛡️ Four Premium Card Layout Views
+* **Visual Grid (Default)**: A beautiful high-res card grid using standard 5:7 ratios, sized dynamically up to `250px`. Features a ultra-tight `gap-2` to mimic a real card binder. Hovering reveals interactive controls to adjust quantity, toggle commander status, set as deck cover art, swap prints, or remove.
+* **Visual Stack**: Vertically overlaps cards to replicate real physical card piles. Hovering slides cards up and forward with smooth micro-animations.
+* **Detailed List (Text View)**: Clean list rows showcasing card thumbnails, mana costs, card types, and full inline controls.
+* **Condensed List**: A super-compact, padding-minimized list displaying card counts, names, and rapid actions. Ideal for review on huge screens or managing massive piles.
+
+### 4. ⚡ Combos Discovery Integration (Commander Spellbook)
+* A glowing yellow Lucide `Zap` (Lightning) button is integrated across all card views.
+* Clicking the ray opens **Commander Spellbook** (the official community combo engine behind EDHREC) pre-queried for that specific card in a new tab, detailing step-by-step resolution guides, legalities, and color-identity requirements with zero latency.
+
+### 5. 🖼️ Widescreen Printings Variant Dialog
+* Swap out any card's artwork with a widescreen variant selector modal (`max-w-5xl`).
+* Queries the Scryfall API live to fetch all historical printings of the card—from Alpha and Beta to promos, borderless arts, and retro frame releases.
+* Shows set names, codes, rarities, and set logos. Selecting any variant updates the illustration crops globally—instantly updating visual piles, cover card crops, panoramic banners, and Tabletop Simulator exports.
+
+### 6. 🎨 Custom Proportional Cardbacks
+* Features a custom saved cardbacks gallery synced to `localStorage`.
+* **Proportional Scaling (`object-cover`)**: Custom URLs are automatically cropped to the vertical MTG playing card format (5:7 ratio) without any stretching, pixelation, or deformation.
+* Easily toggle back to the official MTG cardback. Selected cardbacks are automatically mapped into TTS exports.
+
+### 7. 🏆 Performance Match Registry
+* Sidebar Trophy widget allowing real-time win/loss entries.
+* Calculates Winrate % instantly and displays golden-yellow winrate badges on saved decks in the main landing grid.
+
+### 8. 📝 Block-Based Bulk Import & Commander Auto-Detection
+* Advanced list import parser splits lines by blank line sections.
+* Heuristics automatically flag single isolated cards or short blocks separated at the bottom or top of lists as your active Commander, assigning the commander state automatically.
 
 ---
 
-## 🚀 Instalación y Desarrollo (Getting Started)
+## 🛠️ Technology Stack
 
-Sigue estos pasos para ejecutar el proyecto en tu máquina local:
+* **Framework**: [Next.js 16](https://nextjs.org) (App Router, Turbopack enabled)
+* **Core Library**: [React 19](https://react.dev)
+* **Styling**: Tailwind CSS 4 & Vanilla CSS custom design tokens
+* **Iconography**: [Lucide React](https://lucide.dev)
+* **Primitives**: Shadcn UI & Radix UI accessible wrappers
+* **State / Storage**: React Context, Reducers, and real-time synchronization with client-side `localStorage`.
 
-### 1. Clonar el repositorio
+---
+
+## 🚀 Getting Started
+
+Follow these steps to run the MTG Commander TTS Builder locally:
+
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/tu-usuario/mtg-commander-tts.git
+git clone https://github.com/your-username/mtg-commander-tts.git
 cd mtg-commander-tts
 ```
 
-### 2. Instalar dependencias
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 3. Ejecutar el servidor de desarrollo
+### 3. Start the Local Dev Server
 ```bash
 npm run dev
 ```
+Open `http://localhost:3000` in your web browser.
 
-El servidor local se iniciará en `http://localhost:3000`.
-
-### 4. Construir para producción
-Para compilar y validar que todo esté libre de errores de TypeScript antes de desplegar:
+### 4. Build and Compile Check
+Validate type health and compile production builds:
 ```bash
 npm run build
 ```
 
 ---
 
-## 📂 Estructura del Proyecto (Architecture)
+## 📂 Modular Architecture
 
-El código está estructurado de manera modular y limpia:
+The repository is organized following clean architectural guidelines:
 
 ```
 ├── app/
-│   ├── api/                   # Rutas de API para consultas a Archidekt y Moxfield
-│   ├── layout.tsx             # Proveedor global y fuentes del sistema
-│   └── page.tsx               # Entrada principal (Conmutador entre Dashboard y Editor)
+│   ├── api/                   # API routes for external Moxfield & Archidekt proxy fetching
+│   ├── layout.tsx             # Root layout & Google Fonts integration
+│   └── page.tsx               # Entry page (Toggles between Dashboard and Editor view)
 ├── components/
-│   ├── ui/                    # Componentes base atómicos de Shadcn (Dialog, Input, Button, etc.)
-│   ├── CardbackModal.tsx      # Modal de carga y galería de reversos personalizados
-│   ├── CardList.tsx           # El corazón del editor (Maneja las 4 vistas de cartas y selector de variantes)
-│   ├── CardSearchBar.tsx      # Buscador con autocompletado fuzzy y llamadas a Scryfall
-│   ├── DeckDashboard.tsx      # Landing page / Selector de mazos guardados con badges de Winrate
-│   ├── DeckHeader.tsx         # Encabezado del constructor con el Banner Hero y edición de título
-│   ├── ExportPanel.tsx        # Panel de exportación en JSON para Tabletop Simulator
-│   ├── ImportModal.tsx        # Interfaz de bulk import y llamadas a APIs de importadores externos
-│   └── StatsPanel.tsx         # Panel de estadísticas (Curva de maná, Winrate y recuento de Game Changers)
+│   ├── ui/                    # Atomic Tailwind components (Dialogs, Buttons, Inputs, etc.)
+│   ├── CardbackModal.tsx      # Cardback image configuration, preview, and gallery modal
+│   ├── CardList.tsx           # Core view manager (Visual Grid, Visual Stack, List, Condensed)
+│   ├── CardSearchBar.tsx      # Scryfall query search bar with fuzzy autocompletions
+│   ├── DeckDashboard.tsx      # Welcome landing page & deck list grid manager
+│   ├── DeckHeader.tsx         # Header editor containing panoramic hero banner controls
+│   ├── ExportPanel.tsx        # Exporter interface to produce Tabletop Simulator outputs
+│   ├── ImportModal.tsx        # Multi-tab URL proxy & bulk copy-paste parser
+│   └── StatsPanel.tsx         # Left-sidebar stats panel (Mana curve, performance trophy manager)
 ├── lib/
-│   ├── deck-store.tsx         # Estado global (Contexto de React, Reducer y persistencia local)
-│   ├── import.ts              # Algoritmos de análisis de texto en bloques y conectores externos
-│   ├── scryfall.ts            # Cliente API de Scryfall (Búsquedas, categorías y variantes)
-│   └── tts-export.ts          # Compilador JSON para la generación de archivos de Tabletop Simulator
-├── public/                    # Assets estáticos
+│   ├── deck-store.tsx         # Global context state store (Reducers, actions, local persistence)
+│   ├── import.ts              # Text block algorithms & Commander heuristics
+│   ├── scryfall.ts            # Client interface querying Scryfall fuzzy searches
+│   └── tts-export.ts          # Tabletop Simulator compatible JSON generator compiler
+├── public/                    # Static image assets
 └── package.json
 ```
 
 ---
 
-## 🤝 Contribuciones (Open Source Contributions)
+## 🤝 Open Source Contributions
 
-Este es un proyecto **completamente open-source** disponible para que cualquiera lo mejore, lo clone o lo use de base para sus propios constructores. ¡Cualquier ayuda es bienvenida!
+This project is **100% open-source** and free for the MTG community. Contributions, forks, and pull requests are highly encouraged!
 
-Si quieres contribuir:
-1. Haz un **Fork** del proyecto.
-2. Crea tu rama de características (`git checkout -b feature/nueva-caracteristica`).
-3. Confirma tus cambios (`git commit -m 'Añade nueva característica'`).
-4. Haz push a tu rama (`git push origin feature/nueva-caracteristica`).
-5. Abre un **Pull Request**.
+To contribute:
+1. **Fork** this repository.
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes (`git commit -m 'Add some amazing feature'`).
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a **Pull Request** detailing your upgrades.
 
 ---
 
-## 📝 Licencia
+## 📝 License
 
-Este proyecto está bajo la Licencia **MIT**. Eres libre de usarlo, modificarlo y distribuirlo comercialmente o de forma privada.
+This project is licensed under the **MIT License**. You are free to copy, modify, distribute, or commercialize this builder as you wish.
 
-*¡Desarrollado con pasión para los amantes de Magic: The Gathering! Que tus tierras nunca se giren sin maná disponible.* 🃏✨
+*Created with passion by MTG and Commander players. May your starting hand always contain at least three lands!* 🃏✨

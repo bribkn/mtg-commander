@@ -92,7 +92,7 @@ export function DeckDashboard({ onImportOpen }: DeckDashboardProps) {
 
       {/* Grid of Decks */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 justify-items-center">
-        {/* "Crear Mazo" Card Option */}
+        {/* "Create Deck" Card Option */}
         <Card
           onClick={() => dispatch({ type: 'CREATE_DECK' })}
           className="w-[220px] aspect-[5/7] flex flex-col items-center justify-center border-dashed border-2 border-border/80 hover:border-primary/60 hover:bg-primary/5 cursor-pointer transition-all duration-300 group rounded-xl bg-card/20 shadow-md relative overflow-hidden"
