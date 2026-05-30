@@ -42,9 +42,10 @@ interface ImportModalProps {
   onClose: () => void;
   /** If true, automatically creates a new deck before importing (used from the dashboard) */
   createNewDeck?: boolean;
+  deckId?: string;
 }
 
-export function ImportModal({ open, onClose, createNewDeck }: ImportModalProps) {
+export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModalProps) {
   const { dispatch, activeDeckId } = useDeck();
 
   // URL import
@@ -181,7 +182,7 @@ export function ImportModal({ open, onClose, createNewDeck }: ImportModalProps) 
           }
         }
       }
-      dispatch({ type: 'BULK_ADD_CARDS', cards: Array.from(deduped.values()) });
+      dispatch({ type: 'BULK_ADD_CARDS', cards: Array.from(deduped.values()), deckId });
       return { addedCount: deduped.size, fuzzyNeeded: 0 };
     }
 
@@ -331,7 +332,7 @@ export function ImportModal({ open, onClose, createNewDeck }: ImportModalProps) 
     }
 
     const allCards = [...pendingCards, ...extraCards];
-    dispatch({ type: 'BULK_ADD_CARDS', cards: allCards });
+    dispatch({ type: 'BULK_ADD_CARDS', cards: allCards, deckId });
     handleClose();
   }
 

@@ -11,10 +11,12 @@ import { MTG_CARD_BACK } from '@/lib/scryfall';
 interface CardbackModalProps {
   open: boolean;
   onClose: () => void;
+  deckId?: string;
 }
 
-export function CardbackModal({ open, onClose }: CardbackModalProps) {
-  const { state, savedCardbacks, dispatch } = useDeck();
+export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
+  const { state: globalState, decks, savedCardbacks, dispatch } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const [urlInput, setUrlInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -36,7 +38,7 @@ export function CardbackModal({ open, onClose }: CardbackModalProps) {
     }
 
     // Save to active deck
-    dispatch({ type: 'SET_CUSTOM_CARDBACK', url: cleanUrl });
+    dispatch({ type: 'SET_CUSTOM_CARDBACK', url: cleanUrl, deckId });
     // Save to global list
     dispatch({ type: 'SAVE_CARDBACK_URL', url: cleanUrl });
     
@@ -44,7 +46,7 @@ export function CardbackModal({ open, onClose }: CardbackModalProps) {
   }
 
   function handleSelect(url: string | null) {
-    dispatch({ type: 'SET_CUSTOM_CARDBACK', url });
+    dispatch({ type: 'SET_CUSTOM_CARDBACK', url, deckId });
   }
 
   function handleDelete(url: string, e: React.MouseEvent) {
@@ -52,7 +54,7 @@ export function CardbackModal({ open, onClose }: CardbackModalProps) {
     dispatch({ type: 'DELETE_CARDBACK_URL', url });
     // If the deleted url was active in the current deck, unset it
     if (state && state.customCardbackUrl === url) {
-      dispatch({ type: 'SET_CUSTOM_CARDBACK', url: null });
+      dispatch({ type: 'SET_CUSTOM_CARDBACK', url: null, deckId });
     }
   }
 

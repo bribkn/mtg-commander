@@ -19,6 +19,9 @@ import {
   Search,
   X,
   Zap,
+  Copy,
+  ArrowRightLeft,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,10 +74,13 @@ function ManaCost({ cost }: { cost?: string }) {
 interface CardRowProps {
   card: DeckCard;
   onVariantOpen: (card: DeckCard) => void;
+  deckId?: string;
+  onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
 }
 
-function CardRow({ card, onVariantOpen }: CardRowProps) {
-  const { state, dispatch } = useDeck();
+function CardRow({ card, onVariantOpen, deckId, onTransferCard }: CardRowProps) {
+  const { state: globalState, decks, dispatch } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const [imgError, setImgError] = useState(false);
   const thumbnailUrl = getThumbnailUrl(card.scryfallData);
   const isCover = state?.coverCardId === card.scryfallId;
@@ -131,6 +137,30 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
 
       {/* Controls */}
       <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Transfer / Copy Card Option */}
+        {onTransferCard && (
+          <div className="flex gap-0.5 border-r border-border/40 pr-1.5 mr-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6 text-muted-foreground hover:text-primary"
+              title="Copy to other deck"
+              onClick={() => onTransferCard(card, 'copy')}
+            >
+              <Copy className="w-3.5 h-3.5 text-blue-400" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6 text-muted-foreground hover:text-primary animate-pulse"
+              title="Move to other deck"
+              onClick={() => onTransferCard(card, 'move')}
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 text-green-400" />
+            </Button>
+          </div>
+        )}
+
         {/* Set as commander */}
         {!card.isCommander && (
           <Button
@@ -138,7 +168,7 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
             size="icon"
             className="w-6 h-6 text-muted-foreground hover:text-primary"
             title="Set as Commander"
-            onClick={() => dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId })}
+            onClick={() => dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })}
           >
             <Crown className="w-3.5 h-3.5" />
           </Button>
@@ -153,9 +183,9 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
           title={isCover ? 'Remove as Deck Cover' : 'Set as Deck Cover'}
           onClick={() => {
             if (isCover) {
-              dispatch({ type: 'UNSET_COVER_CARD' });
+              dispatch({ type: 'UNSET_COVER_CARD', deckId });
             } else {
-              dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId });
+              dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
             }
           }}
         >
@@ -189,7 +219,7 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
           variant="ghost"
           size="icon"
           className="w-6 h-6 text-muted-foreground hover:text-foreground"
-          onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId })}
+          onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
         >
           <Minus className="w-3 h-3" />
         </Button>
@@ -202,7 +232,7 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
           variant="ghost"
           size="icon"
           className="w-6 h-6 text-muted-foreground hover:text-foreground"
-          onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId })}
+          onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
         >
           <Plus className="w-3 h-3" />
         </Button>
@@ -212,7 +242,7 @@ function CardRow({ card, onVariantOpen }: CardRowProps) {
           variant="ghost"
           size="icon"
           className="w-6 h-6 text-muted-foreground hover:text-destructive"
-          onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId })}
+          onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })}
         >
           <Trash2 className="w-3 h-3" />
         </Button>
@@ -228,6 +258,8 @@ interface CategorySectionProps {
   cards: DeckCard[];
   viewMode: ViewMode;
   onVariantOpen: (card: DeckCard) => void;
+  deckId?: string;
+  onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
 }
 
 function CategorySection({
@@ -235,8 +267,11 @@ function CategorySection({
   cards,
   viewMode,
   onVariantOpen,
+  deckId,
+  onTransferCard,
 }: CategorySectionProps) {
-  const { state, dispatch } = useDeck();
+  const { state: globalState, decks, dispatch } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const [expanded, setExpanded] = useState(true);
   const total = cards.reduce((sum, c) => sum + c.quantity, 0);
 
@@ -265,7 +300,7 @@ function CategorySection({
           {viewMode === 'text' && (
             <div className="space-y-0.5">
               {cards.map((card) => (
-                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} />
+                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} />
               ))}
             </div>
           )}
@@ -291,14 +326,34 @@ function CategorySection({
                       {isCover && <Sparkles className="w-3 h-3 text-primary shrink-0" />}
                     </div>
                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Copy/Move option in condensed view */}
+                      {onTransferCard && (
+                        <div className="flex gap-0.5 pr-1 mr-1 border-r border-border/40 shrink-0">
+                          <button
+                            onClick={() => onTransferCard(card, 'copy')}
+                            className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
+                            title="Copy to other deck"
+                          >
+                            <Copy className="w-3 h-3 text-blue-400" />
+                          </button>
+                          <button
+                            onClick={() => onTransferCard(card, 'move')}
+                            className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
+                            title="Move to other deck"
+                          >
+                            <ArrowRightLeft className="w-3 h-3 text-green-400" />
+                          </button>
+                        </div>
+                      )}
+
                       <button
-                        onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId })}
+                        onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
                         className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
                       >
                         -
                       </button>
                       <button
-                        onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId })}
+                        onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
                         className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
                       >
                         +
@@ -306,9 +361,9 @@ function CategorySection({
                       <button
                         onClick={() => {
                           if (isCover) {
-                            dispatch({ type: 'UNSET_COVER_CARD' });
+                            dispatch({ type: 'UNSET_COVER_CARD', deckId });
                           } else {
-                            dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId });
+                            dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
                           }
                         }}
                         className={`p-0.5 rounded transition-colors ${isCover ? 'text-primary' : 'text-muted-foreground hover:text-primary'
@@ -334,7 +389,7 @@ function CategorySection({
                         <Zap className="w-3 h-3 text-amber-500 hover:scale-110 transition-transform" />
                       </a>
                       <button
-                        onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId })}
+                        onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })}
                         className="text-muted-foreground hover:text-destructive p-0.5"
                         title="Delete"
                       >
@@ -402,11 +457,30 @@ function CategorySection({
                       </span>
 
                       <div className="flex flex-col gap-2 w-full mt-1">
-                        <div className="flex gap-1.5 justify-center">
+                        <div className="flex gap-1.5 justify-center flex-wrap">
+                          {/* Copy/Move to other deck */}
+                          {onTransferCard && (
+                            <>
+                              <button
+                                onClick={() => onTransferCard(card, 'copy')}
+                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-blue-500/20"
+                                title="Copy to other deck"
+                              >
+                                <Copy className="w-4 h-4 text-blue-400" />
+                              </button>
+                              <button
+                                onClick={() => onTransferCard(card, 'move')}
+                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-green-500/20 animate-pulse"
+                                title="Move to other deck"
+                              >
+                                <ArrowRightLeft className="w-4 h-4 text-green-400" />
+                              </button>
+                            </>
+                          )}
                           {!card.isCommander && (
                             <button
                               onClick={() =>
-                                dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId })
+                                dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })
                               }
                               className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
                               title="Set as Commander"
@@ -417,9 +491,9 @@ function CategorySection({
                           <button
                             onClick={() => {
                               if (isCover) {
-                                dispatch({ type: 'UNSET_COVER_CARD' });
+                                dispatch({ type: 'UNSET_COVER_CARD', deckId });
                               } else {
-                                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId });
+                                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
                               }
                             }}
                             className={`p-1 rounded transition-colors ${isCover
@@ -448,7 +522,7 @@ function CategorySection({
                           </a>
                           <button
                             onClick={() =>
-                              dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId })
+                              dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })
                             }
                             className="p-1 rounded bg-secondary/80 hover:bg-destructive/20 text-muted-foreground hover:text-red-400 transition-colors"
                             title="Delete"
@@ -460,7 +534,7 @@ function CategorySection({
                         <div className="flex items-center justify-between bg-black/60 border border-border/30 rounded py-0.5 px-2">
                           <button
                             onClick={() =>
-                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId })
+                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
                             }
                             className="text-muted-foreground hover:text-foreground font-bold text-sm px-1.5"
                           >
@@ -471,7 +545,7 @@ function CategorySection({
                           </span>
                           <button
                             onClick={() =>
-                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId })
+                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
                             }
                             className="text-muted-foreground hover:text-foreground font-bold text-sm px-1.5"
                           >
@@ -542,11 +616,30 @@ function CategorySection({
                       </span>
 
                       <div className="flex flex-col gap-2 w-full mt-1">
-                        <div className="flex gap-1.5 justify-center">
+                        <div className="flex gap-1.5 justify-center flex-wrap">
+                          {/* Copy/Move to other deck */}
+                          {onTransferCard && (
+                            <>
+                              <button
+                                onClick={() => onTransferCard(card, 'copy')}
+                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-blue-500/20"
+                                title="Copy to other deck"
+                              >
+                                <Copy className="w-4 h-4 text-blue-400" />
+                              </button>
+                              <button
+                                onClick={() => onTransferCard(card, 'move')}
+                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-green-500/20 animate-pulse"
+                                title="Move to other deck"
+                              >
+                                <ArrowRightLeft className="w-4 h-4 text-green-400" />
+                              </button>
+                            </>
+                          )}
                           {!card.isCommander && (
                             <button
                               onClick={() =>
-                                dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId })
+                                dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })
                               }
                               className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
                               title="Set as Commander"
@@ -557,9 +650,9 @@ function CategorySection({
                           <button
                             onClick={() => {
                               if (isCover) {
-                                dispatch({ type: 'UNSET_COVER_CARD' });
+                                dispatch({ type: 'UNSET_COVER_CARD', deckId });
                               } else {
-                                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId });
+                                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
                               }
                             }}
                             className={`p-1 rounded transition-colors ${isCover
@@ -588,7 +681,7 @@ function CategorySection({
                           </a>
                           <button
                             onClick={() =>
-                              dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId })
+                              dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })
                             }
                             className="p-1 rounded bg-secondary/80 hover:bg-destructive/20 text-muted-foreground hover:text-red-400 transition-colors"
                             title="Delete"
@@ -600,7 +693,7 @@ function CategorySection({
                         <div className="flex items-center justify-between bg-black/60 border border-border/30 rounded py-0.5 px-2">
                           <button
                             onClick={() =>
-                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId })
+                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
                             }
                             className="text-muted-foreground hover:text-foreground font-bold text-sm px-2"
                           >
@@ -611,7 +704,7 @@ function CategorySection({
                           </span>
                           <button
                             onClick={() =>
-                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId })
+                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
                             }
                             className="text-muted-foreground hover:text-foreground font-bold text-sm px-2"
                           >
@@ -631,13 +724,22 @@ function CategorySection({
   );
 }
 
-export function CardList() {
-  const { state, totalCards, customCards, dispatch } = useDeck();
+interface CardListProps {
+  deckId?: string;
+  onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
+}
+
+export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
+  const { state: globalState, decks, totalCards: globalTotalCards, customCards, dispatch } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
+  const totalCards = state ? state.cards.reduce((sum, c) => sum + c.quantity, 0) : globalTotalCards;
+
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterQuery, setFilterQuery] = useState('');
   const [selectedCmc, setSelectedCmc] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedSubtype, setSelectedSubtype] = useState<string>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Variant selector states
   const [variantCard, setVariantCard] = useState<DeckCard | null>(null);
@@ -779,22 +881,42 @@ export function CardList() {
       <div className="px-4 py-3 border-b border-border bg-secondary/10 flex flex-col gap-3 shrink-0">
         {/* Top Row: Search input and View Mode tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              value={filterQuery}
-              onChange={(e) => setFilterQuery(e.target.value)}
-              placeholder="Filter cards in deck..."
-              className="pl-8 h-8 text-xs bg-secondary/50 border-border focus:border-primary/50 focus:ring-primary/20"
-            />
-            {filterQuery && (
-              <button
-                onClick={() => setFilterQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          <div className="flex items-center gap-2 w-full sm:max-w-xs">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                placeholder="Filter cards in deck..."
+                className="pl-8 h-8 text-xs bg-secondary/50 border-border focus:border-primary/50 focus:ring-primary/20 w-full"
+              />
+              {filterQuery && (
+                <button
+                  onClick={() => setFilterQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`h-8 text-xs gap-1.5 shrink-0 px-2.5 border-border hover:border-primary/50 hover:text-primary transition-colors ${
+                showAdvancedFilters || selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all'
+                  ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/15'
+                  : 'hover:bg-secondary'
+              }`}
+              title="Toggle Advanced Filters"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Filters</span>
+              {(selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all') && (
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+              )}
+            </Button>
           </div>
 
           <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60 self-end sm:self-auto shrink-0">
@@ -842,73 +964,75 @@ export function CardList() {
         </div>
 
         {/* Bottom Row: Mana Value and Card Type filters */}
-        <div className="flex flex-col gap-2 border-t border-border/20 pt-2 bg-background/5 p-2 rounded-lg border border-border/30">
-          {/* Converted Mana Cost Filter */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Mana Value:</span>
-            <div className="flex flex-wrap gap-0.5 bg-secondary/30 p-0.5 rounded-md border border-border/40">
-              {['all', '0', '1', '2', '3', '4', '5', '6', '7+'].map((cmcVal) => {
-                const isActive = selectedCmc === cmcVal;
-                return (
-                  <button
-                    key={cmcVal}
-                    onClick={() => setSelectedCmc(cmcVal)}
-                    className={`h-5 px-2 rounded text-[9px] font-bold transition-all ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-                    }`}
-                  >
-                    {cmcVal === 'all' ? 'All' : cmcVal}
-                  </button>
-                );
-              })}
+        {showAdvancedFilters && (
+          <div className="flex flex-col gap-2 border-t border-border/20 pt-2 bg-background/5 p-2 rounded-lg border border-border/30 animate-fade-in-up">
+            {/* Converted Mana Cost Filter */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Mana Value:</span>
+              <div className="flex flex-wrap gap-0.5 bg-secondary/30 p-0.5 rounded-md border border-border/40">
+                {['all', '0', '1', '2', '3', '4', '5', '6', '7+'].map((cmcVal) => {
+                  const isActive = selectedCmc === cmcVal;
+                  return (
+                    <button
+                      key={cmcVal}
+                      onClick={() => setSelectedCmc(cmcVal)}
+                      className={`h-5 px-2 rounded text-[9px] font-bold transition-all ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+                      }`}
+                    >
+                      {cmcVal === 'all' ? 'All' : cmcVal}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Card Type Filter */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Card Type:</span>
-            <div className="flex flex-wrap gap-0.5 bg-secondary/30 p-0.5 rounded-md border border-border/40">
-              {['all', 'Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land', 'Other'].map((typeVal) => {
-                const isActive = selectedType === typeVal;
-                const displayLabel = typeVal === 'all' ? 'All' : typeVal === 'Planeswalker' ? 'PW' : typeVal;
-                return (
-                  <button
-                    key={typeVal}
-                    onClick={() => setSelectedType(typeVal)}
-                    className={`h-5 px-2 rounded text-[9px] font-bold transition-all ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-                    }`}
-                  >
-                    {displayLabel}
-                  </button>
-                );
-              })}
+            {/* Card Type Filter */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Card Type:</span>
+              <div className="flex flex-wrap gap-0.5 bg-secondary/30 p-0.5 rounded-md border border-border/40">
+                {['all', 'Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land', 'Other'].map((typeVal) => {
+                  const isActive = selectedType === typeVal;
+                  const displayLabel = typeVal === 'all' ? 'All' : typeVal === 'Planeswalker' ? 'PW' : typeVal;
+                  return (
+                    <button
+                      key={typeVal}
+                      onClick={() => setSelectedType(typeVal)}
+                      className={`h-5 px-2 rounded text-[9px] font-bold transition-all ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+                      }`}
+                    >
+                      {displayLabel}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Subtype Filter */}
-          {allSubtypes.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Subtype:</span>
-              <select
-                value={selectedSubtype}
-                onChange={(e) => setSelectedSubtype(e.target.value)}
-                className="h-6 px-2 rounded text-[10px] font-bold bg-secondary/50 border border-border/40 text-foreground hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all w-full max-w-[160px]"
-              >
-                <option value="all">All Subtypes</option>
-                {allSubtypes.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+            {/* Subtype Filter */}
+            {allSubtypes.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Subtype:</span>
+                <select
+                  value={selectedSubtype}
+                  onChange={(e) => setSelectedSubtype(e.target.value)}
+                  className="h-6 px-2 rounded text-[10px] font-bold bg-secondary/50 border border-border/40 text-foreground hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all w-full max-w-[160px]"
+                >
+                  <option value="all">All Subtypes</option>
+                  {allSubtypes.map((sub) => (
+                    <option key={sub} value={sub}>
+                      {sub}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1 overflow-hidden">
@@ -973,6 +1097,8 @@ export function CardList() {
                     cards={cards}
                     viewMode={viewMode}
                     onVariantOpen={(card) => setVariantCard(card)}
+                    deckId={deckId}
+                    onTransferCard={onTransferCard}
                   />
                   <Separator className="my-1 opacity-30" />
                 </div>

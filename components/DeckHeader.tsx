@@ -1,21 +1,38 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
 
 interface DeckHeaderProps {
+  deckId?: string;
   onExport: () => void;
   onImportOpen: () => void;
   onCardbackOpen: () => void;
   onCustomOpen: () => void;
   onClear: () => void;
   isExporting: boolean;
+  onSplitOpen?: () => void;
+  splitMode?: boolean;
 }
 
-export function DeckHeader({ onExport, onImportOpen, onCardbackOpen, onCustomOpen, onClear, isExporting }: DeckHeaderProps) {
-  const { state, totalCards, commander, dispatch } = useDeck();
+export function DeckHeader({
+  deckId,
+  onExport,
+  onImportOpen,
+  onCardbackOpen,
+  onCustomOpen,
+  onClear,
+  isExporting,
+  onSplitOpen,
+  splitMode,
+}: DeckHeaderProps) {
+  const { state: globalState, decks, dispatch } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
+  const totalCards = state ? state.cards.reduce((sum, c) => sum + c.quantity, 0) : 0;
+  const commander = state ? state.cards.find((c) => c.isCommander) ?? null : null;
+
   const isValid = totalCards === 100;
   const isOver = totalCards > 100;
   const isUnder = totalCards < 100;
@@ -111,6 +128,19 @@ export function DeckHeader({ onExport, onImportOpen, onCardbackOpen, onCustomOpe
             <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
             <span className="hidden sm:inline">Custom</span>
           </Button>
+
+          {!splitMode && onSplitOpen && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSplitOpen}
+              className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
+              title="Open split view side-by-side"
+            >
+              <Columns className="w-4 h-4 text-primary" />
+              <span className="hidden sm:inline">Split View</span>
+            </Button>
+          )}
 
           <Button
             variant="ghost"

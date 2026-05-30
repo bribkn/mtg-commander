@@ -21,12 +21,14 @@ const MANA_STYLES: Record<string, { bar: string; bg: string; text: string }> = {
   G: { bar: 'bg-green-500', bg: 'bg-green-500/10', text: 'text-green-400' },
 };
 
-export function StatsPanel() {
-  const { state, totalCards, dispatch } = useDeck();
+export function StatsPanel({ deckId }: { deckId?: string } = {}) {
+  const { state: activeDeck, decks, dispatch } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : activeDeck;
   const [editingStats, setEditingStats] = useState(false);
  
   if (!state) return null;
  
+  const totalCards = state.cards.reduce((sum, c) => sum + c.quantity, 0);
   const wins = state.wins || 0;
   const losses = state.losses || 0;
   const totalGames = wins + losses;
@@ -34,7 +36,7 @@ export function StatsPanel() {
   const wrString = totalGames > 0 ? `${winrate}%` : '—';
  
   function handleUpdateStats(newWins: number, newLosses: number) {
-    dispatch({ type: 'UPDATE_DECK_STATS', wins: newWins, losses: newLosses });
+    dispatch({ type: 'UPDATE_DECK_STATS', wins: newWins, losses: newLosses, deckId });
   }
  
   // ── Mana Curve ──────────────────────────────────────────────────────────

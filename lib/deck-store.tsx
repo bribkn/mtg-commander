@@ -51,25 +51,25 @@ type DeckAction =
   | { type: 'DELETE_DECK'; deckId: string }
   | { type: 'OPEN_DECK'; deckId: string }
   | { type: 'CLOSE_DECK' }
-  | { type: 'SET_DECK_NAME'; name: string }
-  | { type: 'ADD_CARD'; card: ScryfallCard; quantity?: number; isCommander?: boolean }
-  | { type: 'REMOVE_CARD'; scryfallId: string }
-  | { type: 'SET_QUANTITY'; scryfallId: string; quantity: number }
-  | { type: 'INCREMENT_QUANTITY'; scryfallId: string }
-  | { type: 'DECREMENT_QUANTITY'; scryfallId: string }
-  | { type: 'SET_COMMANDER'; scryfallId: string }
-  | { type: 'UNSET_COMMANDER' }
-  | { type: 'SET_COVER_CARD'; scryfallId: string }
-  | { type: 'UNSET_COVER_CARD' }
-  | { type: 'SET_CUSTOM_CARDBACK'; url: string | null }
+  | { type: 'SET_DECK_NAME'; name: string; deckId?: string }
+  | { type: 'ADD_CARD'; card: ScryfallCard; quantity?: number; isCommander?: boolean; deckId?: string }
+  | { type: 'REMOVE_CARD'; scryfallId: string; deckId?: string }
+  | { type: 'SET_QUANTITY'; scryfallId: string; quantity: number; deckId?: string }
+  | { type: 'INCREMENT_QUANTITY'; scryfallId: string; deckId?: string }
+  | { type: 'DECREMENT_QUANTITY'; scryfallId: string; deckId?: string }
+  | { type: 'SET_COMMANDER'; scryfallId: string; deckId?: string }
+  | { type: 'UNSET_COMMANDER'; deckId?: string }
+  | { type: 'SET_COVER_CARD'; scryfallId: string; deckId?: string }
+  | { type: 'UNSET_COVER_CARD'; deckId?: string }
+  | { type: 'SET_CUSTOM_CARDBACK'; url: string | null; deckId?: string }
   | { type: 'SAVE_CARDBACK_URL'; url: string }
   | { type: 'DELETE_CARDBACK_URL'; url: string }
   | { type: 'ADD_CUSTOM_CARD'; name: string; imageUrl: string; associatedScryfallId: string; associatedName: string }
   | { type: 'DELETE_CUSTOM_CARD'; id: string }
-  | { type: 'CLEAR_DECK' }
-  | { type: 'UPDATE_CARD_DATA'; scryfallId: string; newCardData: ScryfallCard }
-  | { type: 'UPDATE_DECK_STATS'; wins: number; losses: number }
-  | { type: 'BULK_ADD_CARDS'; cards: Array<{ card: ScryfallCard; quantity: number; isCommander?: boolean }> };
+  | { type: 'CLEAR_DECK'; deckId?: string }
+  | { type: 'UPDATE_CARD_DATA'; scryfallId: string; newCardData: ScryfallCard; deckId?: string }
+  | { type: 'UPDATE_DECK_STATS'; wins: number; losses: number; deckId?: string }
+  | { type: 'BULK_ADD_CARDS'; cards: Array<{ card: ScryfallCard; quantity: number; isCommander?: boolean }>; deckId?: string };
 
 const STORE_STORAGE_KEY = 'mtg-commander-decks-store';
 
@@ -140,21 +140,23 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
 
     // --- Active Deck Operations ---
     case 'SET_DECK_NAME': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) =>
-          d.id === state.activeDeckId ? { ...d, deckName: action.name } : d
+          d.id === targetId ? { ...d, deckName: action.name } : d
         ),
       };
     }
 
     case 'ADD_CARD': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
 
           const existing = d.cards.find((c) => c.scryfallId === action.card.id);
           const qty = action.quantity ?? 1;
@@ -200,8 +202,9 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'BULK_ADD_CARDS': {
-      if (!state.activeDeckId) return state;
-      const activeDeck = state.decks.find((d) => d.id === state.activeDeckId);
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+      const activeDeck = state.decks.find((d) => d.id === targetId);
       if (!activeDeck) return state;
 
       let tempDeck = activeDeck;
@@ -258,17 +261,18 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       return {
         ...state,
         decks: state.decks.map((d) =>
-          d.id === state.activeDeckId ? tempDeck : d
+          d.id === targetId ? tempDeck : d
         ),
       };
     }
 
     case 'REMOVE_CARD': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
           const filtered = d.cards.filter((c) => c.scryfallId !== action.scryfallId);
           return {
             ...d,
@@ -281,11 +285,12 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'SET_QUANTITY': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
           if (action.quantity <= 0) {
             const filtered = d.cards.filter((c) => c.scryfallId !== action.scryfallId);
             return {
@@ -308,11 +313,12 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'INCREMENT_QUANTITY': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
           return {
             ...d,
             cards: d.cards.map((c) =>
@@ -326,11 +332,12 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'DECREMENT_QUANTITY': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
           const card = d.cards.find((c) => c.scryfallId === action.scryfallId);
           if (!card) return d;
           if (card.quantity <= 1) {
@@ -355,11 +362,12 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'SET_COMMANDER': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
           const updatedCards = d.cards.map((c) => ({
             ...c,
             isCommander: c.scryfallId === action.scryfallId,
@@ -374,11 +382,12 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'UNSET_COMMANDER': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
           return {
             ...d,
             cards: d.cards.map((c) => ({ ...c, isCommander: false })),
@@ -389,31 +398,34 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'SET_COVER_CARD': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) =>
-          d.id === state.activeDeckId ? { ...d, coverCardId: action.scryfallId } : d
+          d.id === targetId ? { ...d, coverCardId: action.scryfallId } : d
         ),
       };
     }
 
     case 'UNSET_COVER_CARD': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) =>
-          d.id === state.activeDeckId ? { ...d, coverCardId: null } : d
+          d.id === targetId ? { ...d, coverCardId: null } : d
         ),
       };
     }
 
     case 'SET_CUSTOM_CARDBACK': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) =>
-          d.id === state.activeDeckId ? { ...d, customCardbackUrl: action.url } : d
+          d.id === targetId ? { ...d, customCardbackUrl: action.url } : d
         ),
       };
     }
@@ -459,21 +471,23 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'UPDATE_DECK_STATS': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) =>
-          d.id === state.activeDeckId ? { ...d, wins: action.wins, losses: action.losses } : d
+          d.id === targetId ? { ...d, wins: action.wins, losses: action.losses } : d
         ),
       };
     }
 
     case 'CLEAR_DECK': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
           return {
             ...d,
             cards: [],
@@ -488,11 +502,12 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     }
 
     case 'UPDATE_CARD_DATA': {
-      if (!state.activeDeckId) return state;
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
       return {
         ...state,
         decks: state.decks.map((d) => {
-          if (d.id !== state.activeDeckId) return d;
+          if (d.id !== targetId) return d;
 
           const isTargetCommander = d.commanderId === action.scryfallId;
           const isTargetCover = d.coverCardId === action.scryfallId;

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Loader2, X } from 'lucide-react';
+import { Search, Loader2, X, Map } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { autocompleteCardName, getCardByExactName } from '@/lib/scryfall';
 import { useDeck } from '@/lib/deck-store';
+import { AddLandModal } from './AddLandModal';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -15,13 +17,18 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-export function CardSearchBar() {
+interface CardSearchBarProps {
+  deckId?: string;
+}
+
+export function CardSearchBar({ deckId }: CardSearchBarProps = {}) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [addLandOpen, setAddLandOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { dispatch } = useDeck();
@@ -63,13 +70,13 @@ export function CardSearchBar() {
     try {
       const card = await getCardByExactName(name);
       if (card) {
-        dispatch({ type: 'ADD_CARD', card, quantity: 1 });
+        dispatch({ type: 'ADD_CARD', card, quantity: 1, deckId });
       }
     } finally {
       setIsAdding(false);
       inputRef.current?.focus();
     }
-  }, [dispatch]);
+  }, [dispatch, deckId]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'ArrowDown') {
@@ -91,57 +98,75 @@ export function CardSearchBar() {
   }
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        <Input
-          ref={inputRef}
-          id="card-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-          placeholder="Search cards to add..."
-          className="pl-9 pr-9 bg-secondary border-border focus:border-primary/50 focus:ring-primary/20 transition-colors"
-          autoComplete="off"
-        />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {isLoading && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
-          {isAdding && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
-          {query && !isLoading && !isAdding && (
-            <button
-              onClick={() => { setQuery(''); setSuggestions([]); setShowSuggestions(false); }}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+    <div ref={containerRef} className="flex items-center gap-2 w-full">
+      <div className="relative flex-1">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            ref={inputRef}
+            id={`card-search-${deckId || 'main'}`}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+            placeholder="Search cards to add..."
+            className="pl-9 pr-9 bg-secondary border-border focus:border-primary/50 focus:ring-primary/20 transition-colors w-full"
+            autoComplete="off"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {isLoading && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
+            {isAdding && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
+            {query && !isLoading && !isAdding && (
+              <button
+                onClick={() => { setQuery(''); setSuggestions([]); setShowSuggestions(false); }}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-xl shadow-black/50 overflow-hidden animate-fade-in-up">
+            {suggestions.map((name, i) => (
+              <button
+                key={name}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
+                  ${i === highlightedIndex
+                    ? 'bg-primary/20 text-primary'
+                    : 'text-foreground hover:bg-secondary'
+                  }`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  addCard(name);
+                }}
+                onMouseEnter={() => setHighlightedIndex(i)}
+              >
+                <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                {name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-xl shadow-black/50 overflow-hidden animate-fade-in-up">
-          {suggestions.map((name, i) => (
-            <button
-              key={name}
-              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
-                ${i === highlightedIndex
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-foreground hover:bg-secondary'
-                }`}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                addCard(name);
-              }}
-              onMouseEnter={() => setHighlightedIndex(i)}
-            >
-              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              {name}
-            </button>
-          ))}
-        </div>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setAddLandOpen(true)}
+        className="h-9 text-xs gap-1.5 shrink-0 px-3 border-border hover:border-primary/50 hover:text-primary transition-all active:scale-95"
+      >
+        <Map className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+        <span>Add Land</span>
+      </Button>
+
+      <AddLandModal
+        open={addLandOpen}
+        onClose={() => setAddLandOpen(false)}
+        deckId={deckId}
+      />
     </div>
   );
 }

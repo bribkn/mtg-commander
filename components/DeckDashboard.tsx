@@ -1,14 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SavedDeck, useDeck } from '@/lib/deck-store';
 import { isGameChangerCard } from '@/lib/scryfall';
 
-export function DeckDashboard() {
+interface DeckDashboardProps {
+  onOpenSplit?: (deckId: string) => void;
+}
+
+export function DeckDashboard({ onOpenSplit }: DeckDashboardProps = {}) {
   const { decks, dispatch } = useDeck();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -194,6 +198,20 @@ export function DeckDashboard() {
                       >
                         Edit <ArrowRight className="w-3 h-3" />
                       </Button>
+                      {onOpenSplit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenSplit(deck.id);
+                          }}
+                          className="w-7 h-7 text-muted-foreground hover:text-foreground border border-border/30 rounded bg-black/40 hover:bg-black/60 shrink-0"
+                          title="Open in Split Screen"
+                        >
+                          <Columns className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
