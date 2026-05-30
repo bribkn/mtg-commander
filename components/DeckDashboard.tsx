@@ -1,18 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Link } from 'lucide-react';
+import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SavedDeck, useDeck } from '@/lib/deck-store';
 import { isGameChangerCard } from '@/lib/scryfall';
 
-interface DeckDashboardProps {
-  onImportOpen: () => void;
-}
-
-export function DeckDashboard({ onImportOpen }: DeckDashboardProps) {
+export function DeckDashboard() {
   const { decks, dispatch } = useDeck();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -79,13 +75,6 @@ export function DeckDashboard({ onImportOpen }: DeckDashboardProps) {
             className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-lg shadow-primary/10"
           >
             <Plus className="w-4 h-4" /> New Deck
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onImportOpen}
-            className="border-border hover:border-primary/50 gap-2 transition-all"
-          >
-            <Link className="w-4 h-4" /> Import Deck
           </Button>
         </div>
       </div>

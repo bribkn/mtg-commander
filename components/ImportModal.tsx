@@ -162,9 +162,27 @@ export function ImportModal({ open, onClose, createNewDeck }: ImportModalProps) 
     }
 
     if (needsFuzzy.length === 0) {
-      // All resolved — add directly
-      dispatch({ type: 'BULK_ADD_CARDS', cards: resolvedCards });
-      return { addedCount: resolvedCards.length, fuzzyNeeded: 0 };
+      // Final dedup by Scryfall card ID — if two entries resolved to the same
+      // card (e.g. front-face name + full DFC name), merge them instead of
+      // sending duplicates that the reducer would accumulate into 101 cards.
+      const deduped = new Map<string, { card: ScryfallCard; quantity: number; isCommander: boolean }>();
+      for (const entry of resolvedCards) {
+        const existing = deduped.get(entry.card.id);
+        if (!existing) {
+          deduped.set(entry.card.id, { ...entry });
+        } else {
+          // Prefer commander flag; keep the lower quantity (usually 1 for singleton)
+          if (entry.isCommander) existing.isCommander = true;
+          if (entry.isCommander || existing.isCommander) {
+            // Commander: keep quantity 1
+            existing.quantity = 1;
+          } else {
+            existing.quantity = Math.max(existing.quantity, entry.quantity);
+          }
+        }
+      }
+      dispatch({ type: 'BULK_ADD_CARDS', cards: Array.from(deduped.values()) });
+      return { addedCount: deduped.size, fuzzyNeeded: 0 };
     }
 
     // Start fuzzy correction flow

@@ -74,16 +74,6 @@ function AppContent() {
   const [cardbackOpen, setCardbackOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // If no deck is active, render the welcome dashboard as the landing page
-  if (!state || !activeDeckId) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <DeckDashboard onImportOpen={() => setImportOpen(true)} />
-        <ImportModal open={importOpen} onClose={() => setImportOpen(false)} createNewDeck />
-      </div>
-    );
-  }
-
   // Helper to extract banner background art (Prioritizes coverCardId, falls back to commander)
   function getBannerArt(): string {
     if (state?.coverCardId) {
@@ -108,8 +98,6 @@ function AppContent() {
     return 'https://i.pinimg.com/736x/7e/be/a3/7ebea35ad91c8ee201b0647a7c0d816b.jpg';
   }
 
-  const bannerArt = getBannerArt();
-
   async function handleExport() {
     if (!state || state.cards.length === 0) return;
     setIsExporting(true);
@@ -130,6 +118,32 @@ function AppContent() {
     }
   }
 
+  // Both modals are rendered outside the dashboard/editor conditional so they
+  // never unmount mid-import when activeDeckId changes (e.g. after CREATE_DECK).
+  const modals = (
+    <>
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        createNewDeck={!activeDeckId}
+      />
+      <CardbackModal open={cardbackOpen} onClose={() => setCardbackOpen(false)} />
+    </>
+  );
+
+  // Dashboard view — no active deck
+  if (!state || !activeDeckId) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <DeckDashboard />
+        {modals}
+      </div>
+    );
+  }
+
+  const bannerArt = getBannerArt();
+
+  // Deck editor view
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <DeckHeader
@@ -194,8 +208,7 @@ function AppContent() {
         </main>
       </div>
 
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
-      <CardbackModal open={cardbackOpen} onClose={() => setCardbackOpen(false)} />
+      {modals}
     </div>
   );
 }

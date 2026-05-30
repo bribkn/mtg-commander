@@ -258,52 +258,72 @@ export function detectImportSource(url: string): 'moxfield' | 'archidekt' | 'unk
 
 /** Parse Tabletop Simulator JSON deck files recursively */
 export function parseTTSJson(jsonText: string): ParsedDeckEntry[] {
-  const cardCounts: Record<string, number> = {};
-
   try {
     const parsed = JSON.parse(jsonText);
 
-    function traverse(obj: any) {
-      if (!obj || typeof obj !== 'object') return;
+    /**
+     * Count cards in a single TTS object (pile/deck).
+     * Returns a map of { cardName → count } for that pile only.
+     */
+    function countCardsInPile(obj: any): Record<string, number> {
+      const counts: Record<string, number> = {};
 
-      // If it's a card (has Nickname and Name === 'Card')
-      if (obj.Name === 'Card' && typeof obj.Nickname === 'string') {
-        const name = obj.Nickname.trim();
-        if (name) {
-          cardCounts[name] = (cardCounts[name] || 0) + 1;
+      function traverse(node: any) {
+        if (!node || typeof node !== 'object') return;
+
+        // Leaf card node
+        if (node.Name === 'Card' && typeof node.Nickname === 'string') {
+          const name = node.Nickname.trim();
+          if (name) counts[name] = (counts[name] || 0) + 1;
+          return;
         }
-        return; // No need to traverse deeper into a card
+
+        for (const key in node) {
+          if (Object.prototype.hasOwnProperty.call(node, key)) {
+            traverse(node[key]);
+          }
+        }
       }
 
-      // Traverse all keys recursively
-      for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-          traverse(obj[key]);
-        }
-      }
+      traverse(obj);
+      return counts;
     }
+
+    // Positions used by our own exporter:
+    //   0   → main deck (includes commander at the end)
+    //   2.2 → tokens            ← always skip
+    //   4.4 → DFC helper pile   ← skip (cards already in main deck)
+    const SKIP_POSITIONS = [2.2, 4.4];
+
+    // Merge strategy: take the MAX quantity seen for each card name across
+    // all piles. This prevents double-counting when the same card appears in
+    // both a main deck pile AND a separate commander-zone / DFC pile.
+    const globalMax: Record<string, number> = {};
 
     if (parsed && Array.isArray(parsed.ObjectStates)) {
       for (const subDeck of parsed.ObjectStates) {
-        // Skip tokens sub-deck which is exported at posX = 2.2
         const posX = subDeck.Transform?.posX ?? 0;
-        if (Math.abs(posX - 2.2) < 0.1) {
-          continue;
+        if (SKIP_POSITIONS.some((p) => Math.abs(posX - p) < 0.1)) continue;
+
+        const pileCounts = countCardsInPile(subDeck);
+        for (const [name, count] of Object.entries(pileCounts)) {
+          globalMax[name] = Math.max(globalMax[name] ?? 0, count);
         }
-        traverse(subDeck);
       }
     } else {
-      traverse(parsed);
+      // Flat file — just count everything
+      const counts = countCardsInPile(parsed);
+      for (const [name, count] of Object.entries(counts)) {
+        globalMax[name] = count;
+      }
     }
+
+    return Object.entries(globalMax).map(([name, quantity]) => ({
+      name,
+      quantity,
+      isCommander: false,
+    }));
   } catch (err) {
     throw new Error('Invalid JSON format. Please upload a valid Tabletop Simulator deck file.');
   }
-
-  const entries: ParsedDeckEntry[] = Object.entries(cardCounts).map(([name, quantity]) => ({
-    name,
-    quantity,
-    isCommander: false,
-  }));
-
-  return entries;
 }
