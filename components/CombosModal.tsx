@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { useDeck } from '@/lib/deck-store';
@@ -221,7 +220,7 @@ export function CombosModal({ open, onClose, deckId }: CombosModalProps) {
         {/* Outer Grid */}
         <div className="flex-1 flex flex-col md:flex-row gap-5 overflow-hidden mt-3 min-h-0">
           {/* LEFT SIDEBAR: FILTERS */}
-          <div className="w-full md:w-[280px] shrink-0 border border-border/50 rounded-xl bg-secondary/10 p-3.5 flex flex-col overflow-hidden select-none">
+          <div className="w-full md:w-[280px] shrink-0 border border-border/50 rounded-xl bg-secondary/10 p-3.5 flex flex-col overflow-y-auto custom-scrollbar select-none">
             <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">Combo Presence</h3>
             <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded-lg bg-secondary/40 border border-border/40 mb-5">
               <button
@@ -309,7 +308,7 @@ export function CombosModal({ open, onClose, deckId }: CombosModalProps) {
               </span>
             </div>
 
-            <ScrollArea className="flex-1 p-4">
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar min-h-0">
               {isLoading ? (
                 <div className="h-full flex flex-col items-center justify-center py-28 text-center gap-3">
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -486,7 +485,7 @@ export function CombosModal({ open, onClose, deckId }: CombosModalProps) {
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
         </div>
 
