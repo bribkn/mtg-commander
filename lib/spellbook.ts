@@ -67,7 +67,7 @@ export async function findMyCombos(cards: DeckCard[]): Promise<FindMyCombosRespo
   const mainPayload = mainCards.map((c) => ({ card: c.name }));
   const commandersPayload = commandersList.map((c) => ({ card: c.name }));
 
-  const response = await fetch('https://backend.commanderspellbook.com/find-my-combos', {
+  const response = await fetch('/api/spellbook', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

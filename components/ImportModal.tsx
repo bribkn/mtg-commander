@@ -28,6 +28,7 @@ import {
   getCardByFuzzyName,
   autocompleteCardName,
   ScryfallCard,
+  isToken,
 } from '@/lib/scryfall';
 
 interface FuzzyCorrection {
@@ -145,6 +146,9 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
       // Try exact match or normalized front face match
       const exactCard = foundMap.get(lower) || foundMap.get(norm);
       if (exactCard) {
+        // Skip token, double-faced token, or emblem cards from the mainboard/commander slots
+        if (isToken(exactCard)) continue;
+
         resolvedCards.push({
           card: exactCard,
           quantity: entry.quantity,
@@ -323,6 +327,9 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
 
       const card = await getCardByFuzzyName(correction.chosen);
       if (card) {
+        // Skip tokens from fuzzy corrections as well
+        if (isToken(card)) continue;
+
         extraCards.push({
           card,
           quantity: entry.quantity,

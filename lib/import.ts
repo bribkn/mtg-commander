@@ -291,13 +291,18 @@ export function parseTTSJson(jsonText: string): ParsedDeckEntry[] {
 
     const globalMax: Record<string, number> = {};
 
-    if (parsed && Array.isArray(parsed.ObjectStates) && parsed.ObjectStates.length > 0) {
-      // Only import the first pile, which represents the main deck (including commander)
-      // Subsequent piles represent tokens or DFC helper stacks and should be skipped.
-      const mainDeck = parsed.ObjectStates[0];
-      const pileCounts = countCardsInPile(mainDeck);
-      for (const [name, count] of Object.entries(pileCounts)) {
-        globalMax[name] = count;
+    if (parsed && Array.isArray(parsed.ObjectStates)) {
+      for (const subDeck of parsed.ObjectStates) {
+        const posX = subDeck.Transform?.posX ?? 0;
+        // Skip our exporter's token pile (placed at posX: 2.2)
+        // Keep the main deck (posX: 0) and DFC helper pile (posX: 4.4) for backwards-compatibility
+        // with older exports where DFCs were only located in the helper pile.
+        if (Math.abs(posX - 2.2) < 0.1) continue;
+
+        const pileCounts = countCardsInPile(subDeck);
+        for (const [name, count] of Object.entries(pileCounts)) {
+          globalMax[name] = Math.max(globalMax[name] ?? 0, count);
+        }
       }
     } else {
       // Flat file — just count everything
