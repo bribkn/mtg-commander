@@ -242,6 +242,16 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
     const theme = THEME_PRESETS.find((t) => t.id === selectedTheme) || THEME_PRESETS[0];
 
+    const drawRoundedRect = (c: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number, radius: number) => {
+      c.beginPath();
+      c.moveTo(rx + radius, ry);
+      c.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
+      c.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
+      c.arcTo(rx, ry + rh, rx, ry, radius);
+      c.arcTo(rx, ry, rx + rw, ry, radius);
+      c.closePath();
+    };
+
     // 1. Draw Background
     if (artCropImage) {
       // Draw Cover Crop
@@ -294,29 +304,60 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
     // Draw Commander Subtitle Label
     ctx.fillStyle = theme.accentColor;
-    ctx.font = 'semibold 22px system-ui, -apple-system, sans-serif';
+    ctx.font = '600 22px system-ui, -apple-system, sans-serif';
     ctx.fillText(`Commander: ${commanderCard?.name || 'Unknown Commander'}`, 60, 118);
 
     ctx.restore();
+
+    // Draw Tags capsules (if any)
+    const tags = state.tags || [];
+    if (tags.length > 0) {
+      let tagX = 60;
+      const tagY = 144;
+      ctx.save();
+      // Apply subtle shadow for capsules
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+
+      tags.slice(0, 4).forEach((tag) => {
+        ctx.font = '600 10px system-ui, -apple-system, sans-serif';
+        const tagText = tag.toUpperCase();
+        const textWidth = ctx.measureText(tagText).width;
+        const badgeWidth = textWidth + 14;
+        const badgeHeight = 19;
+
+        // Draw capsule background using a semi-transparent version of accent color or border color
+        ctx.fillStyle = theme.borderColor || 'rgba(255, 255, 255, 0.12)';
+        drawRoundedRect(ctx, tagX, tagY, badgeWidth, badgeHeight, 5);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 0.8;
+        drawRoundedRect(ctx, tagX, tagY, badgeWidth, badgeHeight, 5);
+        ctx.stroke();
+
+        // Draw tag text
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tagText, tagX + badgeWidth / 2, tagY + badgeHeight / 2 + 1); // +1 fine-tunes vertical alignment
+
+        tagX += badgeWidth + 6;
+      });
+      ctx.restore();
+    }
 
     // Draw Separator Line
     ctx.strokeStyle = theme.borderColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(60, 168);
-    ctx.lineTo(800, 168);
+    ctx.moveTo(60, 172);
+    ctx.lineTo(800, 172);
     ctx.stroke();
 
     // 4. Draw Core Stats Badges
-    const drawRoundedRect = (c: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number, radius: number) => {
-      c.beginPath();
-      c.moveTo(rx + radius, ry);
-      c.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
-      c.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
-      c.arcTo(rx, ry + rh, rx, ry, radius);
-      c.arcTo(rx, ry, rx + rw, ry, radius);
-      c.closePath();
-    };
 
     // Helper to draw a stats block
     const drawStatsBlock = (xPos: number, yPos: number, titleText: string, valText: string, badgeAccent = false) => {

@@ -27,6 +27,7 @@ export interface SavedDeck {
   customCardbackUrl?: string | null; // Custom cardback URL
   wins?: number;   // Number of wins
   losses?: number; // Number of losses
+  tags?: string[]; // Deck tags
 }
 
 export interface CustomCard {
@@ -69,6 +70,7 @@ type DeckAction =
   | { type: 'CLEAR_DECK'; deckId?: string }
   | { type: 'UPDATE_CARD_DATA'; scryfallId: string; newCardData: ScryfallCard; deckId?: string }
   | { type: 'UPDATE_DECK_STATS'; wins: number; losses: number; deckId?: string }
+  | { type: 'SET_DECK_TAGS'; tags: string[]; deckId?: string }
   | { type: 'BULK_ADD_CARDS'; cards: Array<{ card: ScryfallCard; quantity: number; isCommander?: boolean }>; deckId?: string };
 
 const STORE_STORAGE_KEY = 'mtg-commander-decks-store';
@@ -89,6 +91,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         customCardbackUrl: null,
         wins: 0,
         losses: 0,
+        tags: [],
       };
       return {
         ...state,
@@ -110,6 +113,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         customCardbackUrl: source.customCardbackUrl || null,
         wins: source.wins || 0,
         losses: source.losses || 0,
+        tags: source.tags ? [...source.tags] : [],
       };
       return {
         ...state,
@@ -146,6 +150,17 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         ...state,
         decks: state.decks.map((d) =>
           d.id === targetId ? { ...d, deckName: action.name } : d
+        ),
+      };
+    }
+
+    case 'SET_DECK_TAGS': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+      return {
+        ...state,
+        decks: state.decks.map((d) =>
+          d.id === targetId ? { ...d, tags: action.tags } : d
         ),
       };
     }
@@ -557,6 +572,12 @@ function init(initial: DeckState): DeckState {
       if (!parsed.customCards) {
         parsed.customCards = [];
       }
+      if (Array.isArray(parsed.decks)) {
+        parsed.decks = parsed.decks.map((d: any) => ({
+          ...d,
+          tags: d.tags || [],
+        }));
+      }
       return parsed;
     }
     // Migration of old single-deck layout
@@ -571,6 +592,7 @@ function init(initial: DeckState): DeckState {
           commanderId: oldDeck.commanderId || null,
           coverCardId: null,
           customCardbackUrl: null,
+          tags: [],
         };
         const migratedState: DeckState = {
           decks: [migratedDeck],

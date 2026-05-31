@@ -19,7 +19,15 @@ import { CombosModal } from '@/components/CombosModal';
 import { ShareBannerModal } from '@/components/ShareBannerModal';
 import { generateTTSExport, downloadJSON } from '@/lib/tts-export';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X } from 'lucide-react';
+import { DECK_TAGS_LIST } from '@/lib/tags';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 function DeckNameEditor({ deckId }: { deckId?: string } = {}) {
   const { state: globalState, decks, dispatch } = useDeck();
@@ -77,6 +85,156 @@ function DeckNameEditor({ deckId }: { deckId?: string } = {}) {
       </h2>
       <Pencil className="w-4 h-4 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
     </button>
+  );
+}
+
+function DeckTagsEditor({ deckId }: { deckId?: string } = {}) {
+  const { state: globalState, decks, dispatch } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  if (!state) return null;
+
+  const currentTags = state.tags || [];
+
+  const filteredTags = DECK_TAGS_LIST.filter((tag) =>
+    tag.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function toggleTag(tag: string) {
+    let nextTags: string[];
+    if (currentTags.includes(tag)) {
+      nextTags = currentTags.filter((t) => t !== tag);
+    } else {
+      nextTags = [...currentTags, tag];
+    }
+    dispatch({ type: 'SET_DECK_TAGS', tags: nextTags, deckId });
+  }
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-1.5 mt-1 animate-fade-in-up">
+        {currentTags.length === 0 ? (
+          <button
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-dashed border-white/40 hover:border-white text-[10px] font-semibold text-white/60 hover:text-white transition-all bg-black/30 backdrop-blur-sm"
+          >
+            <Tag className="w-2.5 h-2.5" />
+            <span>Add Tags</span>
+          </button>
+        ) : (
+          <>
+            {currentTags.slice(0, 5).map((tag) => (
+              <Badge
+                key={tag}
+                variant="outline"
+                className="bg-primary/10 border-primary/30 text-white font-semibold text-[10px] px-2 py-0.5 rounded-full shadow-sm"
+              >
+                {tag}
+              </Badge>
+            ))}
+            {currentTags.length > 5 && (
+              <Badge
+                variant="outline"
+                className="bg-black/40 border-border/40 text-white/80 font-medium text-[10px] px-1.5 py-0.5 rounded-full"
+              >
+                +{currentTags.length - 5}
+              </Badge>
+            )}
+            <button
+              onClick={() => setOpen(true)}
+              className="p-1 rounded-full bg-black/40 hover:bg-secondary border border-border/40 text-white/60 hover:text-white transition-colors"
+              title="Edit Tags"
+            >
+              <Pencil className="w-2.5 h-2.5" />
+            </button>
+          </>
+        )}
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl bg-card border-border shadow-2xl flex flex-col max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <Tag className="w-5 h-5 text-primary" />
+              Manage Deck Tags
+            </DialogTitle>
+            <DialogDescription>
+              Select personal tags for this deck from the list below.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Selected tags summary */}
+          <div className="overflow-y-auto max-h-20 border border-border/40 rounded-lg bg-secondary/30 p-2 min-h-11 custom-scrollbar flex">
+            <div className="flex flex-wrap gap-1.5 w-full items-center">
+              {currentTags.length === 0 ? (
+                <span className="text-xs text-muted-foreground px-1.5 py-1">No tags selected. Click tags below to add them.</span>
+              ) : (
+                currentTags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    className="bg-primary text-primary-foreground font-semibold text-xs px-2.5 py-0.5 rounded-full gap-1 flex items-center hover:bg-primary/90 cursor-pointer"
+                    onClick={() => toggleTag(tag)}
+                  >
+                    {tag}
+                    <X className="w-3.5 h-3.5 shrink-0" />
+                  </Badge>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative mt-2">
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search available tags..."
+              className="pl-9 h-9 bg-secondary border-border focus:border-primary/50 text-sm text-foreground"
+            />
+          </div>
+
+          {/* Tag Grid Scroll Area */}
+          <div className="flex-1 min-h-[250px] max-h-[350px] overflow-y-auto custom-scrollbar border border-border/40 rounded-lg bg-secondary/10 p-2 mt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {filteredTags.map((tag) => {
+                const isActive = currentTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all truncate flex items-center justify-between ${
+                      isActive
+                        ? 'bg-primary/20 border-primary text-white font-bold'
+                        : 'border-border/60 text-muted-foreground hover:border-primary/30 hover:bg-secondary/40 hover:text-foreground'
+                    }`}
+                  >
+                    <span>{tag}</span>
+                    {isActive && <Check className="w-3.5 h-3.5 text-primary shrink-0 ml-1" />}
+                  </button>
+                );
+              })}
+              {filteredTags.length === 0 && (
+                <div className="col-span-full py-8 text-center text-xs text-muted-foreground">
+                  No tags found matching "{search}"
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-3 mt-auto">
+            <Button
+              onClick={() => setOpen(false)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
+            >
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -383,6 +541,7 @@ function AppContent() {
                           <span>{leftCommander.name}</span>
                         </p>
                       )}
+                      <DeckTagsEditor deckId={leftDeck.id} />
                     </div>
                     <Badge
                       variant={leftTotalQty === 100 ? 'default' : 'outline'}
@@ -528,6 +687,7 @@ function AppContent() {
                           <span>{rightCommander.name}</span>
                         </p>
                       )}
+                      <DeckTagsEditor deckId={rightDeck.id} />
                     </div>
                     <Badge
                       variant={rightTotalQty === 100 ? 'default' : 'outline'}
@@ -717,6 +877,8 @@ function AppContent() {
                   </span>
                 </div>
               )}
+
+              <DeckTagsEditor />
             </div>
           </div>
 
