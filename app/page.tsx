@@ -16,9 +16,10 @@ import { StatsPanel } from '@/components/StatsPanel';
 import { DeckDashboard } from '@/components/DeckDashboard';
 import { CustomCardsModal } from '@/components/CustomCardsModal';
 import { CombosModal } from '@/components/CombosModal';
+import { ShareBannerModal } from '@/components/ShareBannerModal';
 import { generateTTSExport, downloadJSON } from '@/lib/tts-export';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon } from 'lucide-react';
 
 function DeckNameEditor({ deckId }: { deckId?: string } = {}) {
   const { state: globalState, decks, dispatch } = useDeck();
@@ -85,6 +86,7 @@ function AppContent() {
   const [cardbackOpen, setCardbackOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [combosOpen, setCombosOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   // Target deck ID for modals
@@ -93,6 +95,11 @@ function AppContent() {
   function openCombos(deckId?: string) {
     setModalTargetDeckId(deckId);
     setCombosOpen(true);
+  }
+
+  function openShare(deckId?: string) {
+    setModalTargetDeckId(deckId);
+    setShareOpen(true);
   }
 
   // Split view states
@@ -239,6 +246,11 @@ function AppContent() {
       <CombosModal
         open={combosOpen}
         onClose={() => { setCombosOpen(false); setModalTargetDeckId(undefined); }}
+        deckId={modalTargetDeckId}
+      />
+      <ShareBannerModal
+        open={shareOpen}
+        onClose={() => { setShareOpen(false); setModalTargetDeckId(undefined); }}
         deckId={modalTargetDeckId}
       />
     </>
@@ -421,6 +433,17 @@ function AppContent() {
                         <span>Combos</span>
                       </Button>
                       <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openShare(leftDeck.id)}
+                        disabled={!leftCommander}
+                        className="text-[10px] h-7 px-2 border-border hover:border-primary/50 text-emerald-400 hover:bg-emerald-500/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                        title={leftCommander ? "Generate shareable deck banner image" : "Generate shareable deck banner image (requires a selected commander)"}
+                      >
+                        <ImageIcon className={`w-3.5 h-3.5 text-emerald-400 ${leftCommander ? 'animate-pulse' : ''}`} />
+                        <span>Banner</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleClearDeck(leftDeck.id)}
@@ -555,6 +578,17 @@ function AppContent() {
                         <span>Combos</span>
                       </Button>
                       <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openShare(rightDeck.id)}
+                        disabled={!rightCommander}
+                        className="text-[10px] h-7 px-2 border-border hover:border-primary/50 text-emerald-400 hover:bg-emerald-500/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                        title={rightCommander ? "Generate shareable deck banner image" : "Generate shareable deck banner image (requires a selected commander)"}
+                      >
+                        <ImageIcon className={`w-3.5 h-3.5 text-emerald-400 ${rightCommander ? 'animate-pulse' : ''}`} />
+                        <span>Banner</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleClearDeck(rightDeck.id)}
@@ -641,6 +675,7 @@ function AppContent() {
         onSplitOpen={() => handleOpenSplit(state!.id)}
         splitMode={splitMode}
         onCombosOpen={() => openCombos(state?.id)}
+        onShareOpen={() => openShare(state?.id)}
       />
 
       <div className="flex flex-1 overflow-hidden w-full max-w-full px-2 sm:px-4">

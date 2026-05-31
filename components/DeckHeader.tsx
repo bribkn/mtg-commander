@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
@@ -16,6 +16,7 @@ interface DeckHeaderProps {
   onSplitOpen?: () => void;
   splitMode?: boolean;
   onCombosOpen: () => void;
+  onShareOpen: () => void;
 }
 
 export function DeckHeader({
@@ -29,6 +30,7 @@ export function DeckHeader({
   onSplitOpen,
   splitMode,
   onCombosOpen,
+  onShareOpen,
 }: DeckHeaderProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
@@ -140,6 +142,18 @@ export function DeckHeader({
           >
             <Flame className="w-4 h-4 text-primary animate-pulse" />
             <span className="hidden sm:inline">Combos</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onShareOpen}
+            disabled={!commander}
+            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={commander ? "Generate shareable deck banner image" : "Generate shareable deck banner image (requires a selected commander)"}
+          >
+            <ImageIcon className={`w-4 h-4 text-emerald-400 ${commander ? 'animate-pulse' : ''}`} />
+            <span className="hidden sm:inline">Banner</span>
           </Button>
 
           {!splitMode && onSplitOpen && (
