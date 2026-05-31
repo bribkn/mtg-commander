@@ -31,7 +31,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
   // Preview data
   const tokens: TokenCard[] = [];
   const dfcCards = state.cards.filter((c) => isDoubleFaced(c.scryfallData));
-  const mainCount = totalCards - dfcCards.reduce((s, c) => s + c.quantity, 0);
+  const mainCount = totalCards;
   const dfcCount = dfcCards.reduce((s, c) => s + c.quantity, 0);
 
   async function handleExport() {
@@ -84,7 +84,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
             label="Main Deck"
             count={mainCount}
             color="text-primary"
-            description="Sorted alphabetically, commander last"
+            description="Includes commanders and DFCs in a single pile"
           />
           <SubDeckRow
             icon={<Sparkles className="w-4 h-4" />}
@@ -98,7 +98,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
             label="Double-Faced Cards"
             count={dfcCount}
             color="text-purple-400"
-            description="Transform / MDFC with back art"
+            description="Included within the main deck pile"
           />
         </div>
       </div>
@@ -149,7 +149,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
       {lastResult && (
         <div className="text-xs text-muted-foreground bg-secondary rounded-lg p-3 space-y-1">
           <p className="text-green-400 font-medium mb-2">✓ Last export:</p>
-          <p>• {lastResult.mainCount} main deck cards</p>
+          <p>• {lastResult.mainCount} main deck cards (includes DFCs)</p>
           <p>• {lastResult.tokenCount} tokens</p>
           <p>• {lastResult.dfcCount} double-faced cards</p>
         </div>

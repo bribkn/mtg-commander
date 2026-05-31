@@ -229,17 +229,18 @@ export async function generateTTSExport(
     ...expandCards(commanderCards),
   ];
  
-  // 5. Split into regular cards and DFCs
+  // 5. Build main deck cards (including DFCs in the same pile!)
   const mainCards: SubDeckCard[] = [];
-  const dfcCards: SubDeckCard[] = [];
+  let dfcCount = 0;
  
   for (const dc of allMainExpanded) {
     const card = dc.scryfallData;
     const faceUrl = getFrontImageUrl(card);
  
     if (isDoubleFaced(card)) {
+      dfcCount++;
       const backUrl = getBackImageUrl(card) ?? MTG_CARD_BACK;
-      dfcCards.push({ name: card.name, faceUrl, backUrl });
+      mainCards.push({ name: card.name, faceUrl, backUrl });
     } else {
       mainCards.push({ name: card.name, faceUrl, backUrl: customCardbackUrl || MTG_CARD_BACK });
     }
@@ -253,7 +254,7 @@ export async function generateTTSExport(
     backUrl: t.backUrl,
   }));
 
-  // 7. Build the three sub-decks
+  // 7. Build the sub-decks
   const objectStates: TTSDeck[] = [];
 
   if (mainCards.length > 0) {
@@ -264,17 +265,13 @@ export async function generateTTSExport(
     objectStates.push(buildSubDeck(tokenCards, 2.2, 0));
   }
 
-  if (dfcCards.length > 0) {
-    objectStates.push(buildSubDeck(dfcCards, 4.4, 0));
-  }
-
   const ttsObject: TTSObject = { ObjectStates: objectStates };
 
   return {
     json: JSON.stringify(ttsObject, null, 4),
     mainDeckCount: mainCards.length,
     tokenCount: tokenCards.length,
-    dfcCount: dfcCards.length,
+    dfcCount,
   };
 }
 
