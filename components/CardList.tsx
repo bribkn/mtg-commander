@@ -22,6 +22,12 @@ import {
   Copy,
   ArrowRightLeft,
   SlidersHorizontal,
+  Swords,
+  Gem,
+  BookOpen,
+  Mountain,
+  ShieldAlert,
+  HelpCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,7 +43,7 @@ import {
 } from '@/components/ui/dialog';
 import { useDeck, DeckCard } from '@/lib/deck-store';
 import { CustomCardsModal } from './CustomCardsModal';
-import { CATEGORY_ORDER, CardCategory, getThumbnailUrl, ScryfallCard } from '@/lib/scryfall';
+import { CATEGORY_ORDER, CardCategory, getThumbnailUrl, ScryfallCard, isDoubleFaced, isGameChangerCard, getManaSymbolUrl } from '@/lib/scryfall';
 
 // Mana symbol colors
 const MANA_COLORS: Record<string, string> = {
@@ -246,6 +252,210 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard }: CardRowProps) 
         >
           <Trash2 className="w-3 h-3" />
         </Button>
+      </div>
+    </div>
+  );
+}
+
+function PremiumListRow({ 
+  card, 
+  onVariantOpen, 
+  deckId, 
+  onTransferCard 
+}: { 
+  card: DeckCard; 
+  onVariantOpen: (card: DeckCard) => void;
+  deckId?: string;
+  onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
+}) {
+  const { customCards, dispatch, state: globalState, decks } = useDeck();
+  const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
+  const isCover = state?.coverCardId === card.scryfallId;
+
+  // Check custom alters
+  const hasAlter = customCards && customCards.some(
+    (cc) => cc.associatedScryfallId === card.scryfallId || cc.associatedName.toLowerCase() === card.name.toLowerCase()
+  );
+
+  // Check game changer
+  const isGc = isGameChangerCard(card.name);
+
+  // Parse mana symbols
+  const manaCost = card.scryfallData.mana_cost || '';
+  const symbols = manaCost.replace(/[{}]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  return (
+    <div className="group flex items-center justify-between py-1 px-1.5 rounded-md hover:bg-secondary/40 transition-colors text-xs select-none">
+      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {/* Quantity */}
+        <span className="font-mono font-bold text-neutral-400 w-5 shrink-0 text-left">
+          {card.quantity}
+        </span>
+        
+        {/* Card Name with Badges */}
+        <div className="flex items-center gap-1 min-w-0 truncate">
+          <span className="font-medium text-foreground truncate hover:text-primary transition-colors cursor-pointer" title={card.name} onClick={() => onVariantOpen(card)}>
+            {card.name}
+          </span>
+          {isGc && (
+            <span className="text-[8px] font-bold text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded shadow-sm border border-amber-500/15 shrink-0 animate-pulse" title="Game Changer Card">
+              GC
+            </span>
+          )}
+          {hasAlter && (
+            <span className="text-[8px] font-bold text-blue-400 bg-blue-500/10 px-1 py-0.5 rounded shadow-sm border border-blue-500/15 shrink-0" title="Custom Alter Art">
+              CB
+            </span>
+          )}
+          {isDoubleFaced(card.scryfallData) && (
+            <span className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 leading-none" title="Double-Faced Card">
+              ⟲
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Right Column: Mana cost & Actions */}
+      <div className="flex items-center gap-2.5 shrink-0 pl-2">
+        {/* Mana Cost */}
+        {symbols.length > 0 && (
+          <div className="flex items-center gap-0.5 select-none">
+            {symbols.slice(0, 5).map((s, i) => (
+              <img
+                key={i}
+                src={getManaSymbolUrl(s)}
+                alt={s}
+                className="w-3.5 h-3.5 select-none pointer-events-none"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Quick Hover Action Buttons */}
+        <div className="w-0 overflow-hidden group-hover:w-[130px] flex items-center gap-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100 pl-1 border-l border-border/40 ml-1">
+          {/* Decrement */}
+          <button
+            onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
+            className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+            title="Decrease Quantity"
+          >
+            <Minus className="w-3 h-3" />
+          </button>
+          
+          {/* Increment */}
+          <button
+            onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
+            className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+            title="Increase Quantity"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+
+          {/* Commander set */}
+          {!card.isCommander && (
+            <button
+              onClick={() => dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })}
+              className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+              title="Set as Commander"
+            >
+              <Crown className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Cover card set */}
+          <button
+            onClick={() => {
+              if (isCover) {
+                dispatch({ type: 'UNSET_COVER_CARD', deckId });
+              } else {
+                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
+              }
+            }}
+            className={`p-0.5 rounded transition-colors ${isCover ? 'bg-primary/30 text-primary border border-primary/40' : 'bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground'}`}
+            title={isCover ? 'Remove as Cover' : 'Set as Cover'}
+          >
+            <Sparkles className="w-3 h-3" />
+          </button>
+
+          {/* Change Art */}
+          <button
+            onClick={() => onVariantOpen(card)}
+            className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+            title="Change Art Printing"
+          >
+            <ImageIcon className="w-3 h-3" />
+          </button>
+
+          {/* Delete */}
+          <button
+            onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })}
+            className="p-0.5 rounded bg-secondary hover:bg-destructive/20 text-muted-foreground hover:text-red-400 active:scale-95 transition-transform"
+            title="Delete Card"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Commander: Crown,
+  Creature: Swords,
+  Artifact: Gem,
+  Enchantment: Sparkles,
+  Instant: Zap,
+  Sorcery: BookOpen,
+  Land: Mountain,
+  Planeswalker: ShieldAlert,
+  Battle: HelpCircle,
+  Other: HelpCircle,
+};
+
+function PremiumListSection({
+  category,
+  cards,
+  onVariantOpen,
+  deckId,
+  onTransferCard,
+}: {
+  category: string;
+  cards: DeckCard[];
+  onVariantOpen: (card: DeckCard) => void;
+  deckId?: string;
+  onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
+}) {
+  const totalQuantity = cards.reduce((sum, c) => sum + c.quantity, 0);
+
+  const IconComponent = CATEGORY_ICONS[category] || HelpCircle;
+
+  return (
+    <div className="bg-background/25 border border-border/40 rounded-xl p-3.5 shadow-sm">
+      {/* Category Header */}
+      <div className="flex items-center justify-between border-b border-purple-500/20 pb-2 mb-2 select-none">
+        <div className="flex items-center gap-2 text-xs font-bold text-foreground uppercase tracking-wider">
+          <IconComponent className="w-4 h-4 text-purple-400 shrink-0" />
+          <span>
+            {category === 'Commander' ? 'COMMANDER' : category === 'Creature' ? 'CREATURE' : category === 'Artifact' ? 'ARTIFACT' : category === 'Enchantment' ? 'ENCHANTMENT' : category === 'Instant' ? 'INSTANT' : category === 'Sorcery' ? 'SORCERY' : category === 'Land' ? 'LAND' : category === 'Planeswalker' ? 'PLANESWALKER' : category === 'Battle' ? 'BATTLE' : 'OTHER'}
+            {' '}({totalQuantity})
+          </span>
+        </div>
+      </div>
+
+      {/* Cards List */}
+      <div className="space-y-0.5">
+        {cards.map((card) => (
+          <PremiumListRow
+            key={card.scryfallId}
+            card={card}
+            onVariantOpen={onVariantOpen}
+            deckId={deckId}
+            onTransferCard={onTransferCard}
+          />
+        ))}
       </div>
     </div>
   );
@@ -739,6 +949,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
   const [selectedCmc, setSelectedCmc] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedSubtype, setSelectedSubtype] = useState<string>('all');
+  const [selectedColor, setSelectedColor] = useState<string>('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Variant selector states
@@ -769,7 +980,12 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
         return res.json();
       })
       .then((data) => {
-        setPrintings(data.data ?? []);
+        const results: ScryfallCard[] = data.data ?? [];
+        // Filter out cards that are not exactly the same card (e.g., prepared cards or adventures where one of the faces matches but the overall card name is different)
+        const exactMatches = results.filter(
+          (print) => print.name.toLowerCase() === variantCard.name.toLowerCase()
+        );
+        setPrintings(exactMatches);
       })
       .catch((err) => {
         setPrintsError('Error fetching variants: ' + err.message);
@@ -853,17 +1069,33 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
       if (!hasSubtype) return false;
     }
 
+    // Color filter
+    if (selectedColor !== 'all') {
+      const colors = card.scryfallData.colors || [];
+      if (selectedColor === 'C') {
+        if (colors.length > 0) return false;
+      } else if (selectedColor === 'multicolor') {
+        if (colors.length <= 1) return false;
+      } else {
+        if (!colors.includes(selectedColor)) return false;
+      }
+    }
+
     return true;
   });
 
   // Group cards by category
-  const grouped = new Map<CardCategory, DeckCard[]>();
+  const grouped = new Map<string, DeckCard[]>();
+  grouped.set('Commander', []);
   for (const cat of CATEGORY_ORDER) {
     grouped.set(cat, []);
   }
   for (const card of filteredCards) {
-    const list = grouped.get(card.category);
-    if (list) list.push(card);
+    if (viewMode === 'text' && card.isCommander) {
+      grouped.get('Commander')?.push(card);
+    } else {
+      grouped.get(card.category)?.push(card);
+    }
   }
 
   // Sort within each category: commander first, then alphabetically
@@ -989,6 +1221,57 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               </div>
             </div>
 
+            {/* Mana Colors Filter */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Mana Colors:</span>
+              <div className="flex flex-wrap items-center gap-1">
+                <button
+                  onClick={() => setSelectedColor('all')}
+                  className={`h-5 px-2 rounded text-[9px] font-bold transition-all border ${
+                    selectedColor === 'all'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                      : 'border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+                  }`}
+                >
+                  All
+                </button>
+                {['W', 'U', 'B', 'R', 'G', 'C'].map((color) => {
+                  const isActive = selectedColor === color;
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(isActive ? 'all' : color)}
+                      className={`w-5 h-5 rounded-full transition-all flex items-center justify-center overflow-hidden bg-background ${
+                        isActive
+                          ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-110 shadow-sm opacity-100'
+                          : 'border border-border/40 hover:scale-105 opacity-60 hover:opacity-100'
+                      }`}
+                      title={`Filter by ${color}`}
+                    >
+                      <img
+                        src={getManaSymbolUrl(color)}
+                        alt={color}
+                        className="w-full h-full select-none pointer-events-none object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setSelectedColor(selectedColor === 'multicolor' ? 'all' : 'multicolor')}
+                  className={`h-5 px-2 rounded text-[9px] font-bold transition-all border ${
+                    selectedColor === 'multicolor'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                      : 'border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+                  }`}
+                >
+                  Multi
+                </button>
+              </div>
+            </div>
+
             {/* Card Type Filter */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Card Type:</span>
@@ -1041,7 +1324,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
           <div className="px-3 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">
-                {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || filterQuery ? (
+                {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || selectedColor !== 'all' || filterQuery ? (
                   <span>
                     {filteredCards.length} filtered (of {state.cards.length})
                   </span>
@@ -1049,7 +1332,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                   <span>{state.cards.length} unique cards</span>
                 )}
               </span>
-              {(selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || filterQuery) && (
+              {(selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || selectedColor !== 'all' || filterQuery) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1059,6 +1342,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                     setSelectedCmc('all');
                     setSelectedType('all');
                     setSelectedSubtype('all');
+                    setSelectedColor('all');
                   }}
                 >
                   <X className="w-3 h-3" />
@@ -1067,7 +1351,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               )}
             </div>
             <span className="text-sm font-mono text-muted-foreground">
-              {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || filterQuery ? (
+              {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || selectedColor !== 'all' || filterQuery ? (
                 <span>
                   {filteredCards.reduce((sum, c) => sum + c.quantity, 0)} total filtered
                 </span>
@@ -1085,6 +1369,62 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               <p className="text-xs text-muted-foreground max-w-xs">
                 No cards found matching &ldquo;{filterQuery}&rdquo; in this deck.
               </p>
+            </div>
+          ) : viewMode === 'text' ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 py-2 items-start">
+              {/* Column 1 */}
+              <div className="space-y-6">
+                {['Commander', 'Creature', 'Artifact', 'Planeswalker'].map((cat) => {
+                  const cards = grouped.get(cat) ?? [];
+                  if (cards.length === 0) return null;
+                  return (
+                    <PremiumListSection
+                      key={cat}
+                      category={cat}
+                      cards={cards}
+                      onVariantOpen={(card) => setVariantCard(card)}
+                      deckId={deckId}
+                      onTransferCard={onTransferCard}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Column 2 */}
+              <div className="space-y-6">
+                {['Instant', 'Enchantment', 'Battle'].map((cat) => {
+                  const cards = grouped.get(cat) ?? [];
+                  if (cards.length === 0) return null;
+                  return (
+                    <PremiumListSection
+                      key={cat}
+                      category={cat}
+                      cards={cards}
+                      onVariantOpen={(card) => setVariantCard(card)}
+                      deckId={deckId}
+                      onTransferCard={onTransferCard}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Column 3 */}
+              <div className="space-y-6">
+                {['Sorcery', 'Land', 'Other'].map((cat) => {
+                  const cards = grouped.get(cat) ?? [];
+                  if (cards.length === 0) return null;
+                  return (
+                    <PremiumListSection
+                      key={cat}
+                      category={cat}
+                      cards={cards}
+                      onVariantOpen={(card) => setVariantCard(card)}
+                      deckId={deckId}
+                      onTransferCard={onTransferCard}
+                    />
+                  );
+                })}
+              </div>
             </div>
           ) : (
             CATEGORY_ORDER.map((cat) => {

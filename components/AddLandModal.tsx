@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDeck } from '@/lib/deck-store';
-import { getCardByExactName } from '@/lib/scryfall';
+import { getCardByExactName, getManaSymbolUrl } from '@/lib/scryfall';
 
 interface AddLandModalProps {
   open: boolean;
@@ -361,14 +361,21 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
                 <button
                   key={color}
                   onClick={() => setColorFilter(isActive ? null : color)}
-                  className={`w-7 h-7 rounded-full border text-xs font-bold flex items-center justify-center transition-all ${
+                  className={`w-7 h-7 rounded-full transition-all flex items-center justify-center overflow-hidden bg-background ${
                     isActive
-                      ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                      : 'hover:scale-105 border-border/60'
-                  } ${COLOR_CLASSES[color]}`}
+                      ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-110 shadow-lg opacity-100'
+                      : 'border border-border/40 hover:scale-105 hover:border-border/80 opacity-60 hover:opacity-100'
+                  }`}
                   title={`Show lands producing ${color}`}
                 >
-                  {color}
+                  <img
+                    src={getManaSymbolUrl(color)}
+                    alt={color}
+                    className="w-full h-full select-none pointer-events-none object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
                 </button>
               );
             })}
@@ -417,12 +424,15 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
                     </span>
                     <div className="flex items-center gap-1 mt-1">
                       {land.colors.map((c) => (
-                        <span
+                        <img
                           key={c}
-                          className={`w-3.5 h-3.5 rounded-full border text-[8px] font-bold flex items-center justify-center ${COLOR_CLASSES[c]}`}
-                        >
-                          {c}
-                        </span>
+                          src={getManaSymbolUrl(c)}
+                          alt={c}
+                          className="w-3.5 h-3.5 select-none pointer-events-none"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
                       ))}
                     </div>
                   </div>

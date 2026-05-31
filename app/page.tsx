@@ -15,9 +15,10 @@ import { CardbackModal } from '@/components/CardbackModal';
 import { StatsPanel } from '@/components/StatsPanel';
 import { DeckDashboard } from '@/components/DeckDashboard';
 import { CustomCardsModal } from '@/components/CustomCardsModal';
+import { CombosModal } from '@/components/CombosModal';
 import { generateTTSExport, downloadJSON } from '@/lib/tts-export';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame } from 'lucide-react';
 
 function DeckNameEditor({ deckId }: { deckId?: string } = {}) {
   const { state: globalState, decks, dispatch } = useDeck();
@@ -83,10 +84,16 @@ function AppContent() {
   const [importOpen, setImportOpen] = useState(false);
   const [cardbackOpen, setCardbackOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  const [combosOpen, setCombosOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   // Target deck ID for modals
   const [modalTargetDeckId, setModalTargetDeckId] = useState<string | undefined>(undefined);
+
+  function openCombos(deckId?: string) {
+    setModalTargetDeckId(deckId);
+    setCombosOpen(true);
+  }
 
   // Split view states
   const [splitMode, setSplitMode] = useState(false);
@@ -229,6 +236,11 @@ function AppContent() {
         deckId={modalTargetDeckId}
       />
       <CustomCardsModal open={customOpen} onClose={() => setCustomOpen(false)} />
+      <CombosModal
+        open={combosOpen}
+        onClose={() => { setCombosOpen(false); setModalTargetDeckId(undefined); }}
+        deckId={modalTargetDeckId}
+      />
     </>
   );
 
@@ -399,6 +411,16 @@ function AppContent() {
                         Cardback
                       </Button>
                       <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openCombos(leftDeck.id)}
+                        className="text-[10px] h-7 px-2 border-border hover:border-primary/50 text-primary hover:bg-primary/5 transition-colors flex items-center gap-1"
+                        title="Deck combos and synergies finder"
+                      >
+                        <Flame className="w-3.5 h-3.5 animate-pulse text-primary" />
+                        <span>Combos</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleClearDeck(leftDeck.id)}
@@ -523,6 +545,16 @@ function AppContent() {
                         Cardback
                       </Button>
                       <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openCombos(rightDeck.id)}
+                        className="text-[10px] h-7 px-2 border-border hover:border-primary/50 text-primary hover:bg-primary/5 transition-colors flex items-center gap-1"
+                        title="Deck combos and synergies finder"
+                      >
+                        <Flame className="w-3.5 h-3.5 animate-pulse text-primary" />
+                        <span>Combos</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleClearDeck(rightDeck.id)}
@@ -608,6 +640,7 @@ function AppContent() {
         isExporting={isExporting}
         onSplitOpen={() => handleOpenSplit(state!.id)}
         splitMode={splitMode}
+        onCombosOpen={() => openCombos(state?.id)}
       />
 
       <div className="flex flex-1 overflow-hidden w-full max-w-full px-2 sm:px-4">

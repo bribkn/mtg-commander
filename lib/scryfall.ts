@@ -69,6 +69,13 @@ export interface ScryfallCard {
   rarity: string;
   uri: string;
   scryfall_uri: string;
+  prices?: {
+    usd?: string | null;
+    usd_foil?: string | null;
+    eur?: string | null;
+    eur_foil?: string | null;
+    tix?: string | null;
+  };
 }
 
 const SCRYFALL_BASE = 'https://api.scryfall.com';
@@ -353,5 +360,33 @@ export function isGameChangerCard(cardName: string): boolean {
   }
   
   return false;
+}
+
+/** Search cards on Scryfall using their powerful query syntax */
+export async function searchCards(
+  query: string,
+  page: number = 1
+): Promise<{ data: ScryfallCard[]; has_more: boolean; next_page?: string; total_cards?: number } | null> {
+  if (!query.trim()) return null;
+  try {
+    const res = await rateLimitedFetch(
+      `${SCRYFALL_BASE}/cards/search?q=${encodeURIComponent(query)}&page=${page}`
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Get Scryfall's official vector SVG mana symbol URL */
+export function getManaSymbolUrl(symbol: string): string {
+  // Scryfall symbol format is e.g. "W", "U", "B", "R", "G", "C", "X", "0", "1", etc.
+  // We remove brackets and handle split symbols like "W/U" or hybrid/phyrexian "G/P" correctly.
+  const clean = symbol.replace(/[{}]/g, '').toUpperCase();
+  // Double-slashes or specific characters must be URL-encoded, but Scryfall symbol SVGs 
+  // directly match standard names like "W", "U", "B", "R", "G" or "10", "X", "W-U" (usually represented as WU or W-U)
+  const formatted = clean.replace('/', '');
+  return `https://svgs.scryfall.io/card-symbols/${formatted}.svg`;
 }
 

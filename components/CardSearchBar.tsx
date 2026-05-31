@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Loader2, X, Map } from 'lucide-react';
+import { Search, Loader2, X, Map, SlidersHorizontal } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { autocompleteCardName, getCardByExactName } from '@/lib/scryfall';
 import { useDeck } from '@/lib/deck-store';
 import { AddLandModal } from './AddLandModal';
+import { AdvancedSearchModal } from './AdvancedSearchModal';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -29,6 +30,7 @@ export function CardSearchBar({ deckId }: CardSearchBarProps = {}) {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addLandOpen, setAddLandOpen] = useState(false);
+  const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { dispatch } = useDeck();
@@ -155,6 +157,17 @@ export function CardSearchBar({ deckId }: CardSearchBarProps = {}) {
       <Button
         variant="outline"
         size="sm"
+        onClick={() => setAdvancedSearchOpen(true)}
+        className="h-9 text-xs gap-1.5 shrink-0 px-3 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary hover:border-primary/50 transition-all active:scale-95 shadow-sm shadow-primary/5"
+      >
+        <SlidersHorizontal className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Advanced Search</span>
+        <span className="inline sm:hidden">Filters</span>
+      </Button>
+
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => setAddLandOpen(true)}
         className="h-9 text-xs gap-1.5 shrink-0 px-3 border-border hover:border-primary/50 hover:text-primary transition-all active:scale-95"
       >
@@ -165,6 +178,12 @@ export function CardSearchBar({ deckId }: CardSearchBarProps = {}) {
       <AddLandModal
         open={addLandOpen}
         onClose={() => setAddLandOpen(false)}
+        deckId={deckId}
+      />
+
+      <AdvancedSearchModal
+        open={advancedSearchOpen}
+        onClose={() => setAdvancedSearchOpen(false)}
         deckId={deckId}
       />
     </div>
