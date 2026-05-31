@@ -229,20 +229,27 @@ export async function generateTTSExport(
     ...expandCards(commanderCards),
   ];
  
-  // 5. Build main deck cards (including DFCs in the same pile!)
+  // 5. Build main deck cards (including DFCs in the same pile using standard cardback!)
   const mainCards: SubDeckCard[] = [];
+  const dfcCards: SubDeckCard[] = [];
+  const seenDfcNames = new Set<string>();
   let dfcCount = 0;
  
   for (const dc of allMainExpanded) {
     const card = dc.scryfallData;
     const faceUrl = getFrontImageUrl(card);
+    const standardBack = customCardbackUrl || MTG_CARD_BACK;
+ 
+    // In the main deck pile, all cards must use the standard cardback
+    mainCards.push({ name: card.name, faceUrl, backUrl: standardBack });
  
     if (isDoubleFaced(card)) {
       dfcCount++;
-      const backUrl = getBackImageUrl(card) ?? MTG_CARD_BACK;
-      mainCards.push({ name: card.name, faceUrl, backUrl });
-    } else {
-      mainCards.push({ name: card.name, faceUrl, backUrl: customCardbackUrl || MTG_CARD_BACK });
+      if (!seenDfcNames.has(card.name)) {
+        seenDfcNames.add(card.name);
+        const backUrl = getBackImageUrl(card) ?? MTG_CARD_BACK;
+        dfcCards.push({ name: card.name, faceUrl, backUrl });
+      }
     }
   }
 
@@ -263,6 +270,10 @@ export async function generateTTSExport(
 
   if (tokenCards.length > 0) {
     objectStates.push(buildSubDeck(tokenCards, 2.2, 0));
+  }
+
+  if (dfcCards.length > 0) {
+    objectStates.push(buildSubDeck(dfcCards, 4.4, 0));
   }
 
   const ttsObject: TTSObject = { ObjectStates: objectStates };

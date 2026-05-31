@@ -84,7 +84,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
             label="Main Deck"
             count={mainCount}
             color="text-primary"
-            description="Includes commanders and DFCs in a single pile"
+            description="Includes commanders and DFCs (standard cardbacks)"
           />
           <SubDeckRow
             icon={<Sparkles className="w-4 h-4" />}
@@ -98,7 +98,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
             label="Double-Faced Cards"
             count={dfcCount}
             color="text-purple-400"
-            description="Included within the main deck pile"
+            description="Double-sided references generated next to deck"
           />
         </div>
       </div>

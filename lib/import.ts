@@ -289,26 +289,15 @@ export function parseTTSJson(jsonText: string): ParsedDeckEntry[] {
       return counts;
     }
 
-    // Positions used by our own exporter:
-    //   0   → main deck (includes commander at the end)
-    //   2.2 → tokens            ← always skip
-    //   4.4 → DFC helper pile   ← skip (cards already in main deck)
-    const SKIP_POSITIONS = [2.2, 4.4];
-
-    // Merge strategy: take the MAX quantity seen for each card name across
-    // all piles. This prevents double-counting when the same card appears in
-    // both a main deck pile AND a separate commander-zone / DFC pile.
     const globalMax: Record<string, number> = {};
 
-    if (parsed && Array.isArray(parsed.ObjectStates)) {
-      for (const subDeck of parsed.ObjectStates) {
-        const posX = subDeck.Transform?.posX ?? 0;
-        if (SKIP_POSITIONS.some((p) => Math.abs(posX - p) < 0.1)) continue;
-
-        const pileCounts = countCardsInPile(subDeck);
-        for (const [name, count] of Object.entries(pileCounts)) {
-          globalMax[name] = Math.max(globalMax[name] ?? 0, count);
-        }
+    if (parsed && Array.isArray(parsed.ObjectStates) && parsed.ObjectStates.length > 0) {
+      // Only import the first pile, which represents the main deck (including commander)
+      // Subsequent piles represent tokens or DFC helper stacks and should be skipped.
+      const mainDeck = parsed.ObjectStates[0];
+      const pileCounts = countCardsInPile(mainDeck);
+      for (const [name, count] of Object.entries(pileCounts)) {
+        globalMax[name] = count;
       }
     } else {
       // Flat file — just count everything
