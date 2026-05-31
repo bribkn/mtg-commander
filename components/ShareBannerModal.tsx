@@ -703,29 +703,85 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
     }
 
     // Stats Blocks
-    const drawLeftStatsBlock = (yPos: number, title: string, value: string, highlight = false) => {
+    const drawLeftStatsBlock = (yPos: number, title: string, value: string, iconType: 'cmc' | 'crown' | 'ratio', highlight = false) => {
       ctx.save();
       ctx.fillStyle = theme.overlayColor;
-      drawRoundedRect(ctx, 60, yPos, 300, 70, 10);
+      drawRoundedRect(ctx, 60, yPos, 300, 65, 10);
       ctx.fill();
       ctx.strokeStyle = highlight ? theme.borderColor : 'rgba(255, 255, 255, 0.05)';
       ctx.lineWidth = 1;
-      drawRoundedRect(ctx, 60, yPos, 300, 70, 10);
+      drawRoundedRect(ctx, 60, yPos, 300, 65, 10);
       ctx.stroke();
 
       ctx.textBaseline = 'top';
       ctx.fillStyle = theme.mutedColor;
       ctx.font = 'bold 9px system-ui, sans-serif';
-      ctx.fillText(title.toUpperCase(), 76, yPos + 14);
+      ctx.fillText(title.toUpperCase(), 76, yPos + 12);
 
       ctx.fillStyle = highlight ? theme.accentColor : '#ffffff';
       ctx.font = 'bold 22px system-ui, sans-serif';
-      ctx.fillText(value, 76, yPos + 30);
+      ctx.fillText(value, 76, yPos + 26);
+
+      // Draw premium vector icon on the right (centered at x = 315, y = yPos + 32)
+      ctx.strokeStyle = highlight ? theme.accentColor : 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1.8;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      
+      const ix = 315;
+      const iy = yPos + 32;
+
+      if (iconType === 'cmc') {
+        // Lightning bolt icon for CMC/Speed
+        ctx.beginPath();
+        ctx.moveTo(ix - 4, iy - 10);
+        ctx.lineTo(ix + 1, iy - 2);
+        ctx.lineTo(ix - 3, iy - 1);
+        ctx.lineTo(ix + 4, iy + 10);
+        ctx.lineTo(ix - 1, iy + 2);
+        ctx.lineTo(ix + 3, iy + 1);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (iconType === 'crown') {
+        // Beautiful crown icon for Game Changers
+        ctx.beginPath();
+        ctx.moveTo(ix - 10, iy + 8);
+        ctx.lineTo(ix - 12, iy - 5);
+        ctx.lineTo(ix - 6, iy + 2);
+        ctx.lineTo(ix, iy - 8);
+        ctx.lineTo(ix + 6, iy + 2);
+        ctx.lineTo(ix + 12, iy - 5);
+        ctx.lineTo(ix + 10, iy + 8);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (iconType === 'ratio') {
+        // Split composition scale / circles icon for lands vs spells
+        ctx.beginPath();
+        ctx.arc(ix - 6, iy, 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(ix + 6, iy, 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(ix - 12, iy + 8);
+        ctx.lineTo(ix + 12, iy + 8);
+        ctx.stroke();
+      }
+
       ctx.restore();
     };
 
-    drawLeftStatsBlock(690, 'Game Changers', String(gameChangerCount), gameChangerCount > 0);
-    drawLeftStatsBlock(775, 'Average CMC', averageCMC, true);
+    // Calculate Lands vs Spells Ratio
+    const landsCount = state.cards.filter(c => c.category === 'Land').reduce((sum, c) => sum + c.quantity, 0);
+    const spellsCount = totalCards - landsCount;
+
+    drawLeftStatsBlock(675, 'Average CMC', averageCMC, 'cmc', true);
+    drawLeftStatsBlock(750, 'Game Changers', String(gameChangerCount), 'crown', gameChangerCount > 0);
+    drawLeftStatsBlock(825, 'Deck Composition', `${spellsCount} Spl / ${landsCount} Lnd`, 'ratio', false);
+
+    // Drop Shadow Filter for Curve & Curves
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
 
     // Mana Curve Horizontal Bar Chart
     ctx.save();
@@ -733,20 +789,20 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
     ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('DECK MANA CURVE', 60, 865);
+    ctx.fillText('DECK MANA CURVE (SPELLS)', 60, 910);
 
-    // Calculate curve counts
+    // Calculate curve counts (Excluding lands bulletproofly!)
     const cmcCounts = [0, 0, 0, 0, 0, 0, 0, 0]; // 0 to 7+
     state.cards.forEach((c) => {
       if (c.isCommander) return;
-      if (c.scryfallData.type_line?.toLowerCase().includes('land')) return;
+      if (c.category === 'Land') return;
       const cVal = Math.min(Math.floor(c.scryfallData.cmc || 0), 7);
       cmcCounts[cVal] += c.quantity;
     });
     const maxCmcCount = Math.max(...cmcCounts, 1);
 
     cmcCounts.forEach((count, i) => {
-      const cy = 895 + i * 22;
+      const cy = 940 + i * 22;
       
       // Label
       ctx.fillStyle = theme.mutedColor;
@@ -782,11 +838,11 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
     ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('COLOR IDENTITY', 60, 1090);
+    ctx.fillText('COLOR IDENTITY', 60, 1135);
 
     colorIdentity.forEach((c, idx) => {
       const cx = 74 + idx * 36;
-      const cy = 1130;
+      const cy = 1175;
       const manaImg = manaImages[c];
 
       if (manaImg) {
