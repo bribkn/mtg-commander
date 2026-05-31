@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -98,9 +99,11 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const decklistCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // States
   const [selectedTheme, setSelectedTheme] = useState<string>('obsidian');
+  const [activeTab, setActiveTab] = useState<'banner' | 'decklist'>('banner');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCopied, setIsCopied] = useState(false);
@@ -142,7 +145,7 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
   const colorIdentity = commanderCard?.scryfallData.color_identity || ['C'];
 
-  // Asynchronously load images when commander changes
+  // Asynchronously load images and all unique mana symbols when commander or decklist changes
   useEffect(() => {
     if (!open || !commanderCard) return;
 
@@ -175,6 +178,20 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
       return;
     }
 
+    // Collect all unique mana symbols in the decklist to preload them all!
+    const uniqueSymbols = new Set<string>();
+    state.cards.forEach((card) => {
+      const manaCost = card.scryfallData.mana_cost || '';
+      const matches = manaCost.match(/{[^{}]+}/g) || [];
+      matches.forEach((sym) => {
+        const symClean = sym.replace(/[{}]/g, ''); // e.g. '3', 'U'
+        uniqueSymbols.add(symClean);
+      });
+    });
+    // Add color identity symbols as well
+    colorIdentity.forEach((c) => uniqueSymbols.add(c));
+    const symbolsArray = Array.from(uniqueSymbols);
+
     // Preload helper
     const loadImage = (url: string): Promise<HTMLImageElement> => {
       return new Promise((resolve, reject) => {
@@ -191,14 +208,14 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
     const corsNormalUrl = `${normalUrl}${normalUrl.includes('?') ? '&' : '?'}cors=true`;
 
     const loadManaImages = Promise.all(
-      colorIdentity.map((c) => {
-        const rawUrl = getManaSymbolUrl(c);
+      symbolsArray.map((sym) => {
+        const rawUrl = getManaSymbolUrl(sym);
         const corsUrl = `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}cors=true`;
         return loadImage(corsUrl)
-          .then((img) => ({ symbol: c, img }))
+          .then((img) => ({ symbol: sym, img }))
           .catch((err) => {
-            console.warn(`Failed to preload mana symbol SVG ${c}:`, err);
-            return { symbol: c, img: null };
+            console.warn(`Failed to preload mana symbol SVG ${sym}:`, err);
+            return { symbol: sym, img: null };
           });
       })
     );
@@ -227,11 +244,11 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
         setError('Error preloading card artwork from Scryfall CDN.');
         setIsLoading(false);
       });
-  }, [open, commanderCard]);
+  }, [open, commanderCard, state]);
 
-  // Redraw Canvas when preloaded images, theme, or state changes
+  // Redraw Promo Banner Canvas when preloaded images, theme, or state changes
   useEffect(() => {
-    if (!open || !canvasRef.current) return;
+    if (!open || !canvasRef.current || activeTab !== 'banner') return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -358,8 +375,6 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
     ctx.stroke();
 
     // 4. Draw Core Stats Badges
-
-    // Helper to draw a stats block
     const drawStatsBlock = (xPos: number, yPos: number, titleText: string, valText: string, badgeAccent = false) => {
       ctx.fillStyle = theme.overlayColor;
       drawRoundedRect(ctx, xPos, yPos, 220, 85, 12);
@@ -501,17 +516,393 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
       ctx.drawImage(cardImage, -cw / 2, -ch / 2, cw, ch);
       ctx.restore();
     }
-  }, [open, artCropImage, cardImage, selectedTheme, state]);
+  }, [open, artCropImage, cardImage, selectedTheme, state, activeTab]);
+
+  // Redraw Decklist Infographic Canvas when preloaded images, theme, or state changes
+  useEffect(() => {
+    if (!open || !decklistCanvasRef.current || activeTab !== 'decklist') return;
+
+    const canvas = decklistCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, 1200, 1500);
+
+    const theme = THEME_PRESETS.find((t) => t.id === selectedTheme) || THEME_PRESETS[0];
+
+    const drawRoundedRect = (c: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number, radius: number) => {
+      c.beginPath();
+      c.moveTo(rx + radius, ry);
+      c.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
+      c.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
+      c.arcTo(rx, ry + rh, rx, ry, radius);
+      c.arcTo(rx, ry, rx + rw, ry, radius);
+      c.closePath();
+    };
+
+    // Helper to draw mana symbols in card rows
+    const drawManaCost = (c: CanvasRenderingContext2D, manaStr: string, rx: number, ry: number) => {
+      if (!manaStr) return;
+      const symbols = manaStr.match(/{[^{}]+}/g) || [];
+      let symbolX = rx; // Starting from the right and drawing leftwards!
+      
+      c.save(); // Save canvas context to isolate textBaseline and textAlign alterations
+      // Reverse symbols to draw right-to-left
+      [...symbols].reverse().forEach((sym) => {
+        const symClean = sym.replace(/[{}]/g, ''); // e.g. '3', 'U', 'B'
+        const img = manaImages[symClean];
+
+        if (img) {
+          // Draw official Magic symbol SVG icon preloaded from Scryfall!
+          c.drawImage(img, symbolX - 7, ry - 7, 14, 14);
+        } else {
+          // Draw small circle fallback
+          c.fillStyle = 'rgba(255, 255, 255, 0.08)';
+          c.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+          c.beginPath();
+          c.arc(symbolX, ry, 7, 0, Math.PI * 2);
+          c.fill();
+          c.stroke();
+          
+          // Draw symbol letter/number
+          c.fillStyle = '#ffffff';
+          c.font = 'bold 8px font-mono, system-ui, sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText(symClean, symbolX, ry);
+        }
+        
+        symbolX -= 16; // Shift left for next symbol
+      });
+      c.restore(); // Revert any baseline/alignment changes
+    };
+
+    // 1. Draw Blurred Cover Art Image Background
+    if (artCropImage) {
+      const scale = Math.max(1200 / artCropImage.width, 1500 / artCropImage.height);
+      const x = (1200 - artCropImage.width * scale) / 2;
+      const y = (1500 - artCropImage.height * scale) / 2;
+      ctx.drawImage(artCropImage, x, y, artCropImage.width * scale, artCropImage.height * scale);
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, 1200, 1500);
+      grad.addColorStop(0, '#09090b');
+      grad.addColorStop(1, '#1e1b4b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1200, 1500);
+    }
+
+    // Dark glassmorphism overlay to cover the background nicely
+    ctx.fillStyle = 'rgba(9, 9, 11, 0.88)';
+    ctx.fillRect(0, 0, 1200, 1500);
+
+    // 2. Draw Left Sidebar Panel background
+    ctx.fillStyle = theme.bgGradStart;
+    ctx.fillRect(0, 0, 420, 1500);
+    ctx.strokeStyle = theme.borderColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(420, 0);
+    ctx.lineTo(420, 1500);
+    ctx.stroke();
+
+    // 3. Draw Left Sidebar Content
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+
+    // Deck Name
+    ctx.fillStyle = theme.textColor;
+    ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    
+    const rawDeckName = state.deckName || 'New Commander Deck';
+    let deckName = rawDeckName;
+    if (ctx.measureText(deckName).width > 300) {
+      while (ctx.measureText(deckName + '...').width > 300 && deckName.length > 0) {
+        deckName = deckName.slice(0, -1);
+      }
+      deckName += '...';
+    }
+    ctx.fillText(deckName, 60, 60);
+
+    // Subtitle COMMANDER
+    ctx.fillStyle = theme.mutedColor;
+    ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+    ctx.fillText('COMMANDER DECKLIST', 60, 120);
+
+    ctx.fillStyle = theme.accentColor;
+    ctx.font = '600 20px system-ui, -apple-system, sans-serif';
+    const commanderName = commanderCard?.name || 'Unknown Commander';
+    let dispCommName = commanderName;
+    if (ctx.measureText(dispCommName).width > 300) {
+      while (ctx.measureText(dispCommName + '...').width > 300 && dispCommName.length > 0) {
+        dispCommName = dispCommName.slice(0, -1);
+      }
+      dispCommName += '...';
+    }
+    ctx.fillText(dispCommName, 60, 140);
+    ctx.restore();
+
+    // Custom Tags
+    const tags = state.tags || [];
+    if (tags.length > 0) {
+      let tagX = 60;
+      ctx.save();
+      tags.slice(0, 3).forEach((tag) => {
+        ctx.font = '600 9px system-ui, -apple-system, sans-serif';
+        const tagText = tag.toUpperCase();
+        const textWidth = ctx.measureText(tagText).width;
+        const badgeWidth = textWidth + 10;
+        const badgeHeight = 16;
+        ctx.fillStyle = theme.borderColor || 'rgba(255, 255, 255, 0.12)';
+        drawRoundedRect(ctx, tagX, 180, badgeWidth, badgeHeight, 4);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 0.5;
+        drawRoundedRect(ctx, tagX, 180, badgeWidth, badgeHeight, 4);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tagText, tagX + badgeWidth / 2, 180 + badgeHeight / 2 + 0.5);
+        tagX += badgeWidth + 5;
+      });
+      ctx.restore();
+    }
+
+    // Divider Line
+    ctx.strokeStyle = theme.borderColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(60, 215);
+    ctx.lineTo(360, 215);
+    ctx.stroke();
+
+    // Commander Card Visual
+    if (cardImage) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 8;
+
+      const cw = 300;
+      const ch = 420;
+      const cx = 60;
+      const cy = 240;
+
+      ctx.beginPath();
+      drawRoundedRect(ctx, cx, cy, cw, ch, 14);
+      ctx.clip();
+      ctx.drawImage(cardImage, cx, cy, cw, ch);
+      ctx.restore();
+    }
+
+    // Stats Blocks
+    const drawLeftStatsBlock = (yPos: number, title: string, value: string, highlight = false) => {
+      ctx.save();
+      ctx.fillStyle = theme.overlayColor;
+      drawRoundedRect(ctx, 60, yPos, 300, 70, 10);
+      ctx.fill();
+      ctx.strokeStyle = highlight ? theme.borderColor : 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      drawRoundedRect(ctx, 60, yPos, 300, 70, 10);
+      ctx.stroke();
+
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = theme.mutedColor;
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.fillText(title.toUpperCase(), 76, yPos + 14);
+
+      ctx.fillStyle = highlight ? theme.accentColor : '#ffffff';
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.fillText(value, 76, yPos + 30);
+      ctx.restore();
+    };
+
+    drawLeftStatsBlock(690, 'Game Changers', String(gameChangerCount), gameChangerCount > 0);
+    drawLeftStatsBlock(775, 'Average CMC', averageCMC, true);
+
+    // Mana Curve Horizontal Bar Chart
+    ctx.save();
+    ctx.fillStyle = theme.textColor;
+    ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('DECK MANA CURVE', 60, 865);
+
+    // Calculate curve counts
+    const cmcCounts = [0, 0, 0, 0, 0, 0, 0, 0]; // 0 to 7+
+    state.cards.forEach((c) => {
+      if (c.isCommander) return;
+      if (c.scryfallData.type_line?.toLowerCase().includes('land')) return;
+      const cVal = Math.min(Math.floor(c.scryfallData.cmc || 0), 7);
+      cmcCounts[cVal] += c.quantity;
+    });
+    const maxCmcCount = Math.max(...cmcCounts, 1);
+
+    cmcCounts.forEach((count, i) => {
+      const cy = 895 + i * 22;
+      
+      // Label
+      ctx.fillStyle = theme.mutedColor;
+      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(i === 7 ? '7+' : String(i), 60, cy + 6);
+
+      // Bar
+      const maxBarWidth = 190;
+      const barWidth = (count / maxCmcCount) * maxBarWidth;
+      
+      if (count > 0) {
+        ctx.fillStyle = theme.accentColor;
+        drawRoundedRect(ctx, 80, cy, Math.max(barWidth, 4), 12, 3);
+        ctx.fill();
+
+        // Count number
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.fillText(String(count), 86 + Math.max(barWidth, 4), cy + 6);
+      } else {
+        // Flat line fallback for empty curve values
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fillRect(80, cy + 5, 20, 2);
+      }
+    });
+    ctx.restore();
+
+    // Color Identity Symbols under the curve
+    ctx.save();
+    ctx.fillStyle = theme.textColor;
+    ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('COLOR IDENTITY', 60, 1090);
+
+    colorIdentity.forEach((c, idx) => {
+      const cx = 74 + idx * 36;
+      const cy = 1130;
+      const manaImg = manaImages[c];
+
+      if (manaImg) {
+        ctx.drawImage(manaImg, cx - 14, cy - 14, 28, 28);
+      } else {
+        // Draw fallbacks
+        const colorMap: Record<string, string> = { W: '#f9fafb', U: '#3b82f6', B: '#18181b', R: '#ef4444', G: '#22c55e', C: '#6b7280' };
+        ctx.fillStyle = colorMap[c] || '#6b7280';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c === 'W' || c === 'C' ? '#000000' : '#ffffff';
+        ctx.font = 'bold 11px font-mono, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(c, cx, cy);
+      }
+    });
+    ctx.restore();
+    // 4. Draw Right Column categorized decklist
+    // Card categories sorting
+    const cards = state.cards || [];
+    const sortedCards = [...cards].sort((a, b) => a.name.localeCompare(b.name));
+
+    const creatures = sortedCards.filter((c) => c.category === 'Creature' && !c.isCommander);
+    const planeswalkers = sortedCards.filter((c) => c.category === 'Planeswalker' && !c.isCommander);
+    const battles = sortedCards.filter((c) => c.category === 'Battle' && !c.isCommander);
+    const artifacts = sortedCards.filter((c) => c.category === 'Artifact' && !c.isCommander);
+    const enchantments = sortedCards.filter((c) => c.category === 'Enchantment' && !c.isCommander);
+    const instants = sortedCards.filter((c) => c.category === 'Instant' && !c.isCommander);
+    const sorceries = sortedCards.filter((c) => c.category === 'Sorcery' && !c.isCommander);
+    const lands = sortedCards.filter((c) => c.category === 'Land' && !c.isCommander);
+    const other = sortedCards.filter((c) => c.category === 'Other' && !c.isCommander);
+
+    // Dynamic drawer helper
+    const drawCategoryList = (cx: number, startY: number, title: string, list: typeof cards) => {
+      if (list.length === 0) return startY;
+      
+      let y = startY;
+      
+      ctx.fillStyle = theme.accentColor;
+      ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      const headerText = `${title.toUpperCase()} (${list.reduce((sum, c) => sum + c.quantity, 0)})`;
+      ctx.fillText(headerText, cx, y);
+      
+      y += 18;
+      
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx, y);
+      ctx.lineTo(cx + 320, y);
+      ctx.stroke();
+      
+      y += 8;
+      
+      list.forEach((c) => {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '500 12px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top'; // Explicitly assert top baseline for every card row to guarantee stable vertical padding
+        
+        ctx.fillStyle = theme.accentColor;
+        ctx.fillText(`${c.quantity}x`, cx, y);
+        
+        ctx.fillStyle = '#ffffff';
+        const nameX = cx + 24;
+        const nameWidth = 190;
+        let nameStr = c.name;
+        if (ctx.measureText(nameStr).width > nameWidth) {
+          while (ctx.measureText(nameStr + '...').width > nameWidth && nameStr.length > 0) {
+            nameStr = nameStr.slice(0, -1);
+          }
+          nameStr += '...';
+        }
+        ctx.fillText(nameStr, nameX, y);
+        
+        const rawMana = c.scryfallData.mana_cost || '';
+        drawManaCost(ctx, rawMana, cx + 320, y + 6);
+        
+        y += 20;
+      });
+      
+      return y + 16;
+    };
+
+    // Sub-column 1: Creatures, Planeswalkers, Battles, Artifacts, Enchantments, Others
+    let col1Y = 60;
+    col1Y = drawCategoryList(460, col1Y, 'Creatures', creatures);
+    col1Y = drawCategoryList(460, col1Y, 'Planeswalkers', planeswalkers);
+    col1Y = drawCategoryList(460, col1Y, 'Battles', battles);
+    col1Y = drawCategoryList(460, col1Y, 'Artifacts', artifacts);
+    col1Y = drawCategoryList(460, col1Y, 'Enchantments', enchantments);
+    col1Y = drawCategoryList(460, col1Y, 'Other Spells', other);
+
+    // Sub-column 2: Instants, Sorceries, Lands
+    let col2Y = 60;
+    col2Y = drawCategoryList(810, col2Y, 'Instants', instants);
+    col2Y = drawCategoryList(810, col2Y, 'Sorceries', sorceries);
+    col2Y = drawCategoryList(810, col2Y, 'Lands', lands);
+
+  }, [open, artCropImage, cardImage, selectedTheme, state, activeTab]);
 
   // Action: Download Banner PNG
   function handleDownload() {
-    if (!canvasRef.current || !state) return;
-    const canvas = canvasRef.current;
+    const isBanner = activeTab === 'banner';
+    const canvas = isBanner ? canvasRef.current : decklistCanvasRef.current;
+    if (!canvas || !state) return;
     
     // Trigger download
     const deckName = state.deckName.replace(/[^a-zA-Z0-9\s_-]/g, '').trim() || 'commander-deck';
+    const filename = isBanner ? `${deckName}-banner.png` : `${deckName}-decklist.png`;
     const link = document.createElement('a');
-    link.download = `${deckName}-banner.png`;
+    link.download = filename;
     link.href = canvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();
@@ -520,8 +911,9 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
   // Action: Copy to Clipboard
   function handleCopyToClipboard() {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
+    const isBanner = activeTab === 'banner';
+    const canvas = isBanner ? canvasRef.current : decklistCanvasRef.current;
+    if (!canvas) return;
 
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -551,10 +943,10 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
         <DialogHeader className="shrink-0 select-none">
           <DialogTitle className="flex items-center gap-2 text-gradient-red text-xl font-bold">
             <ImageIcon className="w-5 h-5 text-primary" />
-            Deck Share Banner Generator
+            Deck Share & Export Portal
           </DialogTitle>
           <DialogDescription>
-            Generate a stunning, high-resolution 1546 x 432 px banner image of your deck list to share on Discord, Reddit, or social media.
+            Generate stunning, high-resolution visuals of your Commander deck list to share on Discord, Reddit, or print.
           </DialogDescription>
         </DialogHeader>
 
@@ -571,118 +963,165 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
             </Button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col gap-5 overflow-y-auto py-2 pr-1 min-h-0">
-            
-            {/* ── SECTION 1: CANVAS PREVIEW ────────────────────────── */}
-            <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block select-none">
-                Banner Live Preview (1546 x 432)
-              </span>
-              
-              {/* Canvas viewport wrapper */}
-              <div className="relative w-full aspect-[1546/432] rounded-xl overflow-hidden border border-border shadow-2xl bg-neutral-950 flex items-center justify-center">
-                {isLoading && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-neutral-950/80 backdrop-blur-sm gap-2.5">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    <p className="text-xs font-semibold text-muted-foreground">Loading Scryfall HD images...</p>
-                  </div>
-                )}
-                {error && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-neutral-950/90 text-center p-6 gap-2">
-                    <AlertCircle className="w-8 h-8 text-destructive" />
-                    <p className="text-xs font-bold text-foreground">{error}</p>
-                    <p className="text-[10px] text-muted-foreground">Falling back to dark gradient atmosphere.</p>
-                  </div>
-                )}
+          <Tabs defaultValue="banner" value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="w-full bg-secondary shrink-0 select-none">
+              <TabsTrigger value="banner" className="flex-1 gap-2 py-2 text-xs font-bold">
+                <ImageIcon className="w-4 h-4" />
+                <span>Promo Banner (1546 x 432)</span>
+              </TabsTrigger>
+              <TabsTrigger value="decklist" className="flex-1 gap-2 py-2 text-xs font-bold">
+                <Crown className="w-4 h-4" />
+                <span>Decklist Poster (1200 x 1500)</span>
+              </TabsTrigger>
+            </TabsList>
 
-                {/* The actual pixel canvas */}
-                <canvas
-                  ref={canvasRef}
-                  width={1546}
-                  height={432}
-                  className="w-full h-full object-contain rounded-xl select-none"
-                />
-              </div>
-            </div>
-
-            {/* ── SECTION 2: CUSTOMIZE PRESETS ────────────────────── */}
-            <div className="space-y-3 select-none">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
-                Choose Color Palette Theme
-              </span>
+            <div className="flex-1 flex flex-col gap-4 overflow-y-auto py-3 pr-1 min-h-0">
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {THEME_PRESETS.map((t) => {
-                  const isActive = selectedTheme === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setSelectedTheme(t.id)}
-                      className={`relative flex flex-col items-start p-3 border rounded-xl bg-secondary/15 hover:bg-secondary/25 transition-all text-left group ${
-                        isActive
-                          ? 'border-primary shadow shadow-primary/10 bg-primary/5'
-                          : 'border-border/60 hover:border-primary/30'
-                      }`}
-                    >
-                      {/* Active border ring */}
-                      {isActive && (
-                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary/20 border border-primary flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5 text-primary stroke-[3px]" />
-                        </div>
-                      )}
-                      
-                      <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                        {t.name}
-                      </span>
-                      
-                      {/* Tiny color pills */}
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.accentColor }} />
-                        <span className="w-4 h-1.5 rounded-sm bg-white/20" />
-                        <span className="w-4 h-1.5 rounded-sm bg-white/5" />
+              <TabsContent value="banner" className="flex-1 flex flex-col gap-3 mt-0">
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block select-none">
+                    Banner Live Preview (1546 x 432)
+                  </span>
+                  
+                  {/* Canvas viewport wrapper */}
+                  <div className="relative w-full aspect-[1546/432] rounded-xl overflow-hidden border border-border shadow-2xl bg-neutral-950 flex items-center justify-center">
+                    {isLoading && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-neutral-950/80 backdrop-blur-sm gap-2.5">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        <p className="text-xs font-semibold text-muted-foreground">Loading Scryfall HD images...</p>
                       </div>
-                    </button>
-                  );
-                })}
+                    )}
+                    {error && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-neutral-950/90 text-center p-6 gap-2">
+                        <AlertCircle className="w-8 h-8 text-destructive" />
+                        <p className="text-xs font-bold text-foreground">{error}</p>
+                        <p className="text-[10px] text-muted-foreground">Falling back to dark gradient atmosphere.</p>
+                      </div>
+                    )}
+
+                    {/* The actual pixel canvas */}
+                    <canvas
+                      ref={canvasRef}
+                      width={1546}
+                      height={432}
+                      className="w-full h-full object-contain rounded-xl select-none"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="decklist" className="flex-1 flex flex-col gap-3 mt-0">
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block select-none">
+                    Poster Live Preview (1200 x 1500)
+                  </span>
+                  
+                  {/* Canvas scroll viewport wrapper */}
+                  <div className="relative w-full max-h-[350px] overflow-y-auto rounded-xl border border-border shadow-2xl bg-neutral-950 flex flex-col items-center custom-scrollbar p-2">
+                    {isLoading && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-neutral-950/80 backdrop-blur-sm gap-2.5">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        <p className="text-xs font-semibold text-muted-foreground">Loading Scryfall HD images...</p>
+                      </div>
+                    )}
+                    {error && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-neutral-950/90 text-center p-6 gap-2">
+                        <AlertCircle className="w-8 h-8 text-destructive" />
+                        <p className="text-xs font-bold text-foreground">{error}</p>
+                        <p className="text-[10px] text-muted-foreground">Falling back to dark gradient atmosphere.</p>
+                      </div>
+                    )}
+
+                    {/* The actual pixel canvas, scaled for high-density display */}
+                    <canvas
+                      ref={decklistCanvasRef}
+                      width={1200}
+                      height={1500}
+                      className="w-full max-w-[600px] h-auto object-contain rounded-lg select-none shadow-xl bg-card border border-border/50"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* ── SECTION 2: CUSTOMIZE PRESETS ────────────────────── */}
+              <div className="space-y-3 select-none mt-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                  Choose Color Palette Theme
+                </span>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {THEME_PRESETS.map((t) => {
+                    const isActive = selectedTheme === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setSelectedTheme(t.id)}
+                        className={`relative flex flex-col items-start p-3 border rounded-xl bg-secondary/15 hover:bg-secondary/25 transition-all text-left group ${
+                          isActive
+                            ? 'border-primary shadow shadow-primary/10 bg-primary/5'
+                            : 'border-border/60 hover:border-primary/30'
+                        }`}
+                      >
+                        {/* Active border ring */}
+                        {isActive && (
+                          <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary/20 border border-primary flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-primary stroke-[3px]" />
+                          </div>
+                        )}
+                        
+                        <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                          {t.name}
+                        </span>
+                        
+                        {/* Tiny color pills */}
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.accentColor }} />
+                          <span className="w-4 h-1.5 rounded-sm bg-white/20" />
+                          <span className="w-4 h-1.5 rounded-sm bg-white/5" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              <Separator className="my-1" />
+
+              {/* ── SECTION 3: ACTIONS ──────────────────────────────── */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Button
+                  onClick={handleDownload}
+                  disabled={isLoading}
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/15 gap-2 h-11"
+                >
+                  <Download className="w-4 h-4" />
+                  {activeTab === 'banner' ? 'Download Promo Banner PNG' : 'Download Decklist Poster PNG'}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={handleCopyToClipboard}
+                  disabled={isLoading}
+                  className={`w-full sm:w-[220px] font-bold border-border hover:border-primary/50 hover:bg-primary/5 transition-colors gap-2 h-11 ${
+                    isCopied ? 'text-green-500 border-green-500/50 hover:bg-green-500/5 hover:text-green-500' : ''
+                  }`}
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="w-4 h-4 animate-scale" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Copy to Clipboard
+                    </>
+                  )}
+                </Button>
+              </div>
+
             </div>
-
-            <Separator className="my-1" />
-
-            {/* ── SECTION 3: ACTIONS ──────────────────────────────── */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <Button
-                onClick={handleDownload}
-                disabled={isLoading}
-                className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/15 gap-2 h-11"
-              >
-                <Download className="w-4 h-4" />
-                Download High-Res PNG
-              </Button>
-              
-              <Button
-                variant="outline"
-                onClick={handleCopyToClipboard}
-                disabled={isLoading}
-                className={`w-full sm:w-[220px] font-bold border-border hover:border-primary/50 hover:bg-primary/5 transition-colors gap-2 h-11 ${
-                  isCopied ? 'text-green-500 border-green-500/50 hover:bg-green-500/5 hover:text-green-500' : ''
-                }`}
-              >
-                {isCopied ? (
-                  <>
-                    <Check className="w-4 h-4 animate-scale" />
-                    Copied to Clipboard!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy to Clipboard
-                  </>
-                )}
-              </Button>
-            </div>
-
-          </div>
+          </Tabs>
         )}
 
       </DialogContent>
