@@ -882,11 +882,17 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
   const [printsError, setPrintsError] = useState('');
   const [printsFilter, setPrintsFilter] = useState<'all' | 'fullart' | 'borderless' | 'retro'>('all');
   const [printsSetSearch, setPrintsSetSearch] = useState('');
+  const [previewCard, setPreviewCard] = useState<any>(null);
 
   // Reset print dialog filters when opening a new card
   useEffect(() => {
     setPrintsFilter('all');
     setPrintsSetSearch('');
+    if (variantCard) {
+      setPreviewCard(variantCard.scryfallData);
+    } else {
+      setPreviewCard(null);
+    }
   }, [variantCard]);
 
   // Fetch variants from Scryfall when variantCard, printsFilter, or printsSetSearch changes
@@ -940,7 +946,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
         })
         .catch((err) => {
           if (err.name !== 'AbortError') {
-            setPrintsError('Error fetching variants: ' + err.message);
+            setPrintsError(err.message);
           }
         })
         .finally(() => {
@@ -1411,7 +1417,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
       {/* Art Printing Variant Selector Dialog */}
       <Dialog open={variantCard !== null} onOpenChange={() => setVariantCard(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-5xl bg-card border-border max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="w-[98vw] max-w-[1550px] xl:max-w-[1650px] bg-card border-border max-h-[95vh] h-[92vh] flex flex-col overflow-hidden transition-all duration-300">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gradient-red text-xl font-bold">
               <ImageIcon className="w-5 h-5 text-primary" />
@@ -1437,7 +1443,9 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto pr-1 py-4 space-y-6">
+          <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden min-h-0 pt-4">
+            {/* Left Column: Scrollable selector */}
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
             {/* Search & Filter Bar */}
             {variantCard && (
               <div className="bg-secondary/20 p-3 rounded-xl border border-border/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2 animate-fade-in-up">
@@ -1517,6 +1525,16 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                         return (
                           <div
                             key={custom.id}
+                            onMouseEnter={() => {
+                              setPreviewCard({
+                                name: custom.name,
+                                set_name: 'Custom Alter Art',
+                                set: 'Alter',
+                                artist: 'Community Alterist',
+                                rarity: 'Special',
+                                image_uris: { large: custom.imageUrl, normal: custom.imageUrl }
+                              });
+                            }}
                             onClick={() => {
                               // Override the ScryfallCard image_uris with the custom URL
                               const updatedScryfallData = {
@@ -1615,6 +1633,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                   return (
                     <div
                       key={print.id}
+                      onMouseEnter={() => setPreviewCard(print)}
                       onClick={() => {
                         if (variantCard) {
                           dispatch({
@@ -1663,9 +1682,40 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                 })}
               </div>
             )}
+            </div>
+
+            {/* Right Column: Dynamic large preview */}
+            <div className="hidden md:flex w-[360px] lg:w-[420px] shrink-0 border-l border-border/40 pl-6 flex-col justify-center items-center select-none animate-fade-in bg-secondary/5 p-4 rounded-xl border border-border/20">
+              {previewCard ? (
+                <div className="flex flex-col items-center text-center space-y-4 w-full h-full justify-center">
+                  <div className="relative w-full aspect-[5/7] rounded-xl overflow-hidden shadow-2xl border border-primary/20 bg-secondary flex items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:border-primary/40">
+                    <img
+                      src={previewCard.image_uris?.large || previewCard.image_uris?.normal || previewCard.card_faces?.[0]?.image_uris?.large || previewCard.card_faces?.[0]?.image_uris?.normal || 'https://i.imgur.com/Hg8CwwU.jpeg'}
+                      alt={previewCard.name}
+                      className="w-full h-full object-cover select-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5 w-full">
+                    <h4 className="font-bold text-sm text-foreground truncate">{previewCard.name}</h4>
+                    <p className="text-xs text-muted-foreground truncate">{previewCard.set_name} ({previewCard.set?.toUpperCase()})</p>
+                    {previewCard.artist && (
+                      <p className="text-[10.5px] text-primary/80 italic font-semibold truncate mt-0.5">Illustrated by {previewCard.artist}</p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider font-semibold mt-1">
+                      {previewCard.rarity} · {previewCard.released_at?.split('-')[0] || 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground/50 gap-2">
+                  <ImageIcon className="w-12 h-12" />
+                  <p className="text-xs">Hover over an art style to preview</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end border-t border-border/40 pt-4">
+          <div className="flex justify-end border-t border-border/40 pt-4 shrink-0">
             <Button variant="outline" onClick={() => setVariantCard(null)}>
             Cancel
             </Button>
