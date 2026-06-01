@@ -24,11 +24,9 @@ All of this is wrapped in a cinematic dark-mode interface built on a premium red
 * **Inline Renaming**: Double-click or tap the deck name to instantly edit the title in place with live saving.
 * **Commander Crown Subtitle**: Elegantly renders the commander's name under the title with a glowing, pulse-animated Lucide crown.
 
-### 3. 🛡️ Four Premium Card Layout Views
+### 3. Two Premium Card Layout Views
 * **Visual Grid (Default)**: A beautiful high-res card grid using standard 5:7 ratios, sized dynamically up to `250px`. Features a ultra-tight `gap-2` to mimic a real card binder. Hovering reveals interactive controls to adjust quantity, toggle commander status, set as deck cover art, swap prints, or remove.
-* **Visual Stack**: Vertically overlaps cards to replicate real physical card piles. Hovering slides cards up and forward with smooth micro-animations.
 * **Detailed List (Text View)**: Clean list rows showcasing card thumbnails, mana costs, card types, and full inline controls.
-* **Condensed List**: A super-compact, padding-minimized list displaying card counts, names, and rapid actions. Ideal for review on huge screens or managing massive piles.
 
 ### 4. ⚡ Combos Discovery Integration (Commander Spellbook)
 * A glowing yellow Lucide `Zap` (Lightning) button is integrated across all card views.
@@ -106,7 +104,7 @@ The repository is organized following clean architectural guidelines:
 ├── components/
 │   ├── ui/                    # Atomic Tailwind components (Dialogs, Buttons, Inputs, etc.)
 │   ├── CardbackModal.tsx      # Cardback image configuration, preview, and gallery modal
-│   ├── CardList.tsx           # Core view manager (Visual Grid, Visual Stack, List, Condensed)
+│   ├── CardList.tsx           # Core view manager (Visual Grid, List)
 │   ├── CardSearchBar.tsx      # Scryfall query search bar with fuzzy autocompletions
 │   ├── DeckDashboard.tsx      # Welcome landing page & deck list grid manager
 │   ├── DeckHeader.tsx         # Header editor containing panoramic hero banner controls

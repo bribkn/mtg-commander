@@ -475,7 +475,7 @@ function PremiumListSection({
   );
 }
 
-type ViewMode = 'grid' | 'stack' | 'text' | 'condensed';
+type ViewMode = 'grid' | 'text';
 
 interface CategorySectionProps {
   category: CardCategory;
@@ -526,109 +526,6 @@ function CategorySection({
               {cards.map((card) => (
                 <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} />
               ))}
-            </div>
-          )}
-
-          {/* 2. CONDENSED VIEW (Super tight grid with quantity + name) */}
-          {viewMode === 'condensed' && (
-            <div className="px-3 divide-y divide-border/20 space-y-0.5">
-              {cards.map((card) => {
-                const isCover = state?.coverCardId === card.scryfallId;
-                const isBanned = card.scryfallData.legalities?.commander === 'banned';
-                return (
-                  <div
-                    key={card.scryfallId}
-                    className="group flex items-center justify-between py-1 text-xs hover:bg-secondary/40 rounded px-1.5 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono text-xs font-semibold text-primary w-5 shrink-0">
-                        {card.quantity}x
-                      </span>
-                      <span className={`font-medium truncate ${isBanned ? 'text-red-400 line-through' : 'text-foreground'}`}>
-                        {card.name}
-                      </span>
-                      {isBanned && (
-                        <span className="text-[8px] font-bold text-red-500 bg-red-500/10 px-1 py-0.5 rounded border border-red-500/15 shrink-0 animate-pulse">
-                          BANNED
-                        </span>
-                      )}
-                      {card.isCommander && <Crown className="w-3 h-3 text-primary shrink-0" />}
-                      {isCover && <Sparkles className="w-3 h-3 text-primary shrink-0" />}
-                    </div>
-                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {/* Copy/Move option in condensed view */}
-                      {onTransferCard && (
-                        <div className="flex gap-0.5 pr-1 mr-1 border-r border-border/40 shrink-0">
-                          <button
-                            onClick={() => onTransferCard(card, 'copy')}
-                            className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
-                            title="Copy to other deck"
-                          >
-                            <Copy className="w-3 h-3 text-blue-400" />
-                          </button>
-                          <button
-                            onClick={() => onTransferCard(card, 'move')}
-                            className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
-                            title="Move to other deck"
-                          >
-                            <ArrowRightLeft className="w-3 h-3 text-green-400" />
-                          </button>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
-                        className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
-                      >
-                        -
-                      </button>
-                      <button
-                        onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
-                        className="w-4 h-4 rounded hover:bg-secondary hover:text-foreground text-muted-foreground flex items-center justify-center font-bold text-[10px]"
-                      >
-                        +
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (isCover) {
-                            dispatch({ type: 'UNSET_COVER_CARD', deckId });
-                          } else {
-                            dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
-                          }
-                        }}
-                        className={`p-0.5 rounded transition-colors ${isCover ? 'text-primary' : 'text-muted-foreground hover:text-primary'
-                          }`}
-                        title={isCover ? 'Remove Cover' : 'Set as Cover'}
-                      >
-                        <Sparkles className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => onVariantOpen(card)}
-                        className="text-muted-foreground hover:text-primary p-0.5"
-                        title="Change Variant"
-                      >
-                        <ImageIcon className="w-3 h-3" />
-                      </button>
-                      <a
-                        href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-primary p-0.5 flex items-center justify-center transition-colors"
-                        title="View Combos"
-                      >
-                        <Zap className="w-3 h-3 text-amber-500 hover:scale-110 transition-transform" />
-                      </a>
-                      <button
-                        onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })}
-                        className="text-muted-foreground hover:text-destructive p-0.5"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           )}
 
@@ -791,178 +688,6 @@ function CategorySection({
                               dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
                             }
                             className="text-muted-foreground hover:text-foreground font-bold text-sm px-1.5"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* 4. VISUAL STACK VIEW (Overlapping piles showing top art - HEROIC size) */}
-          {viewMode === 'stack' && (
-            <div className="flex flex-col px-4 py-8 space-y-[-325px] sm:space-y-[-390px] hover:space-y-[-300px] sm:hover:space-y-[-360px] transition-all duration-300">
-              {cards.map((card, idx) => {
-                const cardImg =
-                  card.scryfallData.image_uris?.normal ||
-                  card.scryfallData.card_faces?.[0]?.image_uris?.normal ||
-                  '';
-                const isCover = state?.coverCardId === card.scryfallId;
-                const isBanned = card.scryfallData.legalities?.commander === 'banned';
-
-                return (
-                  <div
-                    key={card.scryfallId}
-                    style={{ zIndex: 10 + idx }}
-                    className={`relative w-[260px] sm:w-[310px] aspect-[5/7] rounded-xl overflow-hidden border shadow-lg bg-secondary group/stack hover:border-primary/60 hover:shadow-2xl hover:translate-y-[-40px] hover:scale-[1.05] transition-all duration-300 shrink-0 ${isCover ? 'border-primary ring-2 ring-primary/40' : 'border-border'
-                      }`}
-                  >
-                    {cardImg ? (
-                      <img
-                        src={cardImg}
-                        alt={card.name}
-                        className="w-full h-full object-cover absolute inset-0 select-none"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted p-3 flex flex-col justify-between items-center text-center">
-                        <span className="text-sm font-bold text-foreground truncate w-full">
-                          {card.name}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">{card.category}</span>
-                      </div>
-                    )}
-
-                    {isBanned && (
-                      <div className="absolute top-2 left-2 bg-red-950/95 px-1.5 py-0.5 rounded border border-red-500/40 z-10 flex items-center justify-center gap-1 shadow-md animate-pulse">
-                        <ShieldAlert className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider font-mono">Banned</span>
-                      </div>
-                    )}
-
-                    {card.isCommander && !isBanned && (
-                      <div className="absolute top-2 left-2 bg-black/85 p-0.5 rounded border border-primary/40 z-10 flex items-center justify-center">
-                        <Crown className="w-4 h-4 text-primary" />
-                      </div>
-                    )}
-
-                    {isCover && !card.isCommander && !isBanned && (
-                      <div className="absolute top-2 left-2 bg-black/85 p-0.5 rounded border border-primary/40 z-10 flex items-center justify-center">
-                        <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-                      </div>
-                    )}
-
-                    <div className="absolute top-2 right-2 bg-black/85 p-0.5 px-2 rounded border border-border/40 z-10 text-[11px] font-mono font-bold">
-                      {card.quantity}x
-                    </div>
-
-                    {/* Dark Crimson Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/85 border border-primary/20 opacity-0 group-hover/stack:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-3 z-10 text-center">
-                      <span className={`text-sm font-bold leading-tight truncate px-0.5 ${isBanned ? 'text-red-400 line-through' : 'text-foreground'}`}>
-                        {card.name}
-                      </span>
-                      {isBanned && (
-                        <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-wide bg-red-500/10 py-0.5 rounded border border-red-500/15 animate-pulse mt-0.5">
-                          BANNED IN COMMANDER
-                        </span>
-                      )}
-
-                      <div className="flex flex-col gap-2 w-full mt-1">
-                        <div className="flex gap-1.5 justify-center flex-wrap">
-                          {/* Copy/Move to other deck */}
-                          {onTransferCard && (
-                            <>
-                              <button
-                                onClick={() => onTransferCard(card, 'copy')}
-                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-blue-500/20"
-                                title="Copy to other deck"
-                              >
-                                <Copy className="w-4 h-4 text-blue-400" />
-                              </button>
-                              <button
-                                onClick={() => onTransferCard(card, 'move')}
-                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-green-500/20 animate-pulse"
-                                title="Move to other deck"
-                              >
-                                <ArrowRightLeft className="w-4 h-4 text-green-400" />
-                              </button>
-                            </>
-                          )}
-                          {!card.isCommander && (
-                            <button
-                              onClick={() =>
-                                dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })
-                              }
-                              className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
-                              title="Set as Commander"
-                            >
-                              <Crown className="w-4.5 h-4.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              if (isCover) {
-                                dispatch({ type: 'UNSET_COVER_CARD', deckId });
-                              } else {
-                                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
-                              }
-                            }}
-                            className={`p-1 rounded transition-colors ${isCover
-                                ? 'bg-primary/30 text-primary border border-primary/40'
-                                : 'bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary'
-                              }`}
-                            title={isCover ? 'Remove as Cover' : 'Set as Cover'}
-                          >
-                            <Sparkles className="w-4.5 h-4.5" />
-                          </button>
-                          <button
-                            onClick={() => onVariantOpen(card)}
-                            className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
-                            title="Change Art"
-                          >
-                            <ImageIcon className="w-4.5 h-4.5" />
-                          </button>
-                          <a
-                            href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors flex items-center justify-center"
-                            title="View Combos (Spellbook)"
-                          >
-                            <Zap className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
-                          </a>
-                          <button
-                            onClick={() =>
-                              dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })
-                            }
-                            className="p-1 rounded bg-secondary/80 hover:bg-destructive/20 text-muted-foreground hover:text-red-400 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4.5 h-4.5" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center justify-between bg-black/60 border border-border/30 rounded py-0.5 px-2">
-                          <button
-                            onClick={() =>
-                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
-                            }
-                            className="text-muted-foreground hover:text-foreground font-bold text-sm px-2"
-                          >
-                            -
-                          </button>
-                          <span className="text-sm font-mono font-bold text-foreground">
-                            {card.quantity}
-                          </span>
-                          <button
-                            onClick={() =>
-                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
-                            }
-                            className="text-muted-foreground hover:text-foreground font-bold text-sm px-2"
                           >
                             +
                           </button>
@@ -1252,16 +977,6 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               <span>Visual Grid</span>
             </button>
             <button
-              onClick={() => setViewMode('stack')}
-              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'stack'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-                }`}
-            >
-              <Layers3 className="w-3.5 h-3.5" />
-              <span>Visual Stack</span>
-            </button>
-            <button
               onClick={() => setViewMode('text')}
               className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'text'
                   ? 'bg-primary text-primary-foreground shadow-sm'
@@ -1270,16 +985,6 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             >
               <AlignJustify className="w-3.5 h-3.5" />
               <span>List</span>
-            </button>
-            <button
-              onClick={() => setViewMode('condensed')}
-              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'condensed'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-                }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span>Condensed</span>
             </button>
           </div>
         </div>
