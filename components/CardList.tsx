@@ -28,6 +28,7 @@ import {
   Mountain,
   ShieldAlert,
   HelpCircle,
+  Flame,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ import {
 import { useDeck, DeckCard } from '@/lib/deck-store';
 import { CustomCardsModal } from './CustomCardsModal';
 import { CATEGORY_ORDER, CardCategory, getThumbnailUrl, ScryfallCard, isDoubleFaced, isGameChangerCard, getManaSymbolUrl } from '@/lib/scryfall';
+import { getEdhrecUrl } from '@/lib/utils';
 
 // Mana symbol colors
 const MANA_COLORS: Record<string, string> = {
@@ -226,6 +228,19 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard }: CardRowProps) 
           <Zap className="w-3.5 h-3.5 text-amber-500 hover:scale-110 transition-transform" />
         </a>
 
+        {/* View EDHREC Synergies */}
+        {card.isCommander && (
+          <a
+            href={getEdhrecUrl(card.name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-6 h-6 rounded hover:bg-orange-500/10 text-muted-foreground hover:text-orange-400 flex items-center justify-center transition-colors"
+            title={`View ${card.name} Synergies on EDHREC`}
+          >
+            <Flame className="w-3.5 h-3.5 text-orange-500 hover:scale-110 transition-transform" />
+          </a>
+        )}
+
         {/* Quantity controls */}
         <Button
           variant="ghost"
@@ -348,7 +363,7 @@ function PremiumListRow({
         )}
 
         {/* Quick Hover Action Buttons */}
-        <div className="w-0 overflow-hidden group-hover:w-[130px] flex items-center gap-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100 pl-1 border-l border-border/40 ml-1">
+        <div className="w-0 overflow-hidden group-hover:w-[155px] flex items-center gap-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100 pl-1 border-l border-border/40 ml-1">
           {/* Decrement */}
           <button
             onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
@@ -401,6 +416,19 @@ function PremiumListRow({
           >
             <ImageIcon className="w-3 h-3" />
           </button>
+
+          {/* EDHREC Synergies */}
+          {card.isCommander && (
+            <a
+              href={getEdhrecUrl(card.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-0.5 rounded bg-secondary hover:bg-orange-500/20 text-muted-foreground hover:text-orange-400 active:scale-95 transition-transform flex items-center justify-center"
+              title="EDHREC Synergies"
+            >
+              <Flame className="w-3 h-3 text-orange-500" />
+            </a>
+          )}
 
           {/* Delete */}
           <button
@@ -471,6 +499,116 @@ function PremiumListSection({
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+function formatOracleText(text?: string) {
+  if (!text) return null;
+  const parts = text.split(/({[^{}]+})/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('{') && part.endsWith('}')) {
+      const symbol = part.slice(1, -1);
+      const url = getManaSymbolUrl(symbol);
+      return (
+        <img
+          key={index}
+          src={url}
+          alt={part}
+          className="inline-block w-3.5 h-3.5 align-text-bottom mx-0.5 select-none"
+          onError={(e) => {
+            (e.currentTarget as HTMLElement).style.display = 'none';
+          }}
+        />
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
+function CardOracleText({ cardData }: { cardData: any }) {
+  if (!cardData) return null;
+
+  // Check if double faced
+  if (cardData.card_faces && cardData.card_faces.length > 0) {
+    return (
+      <div className="space-y-2.5">
+        {cardData.card_faces.map((face: any, idx: number) => (
+          <div key={idx} className="text-left border-l-2 border-primary/40 pl-2 py-0.5">
+            <div className="flex items-center justify-between gap-1 mb-0.5">
+              <span className="text-[10px] font-bold text-foreground truncate max-w-[125px] sm:max-w-[155px]">
+                {face.name}
+              </span>
+              {face.mana_cost && (
+                <div className="flex gap-0.5 shrink-0">
+                  {face.mana_cost.split(/({[^{}]+})/g).filter(Boolean).map((part: string, pIdx: number) => {
+                    if (part.startsWith('{') && part.endsWith('}')) {
+                      return (
+                        <img
+                          key={pIdx}
+                          src={getManaSymbolUrl(part.slice(1, -1))}
+                          alt={part}
+                          className="w-3 h-3 select-none"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              )}
+            </div>
+            {face.type_line && (
+              <div className="text-[8px] text-muted-foreground font-semibold italic truncate mb-1">
+                {face.type_line}
+              </div>
+            )}
+            {face.oracle_text && face.oracle_text.split('\n').map((para: string, pIdx: number) => (
+              <p key={pIdx} className="text-[10px] text-foreground/80 leading-normal mb-1 font-sans break-words">
+                {formatOracleText(para)}
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Single-faced card
+  return (
+    <div className="text-left py-0.5">
+      {cardData.type_line && (
+        <div className="text-[8px] text-muted-foreground font-semibold italic mb-1.5 flex items-center justify-between gap-1 border-b border-border/10 pb-0.5">
+          <span className="truncate max-w-[130px] sm:max-w-[160px]">{cardData.type_line}</span>
+          {cardData.mana_cost && (
+            <div className="flex gap-0.5 shrink-0">
+              {cardData.mana_cost.split(/({[^{}]+})/g).filter(Boolean).map((part: string, pIdx: number) => {
+                if (part.startsWith('{') && part.endsWith('}')) {
+                  return (
+                    <img
+                      key={pIdx}
+                      src={getManaSymbolUrl(part.slice(1, -1))}
+                      alt={part}
+                      className="w-3 h-3 select-none"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  );
+                }
+                return null;
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      {cardData.oracle_text && cardData.oracle_text.split('\n').map((para: string, pIdx: number) => (
+        <p key={pIdx} className="text-[10px] text-foreground/80 leading-normal mb-1 font-sans break-words">
+          {formatOracleText(para)}
+        </p>
+      ))}
     </div>
   );
 }
@@ -586,34 +724,41 @@ function CategorySection({
                     </div>
 
                     {/* Dark Crimson Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/85 border border-primary/20 opacity-0 group-hover/visual:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-2.5 z-10 text-center">
-                      <span className={`text-xs sm:text-sm font-bold leading-tight truncate px-0.5 ${isBanned ? 'text-red-400 line-through' : 'text-foreground'}`}>
-                        {card.name}
-                      </span>
-                      {isBanned && (
-                        <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-wide bg-red-500/10 py-0.5 rounded border border-red-500/15 animate-pulse mt-0.5">
-                          BANNED IN COMMANDER
+                    <div className="absolute inset-0 bg-black/90 border border-primary/30 opacity-0 group-hover/visual:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-2.5 z-10 text-center">
+                      <div className="flex flex-col w-full">
+                        <span className={`text-xs sm:text-sm font-bold leading-tight truncate px-0.5 border-b border-border/20 pb-1 ${isBanned ? 'text-red-400 line-through' : 'text-foreground'}`}>
+                          {card.name}
                         </span>
-                      )}
+                        {isBanned && (
+                          <span className="text-[9px] text-red-500 font-extrabold uppercase tracking-wide bg-red-500/10 py-0.5 rounded border border-red-500/15 animate-pulse mt-0.5">
+                            BANNED IN COMMANDER
+                          </span>
+                        )}
+                      </div>
 
-                      <div className="flex flex-col gap-2 w-full mt-1">
+                      {/* Scrollable Oracle Text */}
+                      <div className="flex-1 overflow-y-auto my-1.5 pr-0.5 text-left scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+                        <CardOracleText cardData={card.scryfallData} />
+                      </div>
+
+                      <div className="flex flex-col gap-2 w-full">
                         <div className="flex gap-1.5 justify-center flex-wrap">
                           {/* Copy/Move to other deck */}
                           {onTransferCard && (
                             <>
                               <button
                                 onClick={() => onTransferCard(card, 'copy')}
-                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-blue-500/20"
+                                className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-blue-500/20 hover:border-blue-500/40 shadow-sm active:scale-95"
                                 title="Copy to other deck"
                               >
-                                <Copy className="w-4 h-4 text-blue-400" />
+                                <Copy className="w-5 h-5 text-blue-400" />
                               </button>
                               <button
                                 onClick={() => onTransferCard(card, 'move')}
-                                className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-green-500/20 animate-pulse"
+                                className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-green-500/20 hover:border-green-500/40 animate-pulse shadow-sm active:scale-95"
                                 title="Move to other deck"
                               >
-                                <ArrowRightLeft className="w-4 h-4 text-green-400" />
+                                <ArrowRightLeft className="w-5 h-5 text-green-400" />
                               </button>
                             </>
                           )}
@@ -622,10 +767,10 @@ function CategorySection({
                               onClick={() =>
                                 dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })
                               }
-                              className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                              className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-border/20 shadow-sm active:scale-95"
                               title="Set as Commander"
                             >
-                              <Crown className="w-4 h-4" />
+                              <Crown className="w-5 h-5" />
                             </button>
                           )}
                           <button
@@ -636,47 +781,52 @@ function CategorySection({
                                 dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
                               }
                             }}
-                            className={`p-1 rounded transition-colors ${isCover
-                                ? 'bg-primary/30 text-primary border border-primary/40'
-                                : 'bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary'
+                            className={`p-2 rounded-lg transition-all duration-200 border shadow-sm active:scale-95 ${isCover
+                                ? 'bg-primary/30 text-primary border-primary/40'
+                                : 'bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary border-border/20'
                               }`}
                             title={isCover ? 'Remove as Cover' : 'Set as Cover'}
                           >
-                            <Sparkles className="w-4 h-4" />
+                            <Sparkles className="w-5 h-5" />
                           </button>
                           <button
                             onClick={() => onVariantOpen(card)}
-                            className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                            className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-border/20 shadow-sm active:scale-95"
                             title="Change Art"
                           >
-                            <ImageIcon className="w-4 h-4" />
+                            <ImageIcon className="w-5 h-5" />
                           </button>
-                          <a
-                            href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 rounded bg-secondary/80 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors flex items-center justify-center"
-                            title="View Combos (Spellbook)"
-                          >
-                            <Zap className="w-4 h-4 text-amber-500 animate-pulse" />
-                          </a>
                           <button
                             onClick={() =>
                               dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })
                             }
-                            className="p-1 rounded bg-secondary/80 hover:bg-destructive/20 text-muted-foreground hover:text-red-400 transition-colors"
+                            className="p-2 rounded-lg bg-secondary/80 hover:bg-destructive/25 text-muted-foreground hover:text-red-400 transition-all duration-200 border border-border/20 hover:border-red-500/30 shadow-sm active:scale-95"
                             title="Delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
 
-                        <div className="flex items-center justify-between bg-black/60 border border-border/30 rounded py-0.5 px-2">
+                        {card.isCommander && (
+                          <a
+                            href={getEdhrecUrl(card.name)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 active:scale-98 text-[11px] font-bold text-white shadow-lg shadow-orange-600/20 border border-orange-500/30 transition-all duration-200"
+                            title={`Open ${card.name} on EDHREC`}
+                          >
+                            <Flame className="w-3.5 h-3.5 text-white animate-pulse" />
+                            <span>EDHREC Synergies</span>
+                            <span className="text-[9px] opacity-75">↗</span>
+                          </a>
+                        )}
+
+                        <div className="flex items-center justify-between bg-black/75 border border-border/40 rounded-lg py-1 px-3 shadow-inner">
                           <button
                             onClick={() =>
                               dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
                             }
-                            className="text-muted-foreground hover:text-foreground font-bold text-sm px-1.5"
+                            className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
                           >
                             -
                           </button>
@@ -687,7 +837,7 @@ function CategorySection({
                             onClick={() =>
                               dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
                             }
-                            className="text-muted-foreground hover:text-foreground font-bold text-sm px-1.5"
+                            className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
                           >
                             +
                           </button>

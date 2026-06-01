@@ -58,6 +58,7 @@ export interface ScryfallCard {
   mana_cost?: string;
   cmc: number;
   type_line: string;
+  oracle_text?: string;
   colors?: string[];
   color_identity: string[];
   image_uris?: ScryfallImageUris;
