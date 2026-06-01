@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Images, Trash2, Check, X, Sparkles } from 'lucide-react';
+import { Images, Trash2, Check, X, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,59 @@ export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const [urlInput, setUrlInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState('');
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    setErrorMsg('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit: 32MB
+    const maxSize = 32 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setErrorMsg('File size exceeds the 32MB limit.');
+      return;
+    }
+
+    setFileName(file.name);
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to upload image.');
+      }
+
+      const data = await res.json();
+      const uploadedUrl = data?.data?.url;
+
+      if (!uploadedUrl) {
+        throw new Error('No image URL returned from server.');
+      }
+
+      // Save to active deck
+      dispatch({ type: 'SET_CUSTOM_CARDBACK', url: uploadedUrl, deckId });
+      // Save to global list
+      dispatch({ type: 'SAVE_CARDBACK_URL', url: uploadedUrl });
+
+      setFileName('');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error uploading file.');
+      setFileName('');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
 
   if (!state) return null;
 
@@ -130,6 +183,40 @@ export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
                 <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
                   💡 <strong>Adjustment Tip:</strong> If your uploaded image is wider, it will automatically scale and clip to fit the 5:7 vertical card container perfectly without stretching.
                 </p>
+
+                <div className="flex flex-col gap-1.5 pt-3 border-t border-border/20 mt-3">
+                  <label className="text-xs font-semibold text-foreground">
+                    Or Upload Local Image (Max 32MB)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('cardback-file-input')?.click()}
+                      className="text-xs h-9 gap-1.5 border-dashed border-primary/45 hover:border-primary shrink-0 relative"
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      {uploading ? 'Uploading...' : 'Choose File'}
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+                      {fileName || 'No file selected'}
+                    </span>
+                    <input
+                      type="file"
+                      id="cardback-file-input"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Reset to default cardback */}

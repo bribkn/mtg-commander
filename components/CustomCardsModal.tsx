@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Trash2, Search, Loader2, X, Plus, ImageIcon } from 'lucide-react';
+import { Sparkles, Trash2, Search, Loader2, X, Plus, ImageIcon, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,55 @@ export function CustomCardsModal({ open, onClose, prepopulatedCard }: CustomCard
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState('');
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    setErrorMsg('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit: 32MB
+    const maxSize = 32 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setErrorMsg('File size exceeds the 32MB limit.');
+      return;
+    }
+
+    setFileName(file.name);
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to upload image.');
+      }
+
+      const data = await res.json();
+      const uploadedUrl = data?.data?.url;
+
+      if (!uploadedUrl) {
+        throw new Error('No image URL returned from server.');
+      }
+
+      setUrlInput(uploadedUrl);
+      setFileName('');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error uploading file.');
+      setFileName('');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
   
   const containerRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(searchQuery, 250);
@@ -176,7 +225,7 @@ export function CustomCardsModal({ open, onClose, prepopulatedCard }: CustomCard
                   />
                 </div>
 
-                {/* 2. Image URL */}
+                 {/* 2. Image URL */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase">
                     Image URL
@@ -187,6 +236,39 @@ export function CustomCardsModal({ open, onClose, prepopulatedCard }: CustomCard
                     placeholder="https://example.com/art.jpg"
                     className="bg-secondary text-xs h-9"
                   />
+                  <div className="flex flex-col gap-1.5 pt-1.5 mt-1 border-t border-border/10">
+                    <label className="text-[9px] font-bold text-muted-foreground uppercase">
+                      Or Upload Image (Max 32MB)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => document.getElementById('alter-file-input')?.click()}
+                        className="text-[10px] h-8 gap-1.5 border-dashed border-primary/45 hover:border-primary shrink-0 relative"
+                        disabled={uploading}
+                      >
+                        {uploading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5" />
+                        )}
+                        {uploading ? 'Uploading...' : 'Choose File'}
+                      </Button>
+                      <span className="text-[9px] text-muted-foreground truncate max-w-[140px]">
+                        {fileName || 'No file chosen'}
+                      </span>
+                      <input
+                        type="file"
+                        id="alter-file-input"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        disabled={uploading}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Live Preview of image if present */}
