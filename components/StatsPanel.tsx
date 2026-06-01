@@ -1,9 +1,10 @@
 'use client';
  
 import { useState } from 'react';
-import { Trophy, Plus, Minus } from 'lucide-react';
+import { Trophy, Plus, Minus, ShieldAlert } from 'lucide-react';
 import { useDeck } from '@/lib/deck-store';
 import { CATEGORY_ORDER, isGameChangerCard } from '@/lib/scryfall';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const MANA_COLORS = ['W', 'U', 'B', 'R', 'G'] as const;
 const MANA_LABELS: Record<string, string> = {
@@ -39,11 +40,13 @@ export function StatsPanel({ deckId }: { deckId?: string } = {}) {
     dispatch({ type: 'UPDATE_DECK_STATS', wins: newWins, losses: newLosses, deckId });
   }
  
-  // ── Mana Curve ──────────────────────────────────────────────────────────
+  // ── Mana Curve (Non-lands) ──────────────────────────────────────────────────────────
   const curve: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
   for (const card of state.cards) {
-    const cmc = Math.min(Math.floor(card.scryfallData.cmc ?? 0), 7);
-    curve[cmc] = (curve[cmc] ?? 0) + card.quantity;
+    if (card.category !== 'Land') {
+      const cmc = Math.min(Math.floor(card.scryfallData.cmc ?? 0), 7);
+      curve[cmc] = (curve[cmc] ?? 0) + card.quantity;
+    }
   }
   const maxCurve = Math.max(...Object.values(curve), 1);
  
@@ -84,6 +87,19 @@ export function StatsPanel({ deckId }: { deckId?: string } = {}) {
       gameChangerCount += card.quantity;
     }
   }
+  const gameChangersInDeck = state.cards
+    .filter((card) => isGameChangerCard(card.name))
+    .map((card) => ({ name: card.name, quantity: card.quantity }));
+
+  // ── Banned Cards Count ────────────────────────────────────────────────
+  let bannedCount = 0;
+  const bannedCardsList: Array<{ name: string; quantity: number }> = [];
+  for (const card of state.cards) {
+    if (card.scryfallData.legalities?.commander === 'banned') {
+      bannedCount += card.quantity;
+      bannedCardsList.push({ name: card.name, quantity: card.quantity });
+    }
+  }
 
   // ── Lands & Opening Hand Expectations ─────────────────────────────────────
   let landCount = 0;
@@ -96,6 +112,27 @@ export function StatsPanel({ deckId }: { deckId?: string } = {}) {
  
   return (
     <div className="space-y-6 p-4">
+      {/* Banned Cards warning */}
+      {bannedCount > 0 && (
+        <div className="border border-red-500/30 bg-red-500/10 rounded-xl p-3 flex flex-col gap-1.5 shadow-lg shadow-red-500/5 animate-pulse">
+          <div className="flex items-center gap-2 text-red-400">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            <span className="text-xs font-bold uppercase tracking-wider">Legality Warning</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground leading-normal">
+            This deck contains <strong className="text-red-400 font-bold">{bannedCount} banned card{bannedCount > 1 ? 's' : ''}</strong> in Commander:
+          </p>
+          <div className="flex flex-col gap-0.5 mt-1 border-t border-red-500/15 pt-1.5 max-h-24 overflow-y-auto custom-scrollbar">
+            {bannedCardsList.map((bc) => (
+              <div key={bc.name} className="flex justify-between gap-4 text-[10px]">
+                <span className="font-semibold text-red-400 truncate max-w-[140px]" title={bc.name}>{bc.name}</span>
+                <span className="font-mono text-muted-foreground font-bold shrink-0">{bc.quantity}x</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Summary row - 3x2 grid for better space utilization in sidebar */}
       <div className="grid grid-cols-2 gap-2.5">
         <StatBox label="Cards" value={String(totalCards)} sublabel="/100" highlight={totalCards === 100} />
@@ -103,13 +140,45 @@ export function StatsPanel({ deckId }: { deckId?: string } = {}) {
         <StatBox label="Lands" value={String(landCount)} sublabel="in deck" highlight={landCount >= 34 && landCount <= 40} />
         <StatBox label="Opening Lands" value={avgOpeningLands} sublabel="avg in 7 cards" highlight={!isNaN(parseFloat(avgOpeningLands)) && parseFloat(avgOpeningLands) >= 2.3 && parseFloat(avgOpeningLands) <= 3.0} />
         <StatBox label="Unique" value={String(state.cards.length)} sublabel="cards" />
-        <StatBox
-          label="Game Changers"
-          value={String(gameChangerCount)}
-          sublabel="in deck"
-          highlight={gameChangerCount > 0}
-          isGameChanger={true}
-        />
+        
+        {gameChangersInDeck.length > 0 ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <div className="cursor-pointer">
+                  <StatBox
+                    label="Game Changers"
+                    value={String(gameChangerCount)}
+                    sublabel="in deck"
+                    highlight={gameChangerCount > 0}
+                    isGameChanger={true}
+                  />
+                </div>
+              }
+            />
+            <TooltipContent className="bg-black/95 text-white border border-red-500/20 p-2.5 rounded-lg max-w-sm flex flex-col gap-1 shadow-xl z-50">
+              <div className="font-bold text-[10px] uppercase tracking-wider text-red-400 mb-1 border-b border-red-500/20 pb-1">
+                Game Changers:
+              </div>
+              <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                {gameChangersInDeck.map((gc) => (
+                  <div key={gc.name} className="flex justify-between gap-4 text-[10px]">
+                    <span className="font-medium text-foreground">{gc.name}</span>
+                    <span className="font-mono text-muted-foreground font-bold shrink-0">{gc.quantity}x</span>
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <StatBox
+            label="Game Changers"
+            value={String(gameChangerCount)}
+            sublabel="in deck"
+            highlight={gameChangerCount > 0}
+            isGameChanger={true}
+          />
+        )}
       </div>
  
       {/* Winrate Stats Panel Card */}

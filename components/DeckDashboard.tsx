@@ -54,6 +54,13 @@ export function DeckDashboard({ onOpenSplit }: DeckDashboardProps = {}) {
       .reduce((sum, c) => sum + c.quantity, 0);
   }
 
+  // Helper to count banned cards
+  function countBannedCards(deck: SavedDeck): number {
+    return deck.cards
+      .filter((c) => c.scryfallData.legalities?.commander === 'banned')
+      .reduce((sum, c) => sum + c.quantity, 0);
+  }
+
   return (
     <div className="flex-1 w-full max-w-screen-2xl mx-auto px-4 py-8 overflow-y-auto">
       {/* Welcome Hero Section */}
@@ -110,6 +117,7 @@ export function DeckDashboard({ onOpenSplit }: DeckDashboardProps = {}) {
         {decks.map((deck) => {
           const totalQty = deck.cards.reduce((sum, c) => sum + c.quantity, 0);
           const gcCount = countGameChangers(deck);
+          const bannedCount = countBannedCards(deck);
           const commanderName = getCommanderName(deck);
           const backgroundArt = getDeckArt(deck);
           const isConfirmingDelete = deletingId === deck.id;
@@ -138,6 +146,12 @@ export function DeckDashboard({ onOpenSplit }: DeckDashboardProps = {}) {
                 <Badge className="bg-black/70 border border-border/40 font-mono text-[10px]">
                   {totalQty}/100
                 </Badge>
+                {bannedCount > 0 && (
+                  <Badge className="bg-red-950/90 border border-red-500/50 text-red-400 font-mono text-[10px] drop-shadow-sm gap-1 flex items-center animate-pulse">
+                    <ShieldAlert className="w-3 h-3 text-red-500" />
+                    <span>{bannedCount} Banned</span>
+                  </Badge>
+                )}
                 {totalGames > 0 && (
                   <Badge className="bg-yellow-950/80 border border-yellow-500/30 text-yellow-400 font-mono text-[10px] drop-shadow-sm">
                     {winrate}% WR
