@@ -32,6 +32,7 @@ import { isGameChangerCard, getManaSymbolUrl, getFrontImageUrl } from '@/lib/scr
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { CardMedia } from '@/components/CardMedia';
 
 function SharePageLoading() {
   return (
@@ -571,7 +572,7 @@ function SharePageContent() {
                   
                   {/* High-Resolution card preview */}
                   <div className="relative w-[270px] aspect-[5/7] rounded-xl overflow-hidden border border-border shadow-2xl bg-neutral-950 flex items-center justify-center">
-                    <img
+                    <CardMedia
                       src={
                         hoveredCard 
                           ? getFrontImageUrl(hoveredCard.scryfallData) 
@@ -683,7 +684,7 @@ function SharePageContent() {
                                         className="relative w-[140px] sm:w-[190px] aspect-[5/7] rounded-xl overflow-hidden border border-border/80 shadow-md bg-secondary group/visual transition-all duration-300 hover:scale-[1.04] hover:shadow-2xl cursor-pointer"
                                       >
                                         {cardImg ? (
-                                          <img
+                                          <CardMedia
                                             src={cardImg}
                                             alt={card.name}
                                             className="w-full h-full object-cover absolute inset-0 select-none"

@@ -20,6 +20,7 @@ import {
   isGameChangerCard, CATEGORY_ORDER, autocompleteCardName, getCardByExactName
 } from '@/lib/scryfall';
 import { AddLandModal } from './AddLandModal';
+import { CardMedia } from './CardMedia';
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
@@ -1224,11 +1225,11 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                     {/* Left side: Card artwork crop & name details */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-border/60 bg-black/40 flex items-center justify-center">
-                        <img
+                        <CardMedia
                           src={getFrontImageUrl(card) || ''}
                           alt={card.name}
                           className="w-full h-full object-cover select-none pointer-events-none group-hover:scale-105 transition-transform"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
                         />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1330,12 +1331,12 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
               height: `${previewHeight}px`,
             }}
           >
-            <img
+            <CardMedia
               src={getFrontImageUrl(previewCard) || ''}
               alt={previewCard.name}
-              className="w-full h-full object-cover rounded-xl"
+              className="w-full h-full object-cover rounded-xl absolute inset-0"
               onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
+                (e.currentTarget as HTMLElement).style.display = 'none';
               }}
             />
           </div>,

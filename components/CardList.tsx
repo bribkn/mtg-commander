@@ -44,7 +44,9 @@ import {
 } from '@/components/ui/dialog';
 import { useDeck, DeckCard } from '@/lib/deck-store';
 import { CustomCardsModal } from './CustomCardsModal';
+import { CommanderGifAlterModal } from './CommanderGifAlterModal';
 import { CATEGORY_ORDER, CardCategory, getThumbnailUrl, ScryfallCard, isDoubleFaced, isGameChangerCard, getManaSymbolUrl } from '@/lib/scryfall';
+import { CardMedia } from './CardMedia';
 import { getEdhrecUrl } from '@/lib/utils';
 
 // Mana symbol colors
@@ -84,9 +86,10 @@ interface CardRowProps {
   onVariantOpen: (card: DeckCard) => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
+  onGifAlterOpen?: (card: DeckCard) => void;
 }
 
-function CardRow({ card, onVariantOpen, deckId, onTransferCard }: CardRowProps) {
+function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }: CardRowProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const [imgError, setImgError] = useState(false);
@@ -217,6 +220,19 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard }: CardRowProps) 
           <ImageIcon className="w-3.5 h-3.5" />
         </Button>
 
+        {/* Create GIF Alter */}
+        {card.isCommander && onGifAlterOpen && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-6 h-6 text-muted-foreground hover:text-primary animate-pulse"
+            title="Create GIF Alter"
+            onClick={() => onGifAlterOpen(card)}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          </Button>
+        )}
+
         {/* View Combos */}
         <a
           href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
@@ -282,12 +298,14 @@ function PremiumListRow({
   card, 
   onVariantOpen, 
   deckId, 
-  onTransferCard 
+  onTransferCard,
+  onGifAlterOpen
 }: { 
   card: DeckCard; 
   onVariantOpen: (card: DeckCard) => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
+  onGifAlterOpen?: (card: DeckCard) => void;
 }) {
   const { customCards, dispatch, state: globalState, decks } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
@@ -363,7 +381,7 @@ function PremiumListRow({
         )}
 
         {/* Quick Hover Action Buttons */}
-        <div className="w-0 overflow-hidden group-hover:w-[155px] flex items-center gap-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100 pl-1 border-l border-border/40 ml-1">
+        <div className="w-0 overflow-hidden group-hover:w-[185px] flex items-center gap-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100 pl-1 border-l border-border/40 ml-1">
           {/* Decrement */}
           <button
             onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
@@ -417,6 +435,17 @@ function PremiumListRow({
             <ImageIcon className="w-3 h-3" />
           </button>
 
+          {/* Create GIF Alter */}
+          {card.isCommander && onGifAlterOpen && (
+            <button
+              onClick={() => onGifAlterOpen(card)}
+              className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform animate-pulse"
+              title="Create GIF Alter"
+            >
+              <Sparkles className="w-3 h-3 text-amber-400" />
+            </button>
+          )}
+
           {/* EDHREC Synergies */}
           {card.isCommander && (
             <a
@@ -463,12 +492,14 @@ function PremiumListSection({
   onVariantOpen,
   deckId,
   onTransferCard,
+  onGifAlterOpen,
 }: {
   category: string;
   cards: DeckCard[];
   onVariantOpen: (card: DeckCard) => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
+  onGifAlterOpen?: (card: DeckCard) => void;
 }) {
   const totalQuantity = cards.reduce((sum, c) => sum + c.quantity, 0);
 
@@ -496,6 +527,7 @@ function PremiumListSection({
             onVariantOpen={onVariantOpen}
             deckId={deckId}
             onTransferCard={onTransferCard}
+            onGifAlterOpen={onGifAlterOpen}
           />
         ))}
       </div>
@@ -622,6 +654,7 @@ interface CategorySectionProps {
   onVariantOpen: (card: DeckCard) => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
+  onGifAlterOpen?: (card: DeckCard) => void;
 }
 
 function CategorySection({
@@ -631,6 +664,7 @@ function CategorySection({
   onVariantOpen,
   deckId,
   onTransferCard,
+  onGifAlterOpen,
 }: CategorySectionProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
@@ -662,7 +696,7 @@ function CategorySection({
           {viewMode === 'text' && (
             <div className="space-y-0.5">
               {cards.map((card) => (
-                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} />
+                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} onGifAlterOpen={onGifAlterOpen} />
               ))}
             </div>
           )}
@@ -685,7 +719,7 @@ function CategorySection({
                       }`}
                   >
                     {cardImg ? (
-                      <img
+                      <CardMedia
                         src={cardImg}
                         alt={card.name}
                         className="w-full h-full object-cover absolute inset-0 select-none"
@@ -719,8 +753,10 @@ function CategorySection({
                       </div>
                     )}
 
-                    <div className="absolute top-1.5 right-1.5 bg-black/85 p-0.5 px-2 rounded border border-border/40 z-10 text-[10px] font-mono font-bold">
-                      {card.quantity}x
+                    {/* Centered Bottom Quantity Pill */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/85 px-3 py-1 rounded-full border border-border/40 z-10 flex items-center gap-1.5 shadow-md shadow-black/50 transition-opacity duration-300 group-hover/visual:opacity-0 select-none animate-fade-in">
+                      <span className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase font-mono">QTY:</span>
+                      <span className="text-xs font-mono font-extrabold text-primary">{card.quantity}</span>
                     </div>
 
                     {/* Dark Crimson Hover Overlay */}
@@ -796,6 +832,15 @@ function CategorySection({
                           >
                             <ImageIcon className="w-5 h-5" />
                           </button>
+                          {card.isCommander && onGifAlterOpen && (
+                            <button
+                              onClick={() => onGifAlterOpen(card)}
+                              className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-primary/20 shadow-sm active:scale-95 animate-pulse"
+                              title="Create GIF Alter"
+                            >
+                              <Sparkles className="w-5 h-5 text-amber-400" />
+                            </button>
+                          )}
                           <button
                             onClick={() =>
                               dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })
@@ -867,6 +912,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterQuery, setFilterQuery] = useState('');
+  const [gifAlterCard, setGifAlterCard] = useState<DeckCard | null>(null);
   const [selectedCmc, setSelectedCmc] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedSubtype, setSelectedSubtype] = useState<string>('all');
@@ -1286,48 +1332,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
       <ScrollArea className="flex-1 overflow-hidden">
         <div className="pb-4">
-          {/* Card count summary */}
-          <div className="px-3 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
-                {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || selectedColor !== 'all' || filterQuery || showOnlyGameChangers ? (
-                  <span>
-                    {filteredCards.length} filtered (of {state.cards.length})
-                  </span>
-                ) : (
-                  <span>{state.cards.length} unique cards</span>
-                )}
-              </span>
-              {(selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || selectedColor !== 'all' || filterQuery || showOnlyGameChangers) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 px-2 text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary gap-1 rounded-md"
-                  onClick={() => {
-                    setFilterQuery('');
-                    setSelectedCmc('all');
-                    setSelectedType('all');
-                    setSelectedSubtype('all');
-                    setSelectedColor('all');
-                    setShowOnlyGameChangers(false);
-                  }}
-                >
-                  <X className="w-3 h-3" />
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-            <span className="text-sm font-mono text-muted-foreground">
-              {selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all' || selectedColor !== 'all' || filterQuery || showOnlyGameChangers ? (
-                <span>
-                  {filteredCards.reduce((sum, c) => sum + c.quantity, 0)} total filtered
-                </span>
-              ) : (
-                <span>{totalCards} total</span>
-              )}
-            </span>
-          </div>
-          <Separator className="mb-2" />
+
 
           {filteredCards.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-6">
@@ -1352,6 +1357,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                       onVariantOpen={(card) => setVariantCard(card)}
                       deckId={deckId}
                       onTransferCard={onTransferCard}
+                      onGifAlterOpen={(card) => setGifAlterCard(card)}
                     />
                   );
                 })}
@@ -1370,6 +1376,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                       onVariantOpen={(card) => setVariantCard(card)}
                       deckId={deckId}
                       onTransferCard={onTransferCard}
+                      onGifAlterOpen={(card) => setGifAlterCard(card)}
                     />
                   );
                 })}
@@ -1388,6 +1395,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                       onVariantOpen={(card) => setVariantCard(card)}
                       deckId={deckId}
                       onTransferCard={onTransferCard}
+                      onGifAlterOpen={(card) => setGifAlterCard(card)}
                     />
                   );
                 })}
@@ -1406,6 +1414,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                     onVariantOpen={(card) => setVariantCard(card)}
                     deckId={deckId}
                     onTransferCard={onTransferCard}
+                    onGifAlterOpen={(card) => setGifAlterCard(card)}
                   />
                   <Separator className="my-1 opacity-30" />
                 </div>
@@ -1577,12 +1586,28 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                 : 'border-border/60 hover:border-primary/50 hover:scale-[1.02]'
                             }`}
                           >
-                            <img
+                            {/* Delete custom alter button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Are you sure you want to delete the custom alter "${custom.name}"?`)) {
+                                  dispatch({ type: 'DELETE_CUSTOM_CARD', id: custom.id });
+                                }
+                              }}
+                              className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/75 hover:bg-destructive text-white border border-white/10 hover:border-destructive/50 transition-all duration-200 z-20 shadow active:scale-95 opacity-0 group-hover/print:opacity-100 flex items-center justify-center"
+                              title="Delete Custom Alter"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <CardMedia
                               src={custom.imageUrl}
                               alt={custom.name}
-                              className="w-full h-full object-cover select-none"
+                              className="w-full h-full object-cover absolute inset-0 select-none"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://i.imgur.com/Hg8CwwU.jpeg';
+                                if (e.target instanceof HTMLImageElement) {
+                                  e.target.src = 'https://i.imgur.com/Hg8CwwU.jpeg';
+                                }
                               }}
                             />
                             <div className="absolute inset-0 bg-black/85 opacity-0 group-hover/print:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-2.5 text-center z-10">
@@ -1689,10 +1714,10 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               {previewCard ? (
                 <div className="flex flex-col items-center text-center space-y-4 w-full h-full justify-center">
                   <div className="relative w-full aspect-[5/7] rounded-xl overflow-hidden shadow-2xl border border-primary/20 bg-secondary flex items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:border-primary/40">
-                    <img
+                    <CardMedia
                       src={previewCard.image_uris?.large || previewCard.image_uris?.normal || previewCard.card_faces?.[0]?.image_uris?.large || previewCard.card_faces?.[0]?.image_uris?.normal || 'https://i.imgur.com/Hg8CwwU.jpeg'}
                       alt={previewCard.name}
-                      className="w-full h-full object-cover select-none"
+                      className="w-full h-full object-cover absolute inset-0 select-none"
                     />
                   </div>
                   <div className="space-y-1.5 w-full">
@@ -1733,6 +1758,15 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             : null
         }
       />
+
+      {/* Commander GIF Alter Modal */}
+      {gifAlterCard && (
+        <CommanderGifAlterModal
+          card={gifAlterCard}
+          open={gifAlterCard !== null}
+          onClose={() => setGifAlterCard(null)}
+        />
+      )}
     </div>
   );
 }

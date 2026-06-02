@@ -269,24 +269,30 @@ function AppContent() {
   const [leftStatsOpen, setLeftStatsOpen] = useState(false);
   const [rightStatsOpen, setRightStatsOpen] = useState(false);
 
-  // Helper to extract banner background art (Prioritizes coverCardId, falls back to commander)
+  // Helper to extract banner background art (Prioritizes coverCardId, falls back to commander) - bypasses WebM video formats
   function getBannerArtForDeck(deck: any): string {
     if (deck?.coverCardId) {
       const cover = deck.cards.find((c: any) => c.scryfallId === deck.coverCardId);
       if (cover?.scryfallData) {
         const data = cover.scryfallData;
-        if (data.image_uris?.art_crop) return data.image_uris.art_crop;
-        if (data.card_faces?.[0]?.image_uris?.art_crop) return data.card_faces[0].image_uris.art_crop;
-        if (data.image_uris?.normal) return data.image_uris.normal;
+        const id = cover.scryfallId;
+        const art = data.image_uris?.art_crop || data.card_faces?.[0]?.image_uris?.art_crop || data.image_uris?.normal || '';
+        if (art.endsWith('.webm') || art.includes('.webm') || art.includes('catbox.moe') || art.includes('pixeldrain.com')) {
+          return `https://cards.scryfall.io/art_crop/front/${id[0]}/${id[1]}/${id}.jpg`;
+        }
+        if (art) return art;
       }
     }
     if (deck?.commanderId) {
       const commanderCard = deck.cards.find((c: any) => c.scryfallId === deck.commanderId);
       if (commanderCard?.scryfallData) {
         const data = commanderCard.scryfallData;
-        if (data.image_uris?.art_crop) return data.image_uris.art_crop;
-        if (data.card_faces?.[0]?.image_uris?.art_crop) return data.card_faces[0].image_uris.art_crop;
-        if (data.image_uris?.normal) return data.image_uris.normal;
+        const id = commanderCard.scryfallId;
+        const art = data.image_uris?.art_crop || data.card_faces?.[0]?.image_uris?.art_crop || data.image_uris?.normal || '';
+        if (art.endsWith('.webm') || art.includes('.webm') || art.includes('catbox.moe') || art.includes('pixeldrain.com')) {
+          return `https://cards.scryfall.io/art_crop/front/${id[0]}/${id[1]}/${id}.jpg`;
+        }
+        if (art) return art;
       }
     }
     // Default MTG card back crop

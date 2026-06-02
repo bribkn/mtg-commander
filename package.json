@@ -13,6 +13,8 @@
     "@types/lz-string": "^1.3.34",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "gifshot": "^0.4.5",
+    "gifuct-js": "^2.1.2",
     "lucide-react": "^1.17.0",
     "lz-string": "^1.5.0",
     "next": "16.2.6",

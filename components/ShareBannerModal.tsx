@@ -232,6 +232,14 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
       normalUrl = scryCard.card_faces[0].image_uris.normal;
     }
 
+    // Bypass WebM / Custom alters for banner canvas creation (use static Scryfall base art)
+    if (artCropUrl && (artCropUrl.endsWith('.webm') || artCropUrl.includes('.webm') || artCropUrl.includes('catbox.moe') || artCropUrl.includes('pixeldrain.com'))) {
+      artCropUrl = `https://cards.scryfall.io/art_crop/front/${scryCard.id[0]}/${scryCard.id[1]}/${scryCard.id}.jpg`;
+    }
+    if (normalUrl && (normalUrl.endsWith('.webm') || normalUrl.includes('.webm') || normalUrl.includes('catbox.moe') || normalUrl.includes('pixeldrain.com'))) {
+      normalUrl = `https://cards.scryfall.io/normal/front/${scryCard.id[0]}/${scryCard.id[1]}/${scryCard.id}.jpg`;
+    }
+
     if (!artCropUrl || !normalUrl) {
       setError('Commander Scryfall image URLs could not be found.');
       setIsLoading(false);
