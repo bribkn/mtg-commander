@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns } from 'lucide-react';
+import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +10,10 @@ import { isGameChangerCard } from '@/lib/scryfall';
 
 interface DeckDashboardProps {
   onOpenSplit?: (deckId: string) => void;
+  onShareOpen?: (deckId: string) => void;
 }
 
-export function DeckDashboard({ onOpenSplit }: DeckDashboardProps = {}) {
+export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps = {}) {
   const { decks, dispatch } = useDeck();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -238,6 +239,20 @@ export function DeckDashboard({ onOpenSplit }: DeckDashboardProps = {}) {
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </Button>
+                      {onShareOpen && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onShareOpen(deck.id);
+                          }}
+                          className="w-7 h-7 text-muted-foreground hover:text-emerald-400 border border-border/30 rounded bg-black/40 hover:bg-black/60 shrink-0"
+                          title="Share Deck"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

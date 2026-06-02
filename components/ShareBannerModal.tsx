@@ -8,7 +8,9 @@ import {
   Loader2,
   Check,
   AlertCircle,
-  Crown
+  Crown,
+  Share2,
+  Link as LinkIcon
 } from 'lucide-react';
 import {
   Dialog,
@@ -18,11 +20,13 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useDeck } from '@/lib/deck-store';
 import { getFrontImageUrl, isDoubleFaced, getManaSymbolUrl, isGameChangerCard } from '@/lib/scryfall';
+import { compressDeck } from '@/lib/share';
 
 interface ShareBannerModalProps {
   open: boolean;
@@ -103,10 +107,66 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
   // States
   const [selectedTheme, setSelectedTheme] = useState<string>('obsidian');
-  const [activeTab, setActiveTab] = useState<'banner' | 'decklist'>('banner');
+  const [activeTab, setActiveTab] = useState<'link' | 'banner' | 'decklist'>('banner');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isUrlCopied, setIsUrlCopied] = useState(false);
+  const [isShortening, setIsShortening] = useState(false);
+  const [isShortened, setIsShortened] = useState(false);
+  const [shortenError, setShortenError] = useState('');
+
+  // Generate and auto-shorten share URL when modal opens
+  useEffect(() => {
+    setIsUrlCopied(false);
+    setIsShortening(false);
+    setIsShortened(false);
+    setShortenError('');
+    setShareUrl('');
+
+    if (!open || !state) return;
+
+    const generate = async () => {
+      try {
+        const compressed = compressDeck(state);
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const longUrl = `${origin}/share?d=${compressed}`;
+        setShareUrl(longUrl);
+        setIsShortening(true);
+        try {
+          const resp = await fetch(`/api/shorten?url=${encodeURIComponent(longUrl)}`);
+          if (!resp.ok) throw new Error(`status ${resp.status}`);
+          const short = await resp.text();
+          if (short && short.startsWith('http')) {
+            setShareUrl(short);
+            setIsShortened(true);
+          }
+        } catch (shortenErr) {
+          console.warn('Auto-shortening failed, keeping long URL:', shortenErr);
+          setShortenError('El acortador no está disponible. Puedes copiar el enlace largo.');
+          setTimeout(() => setShortenError(''), 6000);
+        } finally {
+          setIsShortening(false);
+        }
+      } catch (err) {
+        console.error('Error generating share link:', err);
+      }
+    };
+
+    generate();
+  }, [open, state]);
+
+  const handleCopyUrl = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setIsUrlCopied(true);
+      setTimeout(() => setIsUrlCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy share link:', err);
+    }
+  };
 
   // Preloaded image references
   const [artCropImage, setArtCropImage] = useState<HTMLImageElement | null>(null);
@@ -998,11 +1058,11 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
         {/* Header */}
         <DialogHeader className="shrink-0 select-none">
           <DialogTitle className="flex items-center gap-2 text-gradient-red text-xl font-bold">
-            <ImageIcon className="w-5 h-5 text-primary" />
+            <Share2 className="w-5 h-5 text-primary" />
             Deck Share & Export Portal
           </DialogTitle>
           <DialogDescription>
-            Generate stunning, high-resolution visuals of your Commander deck list to share on Discord, Reddit, or print.
+            Share your Commander deck via an interactive web link or generate stunning, high-resolution visuals.
           </DialogDescription>
         </DialogHeader>
 
@@ -1012,7 +1072,7 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
             <AlertCircle className="w-12 h-12 text-yellow-500" />
             <h3 className="text-base font-bold text-foreground">No Commander Selected</h3>
             <p className="text-xs text-muted-foreground">
-              To generate a custom card art banner, please select a Commander for your deck by clicking the crown icon on the card list first!
+              To share your deck or generate custom card artwork, please select a Commander for your deck by clicking the crown icon on the card list first!
             </p>
             <Button variant="outline" onClick={onClose} className="mt-2">
               Go Back
@@ -1023,16 +1083,102 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
             <TabsList className="w-full bg-secondary shrink-0 select-none">
               <TabsTrigger value="banner" className="flex-1 gap-2 py-2 text-xs font-bold">
                 <ImageIcon className="w-4 h-4" />
-                <span>Promo Banner (1546 x 432)</span>
+                <span>Promo Banner</span>
               </TabsTrigger>
               <TabsTrigger value="decklist" className="flex-1 gap-2 py-2 text-xs font-bold">
                 <Crown className="w-4 h-4" />
-                <span>Decklist Poster (1200 x 1500)</span>
+                <span>Decklist Poster</span>
+              </TabsTrigger>
+              <TabsTrigger value="link" className="flex-1 gap-2 py-2 text-xs font-bold">
+                <LinkIcon className="w-4 h-4" />
+                <span>Share Link</span>
               </TabsTrigger>
             </TabsList>
 
             <div className="flex-1 flex flex-col gap-4 overflow-y-auto py-3 pr-1 min-h-0">
               
+              <TabsContent value="link" className="flex-1 flex flex-col gap-4 mt-0 animate-fade-in-up">
+                <div className="bg-secondary/15 rounded-xl border border-border/40 p-5 flex flex-col gap-4 relative overflow-hidden select-none">
+                  <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-primary/5 blur-2xl animate-pulse" />
+                  
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+                      <Share2 className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">Interactive Deck Share Link</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        A permanent, database-free link that preserves all selected art printings, alterations, stats, and custom tags.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-black/60 border border-border/60 rounded-lg p-2.5 mt-2">
+                    {isShortening ? (
+                      <div className="flex items-center gap-2 flex-1 text-muted-foreground">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                        <span className="text-xs font-mono truncate">Acortando enlace...</span>
+                      </div>
+                    ) : (
+                      <Input
+                        value={shareUrl}
+                        readOnly
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                        className="bg-transparent border-0 h-6 text-xs text-foreground/80 focus-visible:ring-0 focus-visible:ring-offset-0 select-all font-mono w-full"
+                      />
+                    )}
+                    <Button
+                      size="xs"
+                      onClick={handleCopyUrl}
+                      disabled={isShortening || !shareUrl}
+                      className={`h-8 px-3.5 shrink-0 font-bold shadow-sm transition-all active:scale-95 ${
+                        isUrlCopied ? 'bg-green-500 hover:bg-green-500 text-white' : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                      }`}
+                    >
+                      {isUrlCopied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                          Copy Link
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {shortenError && (
+                    <p className="text-amber-400 text-[10.5px] mt-0.5 flex items-center gap-1 select-none animate-fade-in">
+                      <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span>{shortenError}</span>
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1 select-none">
+                    <div className="p-3.5 rounded-lg bg-secondary/5 border border-border/30 text-xs leading-relaxed space-y-1">
+                      <strong className="text-foreground flex items-center gap-1.5 mb-1 text-[11px] font-bold uppercase tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        Interactive Showcase
+                      </strong>
+                      <p className="text-muted-foreground text-[10.5px]">
+                        Recipients can browse your cards, view visual art grids, check mana curves, and inspect combos without needing an account.
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-lg bg-secondary/5 border border-border/30 text-xs leading-relaxed space-y-1">
+                      <strong className="text-foreground flex items-center gap-1.5 mb-1 text-[11px] font-bold uppercase tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        One-Click Cloning
+                      </strong>
+                      <p className="text-muted-foreground text-[10.5px]">
+                        Other players can copy the entire deck structure and card selections directly into their browser with a single button click.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
               <TabsContent value="banner" className="flex-1 flex flex-col gap-3 mt-0">
                 <div className="flex flex-col gap-2">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block select-none">
@@ -1100,81 +1246,85 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
               </TabsContent>
 
               {/* ── SECTION 2: CUSTOMIZE PRESETS ────────────────────── */}
-              <div className="space-y-3 select-none mt-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
-                  Choose Color Palette Theme
-                </span>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {THEME_PRESETS.map((t) => {
-                    const isActive = selectedTheme === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedTheme(t.id)}
-                        className={`relative flex flex-col items-start p-3 border rounded-xl bg-secondary/15 hover:bg-secondary/25 transition-all text-left group ${
-                          isActive
-                            ? 'border-primary shadow shadow-primary/10 bg-primary/5'
-                            : 'border-border/60 hover:border-primary/30'
-                        }`}
-                      >
-                        {/* Active border ring */}
-                        {isActive && (
-                          <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary/20 border border-primary flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5 text-primary stroke-[3px]" />
+              {activeTab !== 'link' && (
+                <div className="space-y-3 select-none mt-1 animate-fade-in-up">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                    Choose Color Palette Theme
+                  </span>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {THEME_PRESETS.map((t) => {
+                      const isActive = selectedTheme === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => setSelectedTheme(t.id)}
+                          className={`relative flex flex-col items-start p-3 border rounded-xl bg-secondary/15 hover:bg-secondary/25 transition-all text-left group ${
+                            isActive
+                              ? 'border-primary shadow shadow-primary/10 bg-primary/5'
+                              : 'border-border/60 hover:border-primary/30'
+                          }`}
+                        >
+                          {/* Active border ring */}
+                          {isActive && (
+                            <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary/20 border border-primary flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 text-primary stroke-[3px]" />
+                            </div>
+                          )}
+                          
+                          <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                            {t.name}
+                          </span>
+                          
+                          {/* Tiny color pills */}
+                          <div className="flex items-center gap-1.5 mt-2">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.accentColor }} />
+                            <span className="w-4 h-1.5 rounded-sm bg-white/20" />
+                            <span className="w-4 h-1.5 rounded-sm bg-white/5" />
                           </div>
-                        )}
-                        
-                        <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                          {t.name}
-                        </span>
-                        
-                        {/* Tiny color pills */}
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.accentColor }} />
-                          <span className="w-4 h-1.5 rounded-sm bg-white/20" />
-                          <span className="w-4 h-1.5 rounded-sm bg-white/5" />
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <Separator className="my-1" />
+              {activeTab !== 'link' && <Separator className="my-1" />}
 
               {/* ── SECTION 3: ACTIONS ──────────────────────────────── */}
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <Button
-                  onClick={handleDownload}
-                  disabled={isLoading}
-                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/15 gap-2 h-11"
-                >
-                  <Download className="w-4 h-4" />
-                  {activeTab === 'banner' ? 'Download Promo Banner PNG' : 'Download Decklist Poster PNG'}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  onClick={handleCopyToClipboard}
-                  disabled={isLoading}
-                  className={`w-full sm:w-[220px] font-bold border-border hover:border-primary/50 hover:bg-primary/5 transition-colors gap-2 h-11 ${
-                    isCopied ? 'text-green-500 border-green-500/50 hover:bg-green-500/5 hover:text-green-500' : ''
-                  }`}
-                >
-                  {isCopied ? (
-                    <>
-                      <Check className="w-4 h-4 animate-scale" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copy to Clipboard
-                    </>
-                  )}
-                </Button>
-              </div>
+              {activeTab !== 'link' && (
+                <div className="flex flex-col sm:flex-row items-center gap-3 animate-fade-in-up">
+                  <Button
+                    onClick={handleDownload}
+                    disabled={isLoading}
+                    className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/15 gap-2 h-11"
+                  >
+                    <Download className="w-4 h-4" />
+                    {activeTab === 'banner' ? 'Download Promo Banner PNG' : 'Download Decklist Poster PNG'}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={handleCopyToClipboard}
+                    disabled={isLoading}
+                    className={`w-full sm:w-[220px] font-bold border-border hover:border-primary/50 hover:bg-primary/5 transition-colors gap-2 h-11 ${
+                      isCopied ? 'text-green-500 border-green-500/50 hover:bg-green-500/5 hover:text-green-500' : ''
+                    }`}
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="w-4 h-4 animate-scale" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy to Clipboard
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
 
             </div>
           </Tabs>

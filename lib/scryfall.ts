@@ -190,6 +190,38 @@ export async function getCardsBatch(
   return { found, notFound };
 }
 
+/**
+ * Batch fetch multiple cards by Scryfall ID using the /cards/collection endpoint.
+ * Returns the list of successfully resolved ScryfallCard items.
+ */
+export async function getCardsBatchByIds(ids: string[]): Promise<ScryfallCard[]> {
+  const found: ScryfallCard[] = [];
+  const chunkSize = 75;
+  
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const identifiers = chunk.map((id) => ({ id }));
+    try {
+      const res = await fetch(`${SCRYFALL_BASE}/cards/collection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        found.push(...(data.data ?? []));
+      }
+    } catch (err) {
+      console.error('Error fetching cards by batch IDs:', err);
+    }
+    // Rate limit between chunks
+    if (i + chunkSize < ids.length) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+  return found;
+}
+
 /** Get the large front image URL from a Scryfall card */
 export function getFrontImageUrl(card: ScryfallCard): string {
   if (card.image_uris?.large) return card.image_uris.large;

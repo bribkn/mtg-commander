@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, ImageIcon } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
@@ -150,10 +150,10 @@ export function DeckHeader({
             onClick={onShareOpen}
             disabled={!commander}
             className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={commander ? "Generate shareable deck banner image" : "Generate shareable deck banner image (requires a selected commander)"}
+            title={commander ? "Share deck or generate card art visuals" : "Share deck or generate card art visuals (requires a selected commander)"}
           >
-            <ImageIcon className={`w-4 h-4 text-emerald-400 ${commander ? 'animate-pulse' : ''}`} />
-            <span className="hidden sm:inline">Banner</span>
+            <Share2 className={`w-4 h-4 text-emerald-400 ${commander ? 'animate-pulse' : ''}`} />
+            <span className="hidden sm:inline">Share</span>
           </Button>
 
           {!splitMode && onSplitOpen && (

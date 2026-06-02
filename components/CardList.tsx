@@ -1341,7 +1341,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 py-2 items-start">
               {/* Column 1 */}
               <div className="space-y-6">
-                {['Commander', 'Creature', 'Artifact', 'Planeswalker'].map((cat) => {
+                {['Commander', 'Planeswalker', 'Creature'].map((cat) => {
                   const cards = grouped.get(cat) ?? [];
                   if (cards.length === 0) return null;
                   return (
@@ -1359,7 +1359,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
               {/* Column 2 */}
               <div className="space-y-6">
-                {['Instant', 'Enchantment', 'Battle'].map((cat) => {
+                {['Sorcery', 'Instant', 'Artifact'].map((cat) => {
                   const cards = grouped.get(cat) ?? [];
                   if (cards.length === 0) return null;
                   return (
@@ -1377,7 +1377,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
               {/* Column 3 */}
               <div className="space-y-6">
-                {['Sorcery', 'Land', 'Other'].map((cat) => {
+                {['Enchantment', 'Land', 'Battle', 'Other'].map((cat) => {
                   const cards = grouped.get(cat) ?? [];
                   if (cards.length === 0) return null;
                   return (
