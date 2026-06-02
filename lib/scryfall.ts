@@ -197,7 +197,7 @@ export async function getCardsBatch(
 export async function getCardsBatchByIds(ids: string[]): Promise<ScryfallCard[]> {
   const found: ScryfallCard[] = [];
   const chunkSize = 75;
-  
+
   for (let i = 0; i < ids.length; i += chunkSize) {
     const chunk = ids.slice(i, i + chunkSize);
     const identifiers = chunk.map((id) => ({ id }));
@@ -307,91 +307,90 @@ export const CATEGORY_ORDER: CardCategory[] = [
 
 // --- Commander Bracket Game Changers (CFP Official list + high power staples) ---
 export const GAME_CHANGERS_LIST = new Set<string>([
-  "ad nauseam",
-  "ancient tomb",
-  "aura shards",
-  "biorhythm",
-  "bolas's citadel",
-  "braids, cabal minion",
-  "chrome mox",
-  "coalition victory",
-  "consecrated sphinx",
-  "crop rotation",
-  "cyclonic rift",
-  "deflecting swat",
-  "demonic tutor",
-  "dockside extortionist",
+  // White (7)
   "drannith magistrate",
   "enlightened tutor",
-  "expropriate",
   "farewell",
-  "field of the dead",
-  "fierce guardianship",
-  "food chain",
-  "force of will",
-  "gaea's cradle",
-  "gamble",
-  "gifts ungiven",
-  "glacial chasm",
-  "grand arbiter augustin iv",
-  "grim monolith",
   "humility",
-  "imperial seal",
+  "serra's sanctum",
+  "smothering tithe",
+  "teferi's protection",
+  // Blue (10)
+  "consecrated sphinx",
+  "cyclonic rift",
+  "fierce guardianship",
+  "force of will",
+  "gifts ungiven",
   "intuition",
-  "jeska's will",
-  "jeweled lotus",
-  "jin-gitaxias, core augur",
-  "lion's eye diamond",
-  "mana crypt",
-  "mana vault",
-  "mishra's workshop",
-  "mox diamond",
   "mystical tutor",
   "narset, parter of veils",
-  "natural order",
+  "rhystic study",
+  "thassa's oracle",
+  // Black (10)
+  "ad nauseam",
+  "bolas's citadel",
+  "braids, cabal minion",
+  "demonic tutor",
+  "imperial seal",
   "necropotence",
   "notion thief",
   "opposition agent",
   "orcish bowmasters",
-  "panoptic mirror",
-  "rhystic study",
-  "seedborn muse",
-  "serra's sanctum",
-  "smothering tithe",
-  "survival of the fittest",
-  "sway of the stars",
-  "teferi's protection",
   "tergrid, god of fright",
-  "thassa's oracle",
+  "vampiric tutor",
+  // Red (3)
+  "gamble",
+  "jeska's will",
+  "underworld breach",
+  // Green (7)
+  "biorhythm",
+  "crop rotation",
+  "gaea's cradle",
+  "natural order",
+  "seedborn muse",
+  "survival of the fittest",
+  "worldly tutor",
+  // Multicolored (4)
+  "aura shards",
+  "coalition victory",
+  "grand arbiter augustin iv",
+  "notion thief",
+  // Colorless (12)
+  "ancient tomb",
+  "chrome mox",
+  "field of the dead",
+  "glacial chasm",
+  "grim monolith",
+  "lion's eye diamond",
+  "mana vault",
+  "mishra's workshop",
+  "mox diamond",
+  "panoptic mirror",
   "the one ring",
   "the tabernacle at pendrell vale",
-  "underworld breach",
-  "urza, lord high artificer",
-  "vampiric tutor",
-  "worldly tutor"
 ]);
 
 /** Checks if a card is an official Game Changer */
 export function isGameChangerCard(cardName: string): boolean {
   if (!cardName) return false;
   const normalized = cardName.toLowerCase().trim();
-  
+
   // Exact match
   if (GAME_CHANGERS_LIST.has(normalized)) return true;
-  
+
   // Double faced cards (e.g., Tergrid, God of Fright // Tergrid's Lantern)
   if (normalized.includes('//')) {
     const parts = normalized.split('//').map((p) => p.trim());
     return parts.some((part) => GAME_CHANGERS_LIST.has(part));
   }
-  
+
   // Fuzzy match where list name is prefix of cardName or cardName is prefix of list name
   for (const gc of GAME_CHANGERS_LIST) {
     if (normalized.startsWith(gc) || gc.startsWith(normalized)) {
       return true;
     }
   }
-  
+
   return false;
 }
 
