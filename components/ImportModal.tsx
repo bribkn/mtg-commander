@@ -530,17 +530,16 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
           <TabsContent value="url" className="space-y-4 mt-4">
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
-                Paste a deck URL from Moxfield or Archidekt:
+                Paste a deck URL from Archidekt:
               </p>
               <div className="flex gap-2">
-                <Badge variant="outline" className="text-xs border-border">Moxfield</Badge>
                 <Badge variant="outline" className="text-xs border-border">Archidekt</Badge>
               </div>
               <Input
                 id="url-import-input"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://www.moxfield.com/decks/..."
+                placeholder="https://archidekt.com/decks/..."
                 className="bg-secondary border-border focus:border-primary/50"
                 onKeyDown={(e) => e.key === 'Enter' && handleUrlImport()}
               />

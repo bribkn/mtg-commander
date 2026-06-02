@@ -12,6 +12,7 @@ import { CardSearchBar } from '@/components/CardSearchBar';
 import { CardList } from '@/components/CardList';
 import { ImportModal } from '@/components/ImportModal';
 import { CardbackModal } from '@/components/CardbackModal';
+import { SearchSidebar } from '@/components/SearchSidebar';
 import { StatsPanel } from '@/components/StatsPanel';
 import { DeckDashboard } from '@/components/DeckDashboard';
 import { CustomCardsModal } from '@/components/CustomCardsModal';
@@ -19,7 +20,7 @@ import { CombosModal } from '@/components/CombosModal';
 import { ShareBannerModal } from '@/components/ShareBannerModal';
 import { generateTTSExport, downloadJSON } from '@/lib/tts-export';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2 } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers } from 'lucide-react';
 import { DECK_TAGS_LIST } from '@/lib/tags';
 import {
   Dialog,
@@ -246,6 +247,7 @@ function AppContent() {
   const [combosOpen, setCombosOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<'stats' | 'search'>('stats');
 
   // Target deck ID for modals
   const [modalTargetDeckId, setModalTargetDeckId] = useState<string | undefined>(undefined);
@@ -823,6 +825,18 @@ function AppContent() {
   const bannerArt = getBannerArtForDeck(state);
   const totalCards = state ? state.cards.reduce((sum, c) => sum + c.quantity, 0) : 0;
 
+  // Calculate Mana Curve (Non-lands)
+  const curve: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+  if (state) {
+    for (const card of state.cards) {
+      if (card.category !== 'Land') {
+        const cmc = Math.min(Math.floor(card.scryfallData.cmc ?? 0), 7);
+        curve[cmc] = (curve[cmc] ?? 0) + card.quantity;
+      }
+    }
+  }
+  const maxCurve = Math.max(...Object.values(curve), 1);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <DeckHeader
@@ -839,17 +853,12 @@ function AppContent() {
       />
 
       <div className="flex flex-1 overflow-hidden w-full max-w-full px-2 sm:px-4">
-        {/* ── Left sidebar: stats ────────────────────────── */}
-        <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border overflow-hidden">
-          <div className="px-4 pt-4 pb-2">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Deck Stats
-            </h2>
-          </div>
-          <ScrollArea className="flex-1">
-            <StatsPanel />
-          </ScrollArea>
-        </aside>
+        {/* ── Left sidebar: unified SearchSidebar ────────── */}
+        <SearchSidebar
+          mode={sidebarMode}
+          onModeChange={setSidebarMode}
+          deckId={state?.id}
+        />
 
         {/* ── Center: card list ──────────────────────────── */}
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -865,33 +874,67 @@ function AppContent() {
             <div className="absolute inset-0 bg-black/20" />
 
             {/* Inner Content */}
-            <div className="relative z-10 space-y-1.5">
-              <DeckNameEditor />
+            <div className="relative z-10 flex items-end justify-between w-full gap-6">
+              {/* Left Column: Name & Details */}
+              <div className="space-y-1.5 min-w-0">
+                <DeckNameEditor />
 
-              {/* Commander Name Subtitle */}
-              {commander && (
-                <div className="flex items-center gap-1.5 text-xs text-white/80 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                  <Crown className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
-                  <span>
-                    Led by <strong className="text-white">{commander.name}</strong>
+                {/* Commander Name Subtitle */}
+                {commander && (
+                  <div className="flex items-center gap-1.5 text-xs text-white/80 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    <Crown className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
+                    <span>
+                      Led by <strong className="text-white">{commander.name}</strong>
+                    </span>
+                  </div>
+                )}
+
+                <DeckTagsEditor />
+              </div>
+
+              {/* Right Column: Sleek Panoramic Mana Curve Chart */}
+              {state && state.cards.length > 0 && (
+                <div className="hidden sm:flex flex-col items-end gap-1 bg-black/45 backdrop-blur-md rounded-xl border border-white/5 p-3 px-3.5 shadow-2xl shrink-0 animate-fade-in-right">
+                  <span className="text-[9px] uppercase font-bold text-white/60 tracking-wider block mb-1 select-none">
+                    Mana Curve
                   </span>
+                  <div className="flex items-end gap-1 h-12">
+                    {Object.entries(curve).map(([cmc, count]) => (
+                      <div key={cmc} className="w-6 flex flex-col items-center gap-1">
+                        <span className="text-[9px] font-mono font-bold text-white/80">
+                          {count > 0 ? count : ''}
+                        </span>
+                        <div className="w-full rounded-t overflow-hidden" style={{ height: `${(count / maxCurve) * 24}px`, minHeight: count > 0 ? '3px' : '0' }}>
+                          <div className="w-full h-full bg-primary/65 hover:bg-primary transition-all duration-300 rounded-t" />
+                        </div>
+                        <span className="text-[9px] text-white/55 font-mono select-none">
+                          {cmc === '7' ? '7+' : cmc}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-
-              <DeckTagsEditor />
             </div>
           </div>
 
-          {/* Search bar row */}
-          <div className="border-b border-border p-3">
-            <CardSearchBar />
-          </div>
+          {/* Search bar row removed (moved to unified SearchSidebar) */}
 
           {/* Card list */}
           <div className="flex-1 overflow-hidden flex flex-col">
             <CardList />
           </div>
         </main>
+      </div>
+
+      {/* Floating Card Counter at Bottom Center */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-fade-in-up select-none pointer-events-none">
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-primary/30 bg-black/80 backdrop-blur-md shadow-lg shadow-primary/20 pointer-events-auto">
+          <Layers className="w-4 h-4 text-primary animate-pulse" />
+          <span className="text-xs font-semibold text-white/90">
+            Deck: <strong className="text-primary font-extrabold">{totalCards}</strong> / 100 cards
+          </span>
+        </div>
       </div>
 
       {modals}

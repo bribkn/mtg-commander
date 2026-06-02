@@ -18,12 +18,12 @@ function extractMoxfieldId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-/** Import a deck from Moxfield (directly from browser via public CORS proxy to bypass CORS/Cloudflare) */
+/** Import a deck from Moxfield via Next.js server proxy (bypasses CORS restrictions) */
 export async function importFromMoxfield(url: string): Promise<ParsedDeckEntry[]> {
   const deckId = extractMoxfieldId(url);
   if (!deckId) throw new Error('Invalid Moxfield URL. Expected: https://www.moxfield.com/decks/...');
 
-  const apiUrl = `https://api2.moxfield.com/v3/decks/all/${deckId}`;
+  const apiUrl = `/api/import?source=moxfield&id=${deckId}`;
   const res = await fetch(apiUrl);
 
   if (!res.ok) {
@@ -96,12 +96,12 @@ function extractArchidektId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-/** Import a deck from Archidekt (directly from browser via public CORS proxy to bypass CORS/Cloudflare) */
+/** Import a deck from Archidekt via Next.js server proxy (bypasses CORS restrictions) */
 export async function importFromArchidekt(url: string): Promise<ParsedDeckEntry[]> {
   const deckId = extractArchidektId(url);
   if (!deckId) throw new Error('Invalid Archidekt URL. Expected: https://archidekt.com/decks/...');
 
-  const apiUrl = `https://archidekt.com/api/decks/${deckId}/`;
+  const apiUrl = `/api/import?source=archidekt&id=${deckId}`;
   const res = await fetch(apiUrl);
 
   if (!res.ok) {
