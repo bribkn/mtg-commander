@@ -99,10 +99,24 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
   const rotateStartRef = useRef({ x: 0, y: 0, angle: 0 });
   const ignoreNextBackdropClickRef = useRef(false);
 
-  const cardImageUrl =
+  let cardImageUrl =
     card.scryfallData.image_uris?.normal ||
     card.scryfallData.card_faces?.[0]?.image_uris?.normal ||
     '';
+
+  // Bypass WebM / Custom alters for image loading compatibility
+  if (
+    cardImageUrl &&
+    (cardImageUrl.endsWith('.webm') ||
+      cardImageUrl.includes('.webm') ||
+      cardImageUrl.includes('catbox.moe') ||
+      cardImageUrl.includes('pixeldrain.com'))
+  ) {
+    const scryId = card.scryfallId;
+    if (scryId && scryId.length >= 2) {
+      cardImageUrl = `https://cards.scryfall.io/normal/front/${scryId[0]}/${scryId[1]}/${scryId}.jpg`;
+    }
+  }
 
   // Load initial search on open
   useEffect(() => {
@@ -404,7 +418,7 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
       setCompileProgress(20);
       const bgImg = new Image();
       bgImg.crossOrigin = 'anonymous';
-      bgImg.src = cardImageUrl;
+      bgImg.src = `${cardImageUrl}${cardImageUrl.includes('?') ? '&' : '?'}cors=true`;
       await new Promise((resolve, reject) => {
         bgImg.onload = resolve;
         bgImg.onerror = () => reject(new Error('Commander card image failed to load.'));
@@ -623,7 +637,7 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
       setCompileProgress(20);
       const bgImg = new Image();
       bgImg.crossOrigin = 'anonymous';
-      bgImg.src = cardImageUrl;
+      bgImg.src = `${cardImageUrl}${cardImageUrl.includes('?') ? '&' : '?'}cors=true`;
       await new Promise((resolve, reject) => {
         bgImg.onload = resolve;
         bgImg.onerror = () => reject(new Error('Commander card image failed to load.'));
