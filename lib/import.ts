@@ -256,8 +256,14 @@ export function detectImportSource(url: string): 'moxfield' | 'archidekt' | 'unk
   return 'unknown';
 }
 
+export interface ParsedTTSImport {
+  cards: ParsedDeckEntry[];
+  tokens: ParsedDeckEntry[];
+  sidedeck: ParsedDeckEntry[];
+}
+
 /** Parse Tabletop Simulator JSON deck files recursively */
-export function parseTTSJson(jsonText: string): ParsedDeckEntry[] {
+export function parseTTSJson(jsonText: string): ParsedTTSImport {
   try {
     const parsed = JSON.parse(jsonText);
 
@@ -273,7 +279,8 @@ export function parseTTSJson(jsonText: string): ParsedDeckEntry[] {
 
         // Leaf card node
         if (node.Name === 'Card' && typeof node.Nickname === 'string') {
-          const name = node.Nickname.trim();
+          const fullName = node.Nickname.trim();
+          const name = fullName.split('\n')[0].trim();
           if (name) counts[name] = (counts[name] || 0) + 1;
           return;
         }
@@ -289,34 +296,62 @@ export function parseTTSJson(jsonText: string): ParsedDeckEntry[] {
       return counts;
     }
 
-    const globalMax: Record<string, number> = {};
+    const mainCounts: Record<string, number> = {};
+    const tokenCounts: Record<string, number> = {};
+    const sideCounts: Record<string, number> = {};
 
     if (parsed && Array.isArray(parsed.ObjectStates)) {
       for (const subDeck of parsed.ObjectStates) {
         const posX = subDeck.Transform?.posX ?? 0;
-        // Skip our exporter's token pile (placed at posX: 2.2)
-        // Keep the main deck (posX: 0) and DFC helper pile (posX: 4.4) for backwards-compatibility
-        // with older exports where DFCs were only located in the helper pile.
-        if (Math.abs(posX - 2.2) < 0.1) continue;
-
         const pileCounts = countCardsInPile(subDeck);
-        for (const [name, count] of Object.entries(pileCounts)) {
-          globalMax[name] = Math.max(globalMax[name] ?? 0, count);
+
+        if (Math.abs(posX - 2.2) < 0.1) {
+          // Token pile
+          for (const [name, count] of Object.entries(pileCounts)) {
+            tokenCounts[name] = Math.max(tokenCounts[name] ?? 0, count);
+          }
+        } else if (Math.abs(posX + 2.2) < 0.1) {
+          // Sidedeck pile
+          for (const [name, count] of Object.entries(pileCounts)) {
+            sideCounts[name] = Math.max(sideCounts[name] ?? 0, count);
+          }
+        } else if (Math.abs(posX - 4.4) < 0.1) {
+          // DFC helper pile — ignore this pile completely on import to prevent double-adding cards
+          continue;
+        } else {
+          // Main deck pile
+          for (const [name, count] of Object.entries(pileCounts)) {
+            mainCounts[name] = Math.max(mainCounts[name] ?? 0, count);
+          }
         }
       }
     } else {
-      // Flat file — just count everything
+      // Flat file — just count everything into main
       const counts = countCardsInPile(parsed);
       for (const [name, count] of Object.entries(counts)) {
-        globalMax[name] = count;
+        mainCounts[name] = count;
       }
     }
 
-    return Object.entries(globalMax).map(([name, quantity]) => ({
+    const cards = Object.entries(mainCounts).map(([name, quantity]) => ({
       name,
       quantity,
       isCommander: false,
     }));
+
+    const tokens = Object.entries(tokenCounts).map(([name, quantity]) => ({
+      name,
+      quantity,
+      isCommander: false,
+    }));
+
+    const sidedeck = Object.entries(sideCounts).map(([name, quantity]) => ({
+      name,
+      quantity,
+      isCommander: false,
+    }));
+
+    return { cards, tokens, sidedeck };
   } catch (err) {
     throw new Error('Invalid JSON format. Please upload a valid Tabletop Simulator deck file.');
   }

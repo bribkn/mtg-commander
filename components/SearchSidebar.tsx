@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import {
   SlidersHorizontal, Plus, Check, Loader2, Search, X,
   ChevronRight, Sparkles, Trophy, ShieldAlert, ArrowLeft, Map as MapIcon,
-  Flame, Info, Minimize2, Trash2, ArrowRightLeft, Crown, Layers
+  Flame, Info, Minimize2, Trash2, ArrowRightLeft, Crown, Layers, Archive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -446,18 +446,20 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
   }
 
   // Handle adding card directly
-  async function handleAddCard(card: ScryfallCard) {
-    setAddingIds((prev) => ({ ...prev, [card.id]: true }));
+  async function handleAddCard(card: ScryfallCard, targetSection: 'main' | 'side' = 'main') {
+    const key = `${card.id}-${targetSection}`;
+    setAddingIds((prev) => ({ ...prev, [key]: true }));
     try {
       dispatch({
         type: 'ADD_CARD',
         card,
         quantity: 1,
         deckId,
+        targetSection,
       });
     } finally {
       setTimeout(() => {
-        setAddingIds((prev) => ({ ...prev, [card.id]: false }));
+        setAddingIds((prev) => ({ ...prev, [key]: false }));
       }, 500);
     }
   }
@@ -499,8 +501,12 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
   }
 
   // Card quantity counter helper
-  function getQuantityInDeck(card: ScryfallCard): number {
+  function getQuantityInMain(card: ScryfallCard): number {
     return state?.cards.find((c) => c.scryfallId === card.id)?.quantity || 0;
+  }
+
+  function getQuantityInSide(card: ScryfallCard): number {
+    return state?.sidedeck?.find((c) => c.scryfallId === card.id)?.quantity || 0;
   }
 
   // Float preview coordinates helper
@@ -1214,7 +1220,8 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
             <div className="space-y-2">
               {results.map((card) => {
                 const isGameChanger = isGameChangerCard(card.name);
-                const quantity = getQuantityInDeck(card);
+                const qtyMain = getQuantityInMain(card);
+                const qtySide = getQuantityInSide(card);
                 return (
                   <div
                     key={card.id}
@@ -1264,27 +1271,77 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                         </div>
                       )}
 
-                      {/* Click to add interaction button */}
-                      <button
-                        onClick={() => handleAddCard(card)}
-                        disabled={addingIds[card.id]}
-                        className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
-                          ${
-                            quantity > 0
-                              ? 'bg-primary/20 border-primary text-primary hover:bg-primary/30'
-                              : 'border-border hover:border-primary/50 text-muted-foreground hover:text-primary hover:bg-secondary'
-                          }`}
-                      >
-                        {addingIds[card.id] ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                        ) : quantity > 0 ? (
-                          <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-bold font-mono">{quantity}</span>
-                          </div>
-                        ) : (
-                          <Plus className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                      {/* Click to add interaction buttons */}
+                      {state?.isSideDeckEnabled ? (
+                        <div className="flex items-center gap-1">
+                          {/* Add to Main Deck */}
+                          <button
+                            onClick={() => handleAddCard(card, 'main')}
+                            disabled={addingIds[`${card.id}-main`]}
+                            title="Add to Main Deck"
+                            className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
+                              ${
+                                qtyMain > 0
+                                  ? 'bg-primary/20 border-primary text-primary hover:bg-primary/30'
+                                  : 'border-border hover:border-primary/50 text-muted-foreground hover:text-primary hover:bg-secondary'
+                              }`}
+                          >
+                            {addingIds[`${card.id}-main`] ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                            ) : qtyMain > 0 ? (
+                              <div className="flex flex-col items-center">
+                                <span className="text-[10px] font-bold font-mono">{qtyMain}</span>
+                              </div>
+                            ) : (
+                              <Plus className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {/* Add to Side Deck */}
+                          <button
+                            onClick={() => handleAddCard(card, 'side')}
+                            disabled={addingIds[`${card.id}-side`]}
+                            title="Add to Side Deck"
+                            className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
+                              ${
+                                qtySide > 0
+                                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-500 hover:bg-amber-500/30'
+                                  : 'border-border hover:border-amber-500/50 text-muted-foreground hover:text-amber-500 hover:bg-secondary'
+                              }`}
+                          >
+                            {addingIds[`${card.id}-side`] ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                            ) : qtySide > 0 ? (
+                              <div className="flex flex-col items-center">
+                                <span className="text-[10px] font-bold font-mono">{qtySide}</span>
+                              </div>
+                            ) : (
+                              <Archive className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleAddCard(card, 'main')}
+                          disabled={addingIds[`${card.id}-main`]}
+                          className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
+                            ${
+                              qtyMain > 0
+                                ? 'bg-primary/20 border-primary text-primary hover:bg-primary/30'
+                                : 'border-border hover:border-primary/50 text-muted-foreground hover:text-primary hover:bg-secondary'
+                            }`}
+                        >
+                          {addingIds[`${card.id}-main`] ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          ) : qtyMain > 0 ? (
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] font-bold font-mono">{qtyMain}</span>
+                            </div>
+                          ) : (
+                            <Plus className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

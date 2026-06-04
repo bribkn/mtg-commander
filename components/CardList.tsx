@@ -29,6 +29,9 @@ import {
   ShieldAlert,
   HelpCircle,
   Flame,
+  ArrowRight,
+  ArrowLeft,
+  Archive,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,13 +86,14 @@ function ManaCost({ cost }: { cost?: string }) {
 
 interface CardRowProps {
   card: DeckCard;
-  onVariantOpen: (card: DeckCard) => void;
+  onVariantOpen: (card: DeckCard, section?: 'main' | 'side' | 'tokens') => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  section?: 'main' | 'side' | 'tokens';
 }
 
-function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }: CardRowProps) {
+function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, section = 'main' }: CardRowProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const [imgError, setImgError] = useState(false);
@@ -155,7 +159,7 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
       {/* Controls */}
       <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         {/* Transfer / Copy Card Option */}
-        {onTransferCard && (
+        {onTransferCard && section !== 'tokens' && (
           <div className="flex gap-0.5 border-r border-border/40 pr-1.5 mr-1 shrink-0">
             <Button
               variant="ghost"
@@ -178,8 +182,34 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
           </div>
         )}
 
+        {/* Move to Side Deck */}
+        {section === 'main' && state?.isSideDeckEnabled && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-6 h-6 text-muted-foreground hover:text-amber-500"
+            title="Move to Side Deck"
+            onClick={() => dispatch({ type: 'MOVE_CARD_TO_SIDEDECK', scryfallId: card.scryfallId, deckId })}
+          >
+            <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
+          </Button>
+        )}
+
+        {/* Move to Main Deck */}
+        {section === 'side' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-6 h-6 text-muted-foreground hover:text-primary"
+            title="Move to Main Deck"
+            onClick={() => dispatch({ type: 'MOVE_CARD_TO_MAINDECK', scryfallId: card.scryfallId, deckId })}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </Button>
+        )}
+
         {/* Set as commander */}
-        {!card.isCommander && (
+        {section === 'main' && !card.isCommander && (
           <Button
             variant="ghost"
             size="icon"
@@ -192,22 +222,24 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
         )}
 
         {/* Set as cover image */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`w-6 h-6 transition-colors ${isCover ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-primary'
-            }`}
-          title={isCover ? 'Remove as Deck Cover' : 'Set as Deck Cover'}
-          onClick={() => {
-            if (isCover) {
-              dispatch({ type: 'UNSET_COVER_CARD', deckId });
-            } else {
-              dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
-            }
-          }}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-        </Button>
+        {section === 'main' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`w-6 h-6 transition-colors ${isCover ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-primary'
+              }`}
+            title={isCover ? 'Remove as Deck Cover' : 'Set as Deck Cover'}
+            onClick={() => {
+              if (isCover) {
+                dispatch({ type: 'UNSET_COVER_CARD', deckId });
+              } else {
+                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
+              }
+            }}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+          </Button>
+        )}
 
         {/* Change Variant Art */}
         <Button
@@ -215,13 +247,13 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
           size="icon"
           className="w-6 h-6 text-muted-foreground hover:text-primary"
           title="Change Art Variant"
-          onClick={() => onVariantOpen(card)}
+          onClick={() => onVariantOpen(card, section)}
         >
           <ImageIcon className="w-3.5 h-3.5" />
         </Button>
 
         {/* Create GIF Alter */}
-        {card.isCommander && onGifAlterOpen && (
+        {section === 'main' && card.isCommander && onGifAlterOpen && (
           <Button
             variant="ghost"
             size="icon"
@@ -234,18 +266,20 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
         )}
 
         {/* View Combos */}
-        <a
-          href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-6 h-6 rounded hover:bg-secondary text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
-          title="View Combos (Spellbook)"
-        >
-          <Zap className="w-3.5 h-3.5 text-amber-500 hover:scale-110 transition-transform" />
-        </a>
+        {section !== 'tokens' && (
+          <a
+            href={`https://commanderspellbook.com/?q=card%3A%22${encodeURIComponent(card.name)}%22`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-6 h-6 rounded hover:bg-secondary text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
+            title="View Combos (Spellbook)"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-500 hover:scale-110 transition-transform" />
+          </a>
+        )}
 
         {/* View EDHREC Synergies */}
-        {card.isCommander && (
+        {section === 'main' && card.isCommander && (
           <a
             href={getEdhrecUrl(card.name)}
             target="_blank"
@@ -262,7 +296,7 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
           variant="ghost"
           size="icon"
           className="w-6 h-6 text-muted-foreground hover:text-foreground"
-          onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
+          onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
         >
           <Minus className="w-3 h-3" />
         </Button>
@@ -275,7 +309,7 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
           variant="ghost"
           size="icon"
           className="w-6 h-6 text-muted-foreground hover:text-foreground"
-          onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
+          onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
         >
           <Plus className="w-3 h-3" />
         </Button>
@@ -285,7 +319,7 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen }
           variant="ghost"
           size="icon"
           className="w-6 h-6 text-muted-foreground hover:text-destructive"
-          onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })}
+          onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId, targetSection: section })}
         >
           <Trash2 className="w-3 h-3" />
         </Button>
@@ -299,13 +333,15 @@ function PremiumListRow({
   onVariantOpen, 
   deckId, 
   onTransferCard,
-  onGifAlterOpen
+  onGifAlterOpen,
+  section = 'main'
 }: { 
   card: DeckCard; 
-  onVariantOpen: (card: DeckCard) => void;
+  onVariantOpen: (card: DeckCard, section?: 'main' | 'side' | 'tokens') => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  section?: 'main' | 'side' | 'tokens';
 }) {
   const { customCards, dispatch, state: globalState, decks } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
@@ -335,7 +371,7 @@ function PremiumListRow({
         
         {/* Card Name with Badges */}
         <div className="flex items-center gap-1 min-w-0 truncate">
-          <span className={`font-medium truncate hover:text-primary transition-colors cursor-pointer ${isBanned ? 'text-red-400 line-through' : 'text-foreground'}`} title={card.name} onClick={() => onVariantOpen(card)}>
+          <span className={`font-medium truncate hover:text-primary transition-colors cursor-pointer ${isBanned ? 'text-red-400 line-through' : 'text-foreground'}`} title={card.name} onClick={() => onVariantOpen(card, section)}>
             {card.name}
           </span>
           {isBanned && (
@@ -381,10 +417,32 @@ function PremiumListRow({
         )}
 
         {/* Quick Hover Action Buttons */}
-        <div className="w-0 overflow-hidden group-hover:w-[185px] flex items-center gap-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100 pl-1 border-l border-border/40 ml-1">
+        <div className="max-w-0 overflow-hidden group-hover:max-w-[250px] flex items-center gap-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100 pl-1 border-l border-border/40 ml-1">
+          {/* Move to Side Deck */}
+          {section === 'main' && state?.isSideDeckEnabled && (
+            <button
+              onClick={() => dispatch({ type: 'MOVE_CARD_TO_SIDEDECK', scryfallId: card.scryfallId, deckId })}
+              className="p-0.5 rounded bg-secondary hover:bg-amber-500/20 text-muted-foreground hover:text-amber-400 active:scale-95 transition-transform"
+              title="Move to Side Deck"
+            >
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Move to Main Deck */}
+          {section === 'side' && (
+            <button
+              onClick={() => dispatch({ type: 'MOVE_CARD_TO_MAINDECK', scryfallId: card.scryfallId, deckId })}
+              className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+              title="Move to Main Deck"
+            >
+              <ArrowLeft className="w-3 h-3" />
+            </button>
+          )}
+
           {/* Decrement */}
           <button
-            onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
+            onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
             className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
             title="Decrease Quantity"
           >
@@ -393,7 +451,7 @@ function PremiumListRow({
           
           {/* Increment */}
           <button
-            onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })}
+            onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
             className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
             title="Increase Quantity"
           >
@@ -401,7 +459,7 @@ function PremiumListRow({
           </button>
 
           {/* Commander set */}
-          {!card.isCommander && (
+          {section === 'main' && !card.isCommander && (
             <button
               onClick={() => dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })}
               className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
@@ -412,31 +470,33 @@ function PremiumListRow({
           )}
 
           {/* Cover card set */}
-          <button
-            onClick={() => {
-              if (isCover) {
-                dispatch({ type: 'UNSET_COVER_CARD', deckId });
-              } else {
-                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
-              }
-            }}
-            className={`p-0.5 rounded transition-colors ${isCover ? 'bg-primary/30 text-primary border border-primary/40' : 'bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground'}`}
-            title={isCover ? 'Remove as Cover' : 'Set as Cover'}
-          >
-            <Sparkles className="w-3 h-3" />
-          </button>
+          {section === 'main' && (
+            <button
+              onClick={() => {
+                if (isCover) {
+                  dispatch({ type: 'UNSET_COVER_CARD', deckId });
+                } else {
+                  dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
+                }
+              }}
+              className={`p-0.5 rounded transition-colors ${isCover ? 'bg-primary/30 text-primary border border-primary/40' : 'bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground'}`}
+              title={isCover ? 'Remove as Cover' : 'Set as Cover'}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Change Art */}
           <button
-            onClick={() => onVariantOpen(card)}
+            onClick={() => onVariantOpen(card, section)}
             className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
             title="Change Art Printing"
           >
-            <ImageIcon className="w-3 h-3" />
+            <ImageIcon className="w-3.5 h-3.5" />
           </button>
 
           {/* Create GIF Alter */}
-          {card.isCommander && onGifAlterOpen && (
+          {section === 'main' && card.isCommander && onGifAlterOpen && (
             <button
               onClick={() => onGifAlterOpen(card)}
               className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform animate-pulse"
@@ -447,7 +507,7 @@ function PremiumListRow({
           )}
 
           {/* EDHREC Synergies */}
-          {card.isCommander && (
+          {section === 'main' && card.isCommander && (
             <a
               href={getEdhrecUrl(card.name)}
               target="_blank"
@@ -461,7 +521,7 @@ function PremiumListRow({
 
           {/* Delete */}
           <button
-            onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })}
+            onClick={() => dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId, targetSection: section })}
             className="p-0.5 rounded bg-secondary hover:bg-destructive/20 text-muted-foreground hover:text-red-400 active:scale-95 transition-transform"
             title="Delete Card"
           >
@@ -484,6 +544,8 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   Planeswalker: ShieldAlert,
   Battle: HelpCircle,
   Other: HelpCircle,
+  'Side Deck': Archive,
+  Tokens: Layers3,
 };
 
 function PremiumListSection({
@@ -493,13 +555,15 @@ function PremiumListSection({
   deckId,
   onTransferCard,
   onGifAlterOpen,
+  section = 'main',
 }: {
   category: string;
   cards: DeckCard[];
-  onVariantOpen: (card: DeckCard) => void;
+  onVariantOpen: (card: DeckCard, section?: 'main' | 'side' | 'tokens') => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  section?: 'main' | 'side' | 'tokens';
 }) {
   const totalQuantity = cards.reduce((sum, c) => sum + c.quantity, 0);
 
@@ -512,8 +576,7 @@ function PremiumListSection({
         <div className="flex items-center gap-2 text-xs font-bold text-foreground uppercase tracking-wider">
           <IconComponent className="w-4 h-4 text-purple-400 shrink-0" />
           <span>
-            {category === 'Commander' ? 'COMMANDER' : category === 'Creature' ? 'CREATURE' : category === 'Artifact' ? 'ARTIFACT' : category === 'Enchantment' ? 'ENCHANTMENT' : category === 'Instant' ? 'INSTANT' : category === 'Sorcery' ? 'SORCERY' : category === 'Land' ? 'LAND' : category === 'Planeswalker' ? 'PLANESWALKER' : category === 'Battle' ? 'BATTLE' : 'OTHER'}
-            {' '}({totalQuantity})
+            {category.toUpperCase()} ({totalQuantity})
           </span>
         </div>
       </div>
@@ -528,6 +591,7 @@ function PremiumListSection({
             deckId={deckId}
             onTransferCard={onTransferCard}
             onGifAlterOpen={onGifAlterOpen}
+            section={section}
           />
         ))}
       </div>
@@ -648,13 +712,14 @@ function CardOracleText({ cardData }: { cardData: any }) {
 type ViewMode = 'grid' | 'text';
 
 interface CategorySectionProps {
-  category: CardCategory;
+  category: string;
   cards: DeckCard[];
   viewMode: ViewMode;
-  onVariantOpen: (card: DeckCard) => void;
+  onVariantOpen: (card: DeckCard, section?: 'main' | 'side' | 'tokens') => void;
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  section?: 'main' | 'side' | 'tokens';
 }
 
 function CategorySection({
@@ -665,6 +730,7 @@ function CategorySection({
   deckId,
   onTransferCard,
   onGifAlterOpen,
+  section = 'main',
 }: CategorySectionProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
@@ -696,7 +762,7 @@ function CategorySection({
           {viewMode === 'text' && (
             <div className="space-y-0.5">
               {cards.map((card) => (
-                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} onGifAlterOpen={onGifAlterOpen} />
+                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} onGifAlterOpen={onGifAlterOpen} section={section} />
               ))}
             </div>
           )}
@@ -780,7 +846,7 @@ function CategorySection({
                       <div className="flex flex-col gap-2 w-full">
                         <div className="flex gap-1.5 justify-center flex-wrap">
                           {/* Copy/Move to other deck */}
-                          {onTransferCard && (
+                          {onTransferCard && section !== 'tokens' && (
                             <>
                               <button
                                 onClick={() => onTransferCard(card, 'copy')}
@@ -798,7 +864,34 @@ function CategorySection({
                               </button>
                             </>
                           )}
-                          {!card.isCommander && (
+
+                          {/* Move to Side Deck */}
+                          {section === 'main' && state?.isSideDeckEnabled && (
+                            <button
+                              onClick={() =>
+                                dispatch({ type: 'MOVE_CARD_TO_SIDEDECK', scryfallId: card.scryfallId, deckId })
+                              }
+                              className="p-2 rounded-lg bg-secondary/80 hover:bg-amber-500/30 text-muted-foreground hover:text-amber-400 transition-all duration-200 border border-border/20 shadow-sm active:scale-95"
+                              title="Move to Side Deck"
+                            >
+                              <ArrowRight className="w-5 h-5" />
+                            </button>
+                          )}
+
+                          {/* Move to Main Deck */}
+                          {section === 'side' && (
+                            <button
+                              onClick={() =>
+                                dispatch({ type: 'MOVE_CARD_TO_MAINDECK', scryfallId: card.scryfallId, deckId })
+                              }
+                              className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-border/20 shadow-sm active:scale-95"
+                              title="Move to Main Deck"
+                            >
+                              <ArrowLeft className="w-5 h-5" />
+                            </button>
+                          )}
+
+                          {section === 'main' && !card.isCommander && (
                             <button
                               onClick={() =>
                                 dispatch({ type: 'SET_COMMANDER', scryfallId: card.scryfallId, deckId })
@@ -809,30 +902,35 @@ function CategorySection({
                               <Crown className="w-5 h-5" />
                             </button>
                           )}
+
+                          {section === 'main' && (
+                            <button
+                              onClick={() => {
+                                if (isCover) {
+                                  dispatch({ type: 'UNSET_COVER_CARD', deckId });
+                                } else {
+                                  dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
+                                }
+                              }}
+                              className={`p-2 rounded-lg transition-all duration-200 border shadow-sm active:scale-95 ${isCover
+                                  ? 'bg-primary/30 text-primary border-primary/40'
+                                  : 'bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary border-border/20'
+                                }`}
+                              title={isCover ? 'Remove as Cover' : 'Set as Cover'}
+                            >
+                              <Sparkles className="w-5 h-5" />
+                            </button>
+                          )}
+
                           <button
-                            onClick={() => {
-                              if (isCover) {
-                                dispatch({ type: 'UNSET_COVER_CARD', deckId });
-                              } else {
-                                dispatch({ type: 'SET_COVER_CARD', scryfallId: card.scryfallId, deckId });
-                              }
-                            }}
-                            className={`p-2 rounded-lg transition-all duration-200 border shadow-sm active:scale-95 ${isCover
-                                ? 'bg-primary/30 text-primary border-primary/40'
-                                : 'bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary border-border/20'
-                              }`}
-                            title={isCover ? 'Remove as Cover' : 'Set as Cover'}
-                          >
-                            <Sparkles className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => onVariantOpen(card)}
+                            onClick={() => onVariantOpen(card, section)}
                             className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-border/20 shadow-sm active:scale-95"
                             title="Change Art"
                           >
                             <ImageIcon className="w-5 h-5" />
                           </button>
-                          {card.isCommander && onGifAlterOpen && (
+
+                          {section === 'main' && card.isCommander && onGifAlterOpen && (
                             <button
                               onClick={() => onGifAlterOpen(card)}
                               className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-primary/20 shadow-sm active:scale-95 animate-pulse"
@@ -841,9 +939,10 @@ function CategorySection({
                               <Sparkles className="w-5 h-5 text-amber-400" />
                             </button>
                           )}
+
                           <button
                             onClick={() =>
-                              dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId })
+                              dispatch({ type: 'REMOVE_CARD', scryfallId: card.scryfallId, deckId, targetSection: section })
                             }
                             className="p-2 rounded-lg bg-secondary/80 hover:bg-destructive/25 text-muted-foreground hover:text-red-400 transition-all duration-200 border border-border/20 hover:border-red-500/30 shadow-sm active:scale-95"
                             title="Delete"
@@ -852,7 +951,7 @@ function CategorySection({
                           </button>
                         </div>
 
-                        {card.isCommander && (
+                        {section === 'main' && card.isCommander && (
                           <a
                             href={getEdhrecUrl(card.name)}
                             target="_blank"
@@ -869,7 +968,7 @@ function CategorySection({
                         <div className="flex items-center justify-between bg-black/75 border border-border/40 rounded-lg py-1 px-3 shadow-inner">
                           <button
                             onClick={() =>
-                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
+                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })
                             }
                             className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
                           >
@@ -880,7 +979,7 @@ function CategorySection({
                           </span>
                           <button
                             onClick={() =>
-                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId })
+                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })
                             }
                             className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
                           >
@@ -922,6 +1021,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
   // Variant selector states
   const [variantCard, setVariantCard] = useState<DeckCard | null>(null);
+  const [variantCardSection, setVariantCardSection] = useState<'main' | 'side' | 'tokens'>('main');
   const [isAddCustomOpen, setIsAddCustomOpen] = useState(false);
   const [printings, setPrintings] = useState<ScryfallCard[]>([]);
   const [loadingPrints, setLoadingPrints] = useState(false);
@@ -1008,7 +1108,8 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
   if (!state) return null;
 
-  if (state.cards.length === 0) {
+  const hasAnyCards = state.cards.length > 0 || (state.sidedeck || []).length > 0 || (state.tokens || []).length > 0;
+  if (!hasAnyCards) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center px-6">
         <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
@@ -1022,10 +1123,16 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
     );
   }
 
-  // Dynamically extract all unique subtypes present in the deck's cards
+  // Dynamically extract all unique subtypes present in the deck's cards (main + side + tokens)
+  const combinedAllCards = [
+    ...state.cards,
+    ...(state.sidedeck || []),
+    ...(state.tokens || []),
+  ];
+
   const allSubtypes = Array.from(
     new Set(
-      state.cards.flatMap((card) => {
+      combinedAllCards.flatMap((card) => {
         const typeLine = card.scryfallData.type_line || '';
         const typeLines = card.scryfallData.card_faces
           ? card.scryfallData.card_faces.map((f) => f.type_line || '')
@@ -1041,8 +1148,8 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
     )
   ).sort();
 
-  // Filter cards by name, CMC, card type, and subtype
-  const filteredCards = state.cards.filter((card) => {
+  // Helper filter function
+  const filterCardItem = (card: DeckCard) => {
     // Name filter
     const matchesName = card.name.toLowerCase().includes(filterQuery.toLowerCase());
     if (!matchesName) return false;
@@ -1098,7 +1205,14 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
     }
 
     return true;
-  });
+  };
+
+  // Filter cards by name, CMC, card type, and subtype
+  const filteredCards = state.cards.filter(filterCardItem);
+  const filteredSidedeck = (state.sidedeck || []).filter(filterCardItem);
+  const filteredTokens = (state.tokens || []).filter(filterCardItem);
+
+  const totalFilteredCount = filteredCards.length + filteredSidedeck.length + filteredTokens.length;
 
   // Group cards by category
   const grouped = new Map<string, DeckCard[]>();
@@ -1167,27 +1281,47 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             </Button>
           </div>
 
-          <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60 self-end sm:self-auto shrink-0">
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            {/* Sidedeck Toggle Button */}
             <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'grid'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+              onClick={() => dispatch({ type: 'TOGGLE_SIDEDECK', deckId })}
+              className={`h-8 px-2.5 rounded-lg border text-[10px] font-bold transition-all duration-200 flex items-center gap-2 active:scale-95 shadow-sm select-none
+                ${state.isSideDeckEnabled
+                  ? 'bg-amber-500/10 border-amber-500/35 text-amber-500 hover:bg-amber-500/20'
+                  : 'bg-secondary/40 border-border/80 text-muted-foreground hover:text-foreground hover:border-border'
                 }`}
+              title="Toggle Side Deck"
             >
-              <Grid className="w-3.5 h-3.5" />
-              <span>Visual Grid</span>
+              <Archive className="w-3.5 h-3.5 shrink-0" />
+              <span>Side Deck</span>
+              <div className={`w-7.5 h-4 rounded-full relative transition-colors duration-200 p-0.5 shrink-0 flex items-center ${state.isSideDeckEnabled ? 'bg-amber-500' : 'bg-neutral-600'}`}>
+                <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-200 ${state.isSideDeckEnabled ? 'translate-x-3.5' : 'translate-x-0'}`} />
+              </div>
             </button>
-            <button
-              onClick={() => setViewMode('text')}
-              className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'text'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-                }`}
-            >
-              <AlignJustify className="w-3.5 h-3.5" />
-              <span>List</span>
-            </button>
+
+            {/* View Mode Selector */}
+            <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60 shrink-0">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'grid'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                  }`}
+              >
+                <Grid className="w-3.5 h-3.5" />
+                <span>Visual Grid</span>
+              </button>
+              <button
+                onClick={() => setViewMode('text')}
+                className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${viewMode === 'text'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                  }`}
+              >
+                <AlignJustify className="w-3.5 h-3.5" />
+                <span>List</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1334,7 +1468,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
         <div className="pb-4">
 
 
-          {filteredCards.length === 0 ? (
+          {totalFilteredCount === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-6">
               <Search className="w-10 h-10 text-muted-foreground/45 mb-3" />
               <p className="text-sm font-semibold text-foreground mb-1">No matches</p>
@@ -1343,83 +1477,151 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               </p>
             </div>
           ) : viewMode === 'text' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 py-2 items-start">
-              {/* Column 1 */}
-              <div className="space-y-6">
-                {['Commander', 'Planeswalker', 'Creature'].map((cat) => {
-                  const cards = grouped.get(cat) ?? [];
-                  if (cards.length === 0) return null;
-                  return (
-                    <PremiumListSection
-                      key={cat}
-                      category={cat}
-                      cards={cards}
-                      onVariantOpen={(card) => setVariantCard(card)}
-                      deckId={deckId}
-                      onTransferCard={onTransferCard}
-                      onGifAlterOpen={(card) => setGifAlterCard(card)}
-                    />
-                  );
-                })}
+            <div className="space-y-6 px-4 py-2">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Column 1 */}
+                <div className="space-y-6">
+                  {['Commander', 'Planeswalker', 'Creature'].map((cat) => {
+                    const cards = grouped.get(cat) ?? [];
+                    if (cards.length === 0) return null;
+                    return (
+                      <PremiumListSection
+                        key={cat}
+                        category={cat}
+                        cards={cards}
+                        onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'main'); }}
+                        deckId={deckId}
+                        section="main"
+                        onTransferCard={onTransferCard}
+                        onGifAlterOpen={(card) => setGifAlterCard(card)}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Column 2 */}
+                <div className="space-y-6">
+                  {['Sorcery', 'Instant', 'Artifact'].map((cat) => {
+                    const cards = grouped.get(cat) ?? [];
+                    if (cards.length === 0) return null;
+                    return (
+                      <PremiumListSection
+                        key={cat}
+                        category={cat}
+                        cards={cards}
+                        onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'main'); }}
+                        deckId={deckId}
+                        section="main"
+                        onTransferCard={onTransferCard}
+                        onGifAlterOpen={(card) => setGifAlterCard(card)}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Column 3 */}
+                <div className="space-y-6">
+                  {['Enchantment', 'Land', 'Battle', 'Other'].map((cat) => {
+                    const cards = grouped.get(cat) ?? [];
+                    if (cards.length === 0) return null;
+                    return (
+                      <PremiumListSection
+                        key={cat}
+                        category={cat}
+                        cards={cards}
+                        onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'main'); }}
+                        deckId={deckId}
+                        section="main"
+                        onTransferCard={onTransferCard}
+                        onGifAlterOpen={(card) => setGifAlterCard(card)}
+                      />
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Column 2 */}
-              <div className="space-y-6">
-                {['Sorcery', 'Instant', 'Artifact'].map((cat) => {
-                  const cards = grouped.get(cat) ?? [];
-                  if (cards.length === 0) return null;
-                  return (
-                    <PremiumListSection
-                      key={cat}
-                      category={cat}
-                      cards={cards}
-                      onVariantOpen={(card) => setVariantCard(card)}
-                      deckId={deckId}
-                      onTransferCard={onTransferCard}
-                      onGifAlterOpen={(card) => setGifAlterCard(card)}
-                    />
-                  );
-                })}
-              </div>
+              {state.isSideDeckEnabled && filteredSidedeck.length > 0 && (
+                <div className="border-t border-border/30 pt-6">
+                  <PremiumListSection
+                    category="Side Deck"
+                    cards={filteredSidedeck}
+                    onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'side'); }}
+                    deckId={deckId}
+                    section="side"
+                    onTransferCard={onTransferCard}
+                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                  />
+                </div>
+              )}
 
-              {/* Column 3 */}
-              <div className="space-y-6">
-                {['Enchantment', 'Land', 'Battle', 'Other'].map((cat) => {
-                  const cards = grouped.get(cat) ?? [];
-                  if (cards.length === 0) return null;
-                  return (
-                    <PremiumListSection
-                      key={cat}
-                      category={cat}
-                      cards={cards}
-                      onVariantOpen={(card) => setVariantCard(card)}
-                      deckId={deckId}
-                      onTransferCard={onTransferCard}
-                      onGifAlterOpen={(card) => setGifAlterCard(card)}
-                    />
-                  );
-                })}
-              </div>
+              {filteredTokens.length > 0 && (
+                <div className="border-t border-border/30 pt-6">
+                  <PremiumListSection
+                    category="Tokens"
+                    cards={filteredTokens}
+                    onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'tokens'); }}
+                    deckId={deckId}
+                    section="tokens"
+                    onTransferCard={onTransferCard}
+                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                  />
+                </div>
+              )}
             </div>
           ) : (
-            CATEGORY_ORDER.map((cat) => {
-              const cards = grouped.get(cat) ?? [];
-              if (cards.length === 0) return null;
-              return (
-                <div key={cat}>
+            <div className="space-y-4">
+              {CATEGORY_ORDER.map((cat) => {
+                const cards = grouped.get(cat) ?? [];
+                if (cards.length === 0) return null;
+                return (
+                  <div key={cat}>
+                    <CategorySection
+                      category={cat}
+                      cards={cards}
+                      viewMode={viewMode}
+                      onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'main'); }}
+                      deckId={deckId}
+                      section="main"
+                      onTransferCard={onTransferCard}
+                      onGifAlterOpen={(card) => setGifAlterCard(card)}
+                    />
+                    <Separator className="my-1 opacity-30" />
+                  </div>
+                );
+              })}
+
+              {state.isSideDeckEnabled && filteredSidedeck.length > 0 && (
+                <div className="border-t border-border/30 pt-4">
                   <CategorySection
-                    category={cat}
-                    cards={cards}
+                    category="Side Deck"
+                    cards={filteredSidedeck}
                     viewMode={viewMode}
-                    onVariantOpen={(card) => setVariantCard(card)}
+                    onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'side'); }}
                     deckId={deckId}
+                    section="side"
                     onTransferCard={onTransferCard}
                     onGifAlterOpen={(card) => setGifAlterCard(card)}
                   />
                   <Separator className="my-1 opacity-30" />
                 </div>
-              );
-            })
+              )}
+
+              {filteredTokens.length > 0 && (
+                <div className="border-t border-border/30 pt-4">
+                  <CategorySection
+                    category="Tokens"
+                    cards={filteredTokens}
+                    viewMode={viewMode}
+                    onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'tokens'); }}
+                    deckId={deckId}
+                    section="tokens"
+                    onTransferCard={onTransferCard}
+                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                  />
+                  <Separator className="my-1 opacity-30" />
+                </div>
+              )}
+            </div>
           )}
         </div>
       </ScrollArea>
@@ -1577,6 +1779,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                 type: 'UPDATE_CARD_DATA',
                                 scryfallId: variantCard.scryfallId,
                                 newCardData: updatedScryfallData,
+                                targetSection: variantCardSection,
                               });
                               setVariantCard(null);
                             }}
@@ -1665,6 +1868,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                             type: 'UPDATE_CARD_DATA',
                             scryfallId: variantCard.scryfallId,
                             newCardData: print,
+                            targetSection: variantCardSection,
                           });
                           setVariantCard(null);
                         }

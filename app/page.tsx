@@ -19,6 +19,7 @@ import { CustomCardsModal } from '@/components/CustomCardsModal';
 import { CombosModal } from '@/components/CombosModal';
 import { ShareBannerModal } from '@/components/ShareBannerModal';
 import { generateTTSExport, downloadJSON } from '@/lib/tts-export';
+import { getCardsBatchByIds } from '@/lib/scryfall';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers } from 'lucide-react';
 import { DECK_TAGS_LIST } from '@/lib/tags';
@@ -312,7 +313,12 @@ function AppContent() {
 
     setIsExporting(true);
     try {
-      const result = await generateTTSExport(targetDeck.cards, targetDeck.customCardbackUrl);
+      const result = await generateTTSExport(
+        targetDeck.cards,
+        targetDeck.customCardbackUrl,
+        targetDeck.tokens || [],
+        targetDeck.isSideDeckEnabled ? (targetDeck.sidedeck || []) : []
+      );
       const deckName =
         targetDeck.deckName.replace(/[^a-zA-Z0-9\s_-]/g, '').trim() || 'commander-deck';
       downloadJSON(result.json, `${deckName}.json`);
@@ -393,6 +399,67 @@ function AppContent() {
       });
     }
   }
+
+  // Auto-fetch and sync referenced tokens in the background
+  useEffect(() => {
+    // Determine target deck
+    const currentDeck = activeDeckId ? (decks.find((d) => d.id === activeDeckId) ?? null) : state;
+    if (!currentDeck) return;
+
+    // Scan all parts of main cards and sidedeck cards for tokens
+    const referencedTokenIds = new Set<string>();
+    const allDeckCards = [...currentDeck.cards, ...(currentDeck.sidedeck || [])];
+    for (const dc of allDeckCards) {
+      const parts = dc.scryfallData.all_parts ?? [];
+      for (const part of parts) {
+        if (part.component === 'token') {
+          referencedTokenIds.add(part.id);
+        }
+      }
+    }
+
+    const currentTokenIds = new Set((currentDeck.tokens || []).map((t) => t.scryfallId));
+
+    // Find what to add and what to remove
+    const idsToFetch = Array.from(referencedTokenIds).filter((id) => !currentTokenIds.has(id));
+    const idsToRemove = Array.from(currentTokenIds).filter((id) => !referencedTokenIds.has(id));
+
+    const syncTokens = async () => {
+      // 1. Fetch and add missing tokens
+      if (idsToFetch.length > 0) {
+        const fetchedCards = await getCardsBatchByIds(idsToFetch);
+        if (fetchedCards.length > 0) {
+          dispatch({
+            type: 'BULK_ADD_CARDS',
+            cards: fetchedCards.map((card) => ({ card, quantity: 1 })),
+            targetSection: 'tokens',
+            deckId: currentDeck.id,
+          });
+        }
+      }
+
+      // 2. Clean up unreferenced tokens
+      if (idsToRemove.length > 0) {
+        for (const scryfallId of idsToRemove) {
+          dispatch({
+            type: 'REMOVE_CARD',
+            scryfallId,
+            targetSection: 'tokens',
+            deckId: currentDeck.id,
+          });
+        }
+      }
+    };
+
+    if (idsToFetch.length > 0 || idsToRemove.length > 0) {
+      syncTokens();
+    }
+  }, [
+    activeDeckId,
+    state?.id,
+    JSON.stringify(state?.cards.map(c => `${c.scryfallId}-${c.quantity}`)),
+    JSON.stringify(state?.sidedeck?.map(c => `${c.scryfallId}-${c.quantity}`))
+  ]);
 
   // Render modal components (Shared single instance to prevent layout unmount/remount issues)
   const modals = (

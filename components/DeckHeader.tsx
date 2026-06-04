@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2 } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
@@ -155,6 +155,7 @@ export function DeckHeader({
             <Share2 className={`w-4 h-4 text-emerald-400 ${commander ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline">Share</span>
           </Button>
+
 
           {!splitMode && onSplitOpen && (
             <Button

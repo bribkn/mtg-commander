@@ -72,6 +72,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
   const [currentCorrectionIndex, setCurrentCorrectionIndex] = useState(0);
   const [showCorrections, setShowCorrections] = useState(false);
   const [pendingCards, setPendingCards] = useState<Array<{ card: ScryfallCard; quantity: number; isCommander: boolean }>>([]);
+  const [pendingSection, setPendingSection] = useState<'main' | 'side' | 'tokens'>('main');
 
   // Autocomplete search states inside fuzzy correction
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
@@ -92,6 +93,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
     setCurrentCorrectionIndex(0);
     setShowCorrections(false);
     setPendingCards([]);
+    setPendingSection('main');
     setSearchQueries({});
     setSearchResults({});
     setSearchLoading({});
@@ -103,7 +105,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
   };
 
   // Process parsed entries: batch-fetch from Scryfall, handle not-found
-  const processEntries = useCallback(async (entries: ParsedDeckEntry[]) => {
+  const processEntries = useCallback(async (entries: ParsedDeckEntry[], targetSection: 'main' | 'side' | 'tokens' = 'main') => {
     // Deduplicate entries by normalized name, prioritizing isCommander: true
     const normalizedEntriesMap = new Map<string, ParsedDeckEntry>();
     for (const entry of entries) {
@@ -186,11 +188,12 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
           }
         }
       }
-      dispatch({ type: 'BULK_ADD_CARDS', cards: Array.from(deduped.values()), deckId });
+      dispatch({ type: 'BULK_ADD_CARDS', cards: Array.from(deduped.values()), deckId, targetSection });
       return { addedCount: deduped.size, fuzzyNeeded: 0 };
     }
 
     // Start fuzzy correction flow
+    setPendingSection(targetSection);
     setPendingCards(resolvedCards);
     setCorrectionQueue(needsFuzzy);
     setCurrentCorrectionIndex(0);
@@ -276,17 +279,36 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
     setTtsSuccess('');
     try {
       const text = await ttsFile.text();
-      const entries = parseTTSJson(text);
-      if (entries.length === 0) {
-        setTtsError('No cards found in the Tabletop Simulator file.');
+      const { cards, sidedeck } = parseTTSJson(text);
+      if (cards.length === 0 && sidedeck.length === 0) {
+        setTtsError('No deck or sidedeck cards found in the Tabletop Simulator file.');
         return;
       }
       // Derive deck name from the filename (strip extension)
       const deckName = ttsFile.name.replace(/\.json$/i, '').trim() || 'Imported Deck';
       ensureActiveDeck(deckName);
-      const { addedCount, fuzzyNeeded } = await processEntries(entries);
-      if (fuzzyNeeded === 0) {
-        setTtsSuccess(`Successfully imported ${addedCount} cards from TTS file!`);
+
+      if (sidedeck.length > 0) {
+        dispatch({ type: 'SET_SIDEDECK_ENABLED', enabled: true });
+      }
+
+      let totalAdded = 0;
+      let fuzzyTotal = 0;
+
+      if (cards.length > 0) {
+        const { addedCount, fuzzyNeeded } = await processEntries(cards, 'main');
+        totalAdded += addedCount;
+        fuzzyTotal += fuzzyNeeded;
+      }
+
+      if (sidedeck.length > 0) {
+        const { addedCount, fuzzyNeeded } = await processEntries(sidedeck, 'side');
+        totalAdded += addedCount;
+        fuzzyTotal += fuzzyNeeded;
+      }
+
+      if (fuzzyTotal === 0) {
+        setTtsSuccess(`Successfully imported ${totalAdded} cards (including sidedeck) from TTS file!`);
         setTimeout(() => handleClose(), 1500);
       }
     } catch (err) {
@@ -339,7 +361,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
     }
 
     const allCards = [...pendingCards, ...extraCards];
-    dispatch({ type: 'BULK_ADD_CARDS', cards: allCards, deckId });
+    dispatch({ type: 'BULK_ADD_CARDS', cards: allCards, deckId, targetSection: pendingSection });
     handleClose();
   }
 

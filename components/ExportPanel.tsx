@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Download, Layers, Shuffle, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Download, Layers, Shuffle, Sparkles, Loader2, AlertCircle, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -26,6 +26,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
     mainCount: number;
     tokenCount: number;
     dfcCount: number;
+    sideCount: number;
   } | null>(null);
 
   // Preview data
@@ -33,6 +34,8 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
   const dfcCards = state.cards.filter((c) => isDoubleFaced(c.scryfallData));
   const mainCount = totalCards;
   const dfcCount = dfcCards.reduce((s, c) => s + c.quantity, 0);
+  const sideCount = state.sidedeck ? state.sidedeck.reduce((sum, c) => sum + c.quantity, 0) : 0;
+  const tokenCount = state.tokens ? state.tokens.reduce((sum, c) => sum + c.quantity, 0) : 0;
 
   async function handleExport() {
     if (!state || state.cards.length === 0) return;
@@ -41,10 +44,15 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
     setProgress(0);
 
     try {
-      setProgressLabel('Collecting token data...');
-      setProgress(20);
+      setProgressLabel('Generating export file...');
+      setProgress(50);
 
-      const result = await generateTTSExport(state.cards);
+      const result = await generateTTSExport(
+        state.cards,
+        state.customCardbackUrl,
+        state.tokens || [],
+        state.isSideDeckEnabled ? (state.sidedeck || []) : []
+      );
 
       setProgress(90);
       setProgressLabel('Writing JSON...');
@@ -56,6 +64,7 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
         mainCount: result.mainDeckCount,
         tokenCount: result.tokenCount,
         dfcCount: result.dfcCount,
+        sideCount: result.sideDeckCount,
       });
 
       setProgress(100);
@@ -86,10 +95,19 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
             color="text-primary"
             description="Includes commanders and DFCs (standard cardbacks)"
           />
+          {state.isSideDeckEnabled && (
+            <SubDeckRow
+              icon={<Archive className="w-4 h-4" />}
+              label="Side Deck"
+              count={sideCount}
+              color="text-amber-500"
+              description="Separate face-down deck"
+            />
+          )}
           <SubDeckRow
             icon={<Sparkles className="w-4 h-4" />}
             label="Tokens"
-            count={'auto'}
+            count={tokenCount}
             color="text-blue-400"
             description="Auto-detected from Scryfall"
           />
@@ -150,6 +168,9 @@ export function ExportPanel({ onExport }: ExportPanelProps) {
         <div className="text-xs text-muted-foreground bg-secondary rounded-lg p-3 space-y-1">
           <p className="text-green-400 font-medium mb-2">✓ Last export:</p>
           <p>• {lastResult.mainCount} main deck cards (includes DFCs)</p>
+          {lastResult.sideCount > 0 && (
+            <p>• {lastResult.sideCount} side deck cards</p>
+          )}
           <p>• {lastResult.tokenCount} tokens</p>
           <p>• {lastResult.dfcCount} double-faced cards</p>
         </div>

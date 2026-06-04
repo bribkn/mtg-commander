@@ -40,6 +40,10 @@ export interface ScryfallCardFace {
   mana_cost?: string;
   type_line?: string;
   oracle_text?: string;
+  power?: string;
+  toughness?: string;
+  loyalty?: string;
+  defense?: string;
 }
 
 export interface ScryfallRelatedCard {
@@ -70,6 +74,10 @@ export interface ScryfallCard {
   rarity: string;
   uri: string;
   scryfall_uri: string;
+  power?: string;
+  toughness?: string;
+  loyalty?: string;
+  defense?: string;
   prices?: {
     usd?: string | null;
     usd_foil?: string | null;

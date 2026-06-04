@@ -28,6 +28,9 @@ export interface SavedDeck {
   wins?: number;   // Number of wins
   losses?: number; // Number of losses
   tags?: string[]; // Deck tags
+  tokens?: DeckCard[];
+  sidedeck?: DeckCard[];
+  isSideDeckEnabled?: boolean;
 }
 
 export interface CustomCard {
@@ -53,11 +56,11 @@ type DeckAction =
   | { type: 'OPEN_DECK'; deckId: string }
   | { type: 'CLOSE_DECK' }
   | { type: 'SET_DECK_NAME'; name: string; deckId?: string }
-  | { type: 'ADD_CARD'; card: ScryfallCard; quantity?: number; isCommander?: boolean; deckId?: string }
-  | { type: 'REMOVE_CARD'; scryfallId: string; deckId?: string }
-  | { type: 'SET_QUANTITY'; scryfallId: string; quantity: number; deckId?: string }
-  | { type: 'INCREMENT_QUANTITY'; scryfallId: string; deckId?: string }
-  | { type: 'DECREMENT_QUANTITY'; scryfallId: string; deckId?: string }
+  | { type: 'ADD_CARD'; card: ScryfallCard; quantity?: number; isCommander?: boolean; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
+  | { type: 'REMOVE_CARD'; scryfallId: string; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
+  | { type: 'SET_QUANTITY'; scryfallId: string; quantity: number; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
+  | { type: 'INCREMENT_QUANTITY'; scryfallId: string; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
+  | { type: 'DECREMENT_QUANTITY'; scryfallId: string; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
   | { type: 'SET_COMMANDER'; scryfallId: string; deckId?: string }
   | { type: 'UNSET_COMMANDER'; deckId?: string }
   | { type: 'SET_COVER_CARD'; scryfallId: string; deckId?: string }
@@ -68,10 +71,14 @@ type DeckAction =
   | { type: 'ADD_CUSTOM_CARD'; name: string; imageUrl: string; associatedScryfallId: string; associatedName: string }
   | { type: 'DELETE_CUSTOM_CARD'; id: string }
   | { type: 'CLEAR_DECK'; deckId?: string }
-  | { type: 'UPDATE_CARD_DATA'; scryfallId: string; newCardData: ScryfallCard; deckId?: string }
+  | { type: 'UPDATE_CARD_DATA'; scryfallId: string; newCardData: ScryfallCard; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
   | { type: 'UPDATE_DECK_STATS'; wins: number; losses: number; deckId?: string }
   | { type: 'SET_DECK_TAGS'; tags: string[]; deckId?: string }
-  | { type: 'BULK_ADD_CARDS'; cards: Array<{ card: ScryfallCard; quantity: number; isCommander?: boolean }>; deckId?: string };
+  | { type: 'BULK_ADD_CARDS'; cards: Array<{ card: ScryfallCard; quantity: number; isCommander?: boolean }>; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
+  | { type: 'MOVE_CARD_TO_SIDEDECK'; scryfallId: string; deckId?: string }
+  | { type: 'MOVE_CARD_TO_MAINDECK'; scryfallId: string; deckId?: string }
+  | { type: 'TOGGLE_SIDEDECK'; deckId?: string }
+  | { type: 'SET_SIDEDECK_ENABLED'; enabled: boolean; deckId?: string };
 
 const STORE_STORAGE_KEY = 'mtg-commander-decks-store';
 
@@ -92,6 +99,9 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         wins: 0,
         losses: 0,
         tags: [],
+        tokens: [],
+        sidedeck: [],
+        isSideDeckEnabled: false,
       };
       return {
         ...state,
@@ -114,6 +124,9 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         wins: source.wins || 0,
         losses: source.losses || 0,
         tags: source.tags ? [...source.tags] : [],
+        tokens: source.tokens ? source.tokens.map((c) => ({ ...c })) : [],
+        sidedeck: source.sidedeck ? source.sidedeck.map((c) => ({ ...c })) : [],
+        isSideDeckEnabled: source.isSideDeckEnabled ?? false,
       };
       return {
         ...state,
@@ -168,50 +181,60 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case 'ADD_CARD': {
       const targetId = action.deckId || state.activeDeckId;
       if (!targetId) return state;
+      const section = action.targetSection || 'main';
+
       return {
         ...state,
         decks: state.decks.map((d) => {
           if (d.id !== targetId) return d;
 
-          const existing = d.cards.find((c) => c.scryfallId === action.card.id);
-          const qty = action.quantity ?? 1;
-
-          if (existing) {
-            return {
-              ...d,
-              cards: d.cards.map((c) =>
-                c.scryfallId === action.card.id
-                  ? { ...c, quantity: c.quantity + qty }
-                  : c
-              ),
-            };
+          let cardsList = d.cards;
+          if (section === 'side') {
+            cardsList = d.sidedeck || [];
+          } else if (section === 'tokens') {
+            cardsList = d.tokens || [];
           }
 
-          const newCard: DeckCard = {
-            scryfallId: action.card.id,
-            name: action.card.name,
-            quantity: qty,
-            scryfallData: action.card,
-            category: getCardCategory(action.card),
-            isCommander: action.isCommander ?? false,
-          };
+          const existing = cardsList.find((c) => c.scryfallId === action.card.id);
+          const qty = action.quantity ?? 1;
 
-          const newCards = [...d.cards, newCard];
-          const newCommanderId =
-            action.isCommander ? action.card.id : d.commanderId;
+          let updatedList: DeckCard[];
+          if (existing) {
+            updatedList = cardsList.map((c) =>
+              c.scryfallId === action.card.id
+                ? { ...c, quantity: c.quantity + qty }
+                : c
+            );
+          } else {
+            const newCard: DeckCard = {
+              scryfallId: action.card.id,
+              name: action.card.name,
+              quantity: qty,
+              scryfallData: action.card,
+              category: getCardCategory(action.card),
+              isCommander: section === 'main' ? (action.isCommander ?? false) : false,
+            };
+            updatedList = [...cardsList, newCard];
+          }
 
-          const finalCards = newCards.map((c) => ({
-            ...c,
-            isCommander: action.isCommander
-              ? c.scryfallId === action.card.id
-              : c.isCommander,
-          }));
-
-          return {
-            ...d,
-            cards: finalCards,
-            commanderId: newCommanderId,
-          };
+          if (section === 'side') {
+            return { ...d, sidedeck: updatedList };
+          } else if (section === 'tokens') {
+            return { ...d, tokens: updatedList };
+          } else {
+            const newCommanderId = action.isCommander ? action.card.id : d.commanderId;
+            const finalCards = updatedList.map((c) => ({
+              ...c,
+              isCommander: action.isCommander
+                ? c.scryfallId === action.card.id
+                : c.isCommander,
+            }));
+            return {
+              ...d,
+              cards: finalCards,
+              commanderId: newCommanderId,
+            };
+          }
         }),
       };
     }
@@ -221,30 +244,29 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       if (!targetId) return state;
       const activeDeck = state.decks.find((d) => d.id === targetId);
       if (!activeDeck) return state;
+      const section = action.targetSection || 'main';
 
-      let tempDeck = activeDeck;
+      let tempDeck = { ...activeDeck };
+      let cardsList = section === 'side' ? (tempDeck.sidedeck || []) : section === 'tokens' ? (tempDeck.tokens || []) : tempDeck.cards;
       let newCommanderId = tempDeck.commanderId;
 
       for (const { card, quantity, isCommander } of action.cards) {
-        const existingIndex = tempDeck.cards.findIndex((c) => c.scryfallId === card.id);
+        const existingIndex = cardsList.findIndex((c) => c.scryfallId === card.id);
 
-        if (isCommander) {
+        if (section === 'main' && isCommander) {
           newCommanderId = card.id;
         }
 
         if (existingIndex > -1) {
-          tempDeck = {
-            ...tempDeck,
-            cards: tempDeck.cards.map((c, idx) =>
-              idx === existingIndex
-                ? {
-                    ...c,
-                    quantity: c.quantity + quantity,
-                    isCommander: isCommander ? true : c.isCommander,
-                  }
-                : c
-            ),
-          };
+          cardsList = cardsList.map((c, idx) =>
+            idx === existingIndex
+              ? {
+                  ...c,
+                  quantity: c.quantity + quantity,
+                  isCommander: section === 'main' && isCommander ? true : c.isCommander,
+                }
+              : c
+          );
         } else {
           const newCard: DeckCard = {
             scryfallId: card.id,
@@ -252,25 +274,25 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
             quantity,
             scryfallData: card,
             category: getCardCategory(card),
-            isCommander: isCommander ?? false,
+            isCommander: section === 'main' ? (isCommander ?? false) : false,
           };
-          tempDeck = {
-            ...tempDeck,
-            cards: [...tempDeck.cards, newCard],
-          };
+          cardsList = [...cardsList, newCard];
         }
       }
 
-      // If we have a new commander, make sure other cards are not marked as commander
-      if (newCommanderId) {
-        tempDeck = {
-          ...tempDeck,
-          commanderId: newCommanderId,
-          cards: tempDeck.cards.map((c) => ({
+      if (section === 'side') {
+        tempDeck.sidedeck = cardsList;
+      } else if (section === 'tokens') {
+        tempDeck.tokens = cardsList;
+      } else {
+        tempDeck.cards = cardsList;
+        if (newCommanderId) {
+          tempDeck.commanderId = newCommanderId;
+          tempDeck.cards = tempDeck.cards.map((c) => ({
             ...c,
             isCommander: c.scryfallId === newCommanderId,
-          })),
-        };
+          }));
+        }
       }
 
       return {
@@ -284,17 +306,28 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case 'REMOVE_CARD': {
       const targetId = action.deckId || state.activeDeckId;
       if (!targetId) return state;
+      const section = action.targetSection || 'main';
+
       return {
         ...state,
         decks: state.decks.map((d) => {
           if (d.id !== targetId) return d;
-          const filtered = d.cards.filter((c) => c.scryfallId !== action.scryfallId);
-          return {
-            ...d,
-            cards: filtered,
-            commanderId: d.commanderId === action.scryfallId ? null : d.commanderId,
-            coverCardId: d.coverCardId === action.scryfallId ? null : (d.coverCardId || null),
-          };
+
+          if (section === 'side') {
+            const filtered = (d.sidedeck || []).filter((c) => c.scryfallId !== action.scryfallId);
+            return { ...d, sidedeck: filtered };
+          } else if (section === 'tokens') {
+            const filtered = (d.tokens || []).filter((c) => c.scryfallId !== action.scryfallId);
+            return { ...d, tokens: filtered };
+          } else {
+            const filtered = d.cards.filter((c) => c.scryfallId !== action.scryfallId);
+            return {
+              ...d,
+              cards: filtered,
+              commanderId: d.commanderId === action.scryfallId ? null : d.commanderId,
+              coverCardId: d.coverCardId === action.scryfallId ? null : (d.coverCardId || null),
+            };
+          }
         }),
       };
     }
@@ -302,12 +335,19 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case 'SET_QUANTITY': {
       const targetId = action.deckId || state.activeDeckId;
       if (!targetId) return state;
+      const section = action.targetSection || 'main';
+
       return {
         ...state,
         decks: state.decks.map((d) => {
           if (d.id !== targetId) return d;
+
+          let cardsList = section === 'side' ? (d.sidedeck || []) : section === 'tokens' ? (d.tokens || []) : d.cards;
+
           if (action.quantity <= 0) {
-            const filtered = d.cards.filter((c) => c.scryfallId !== action.scryfallId);
+            const filtered = cardsList.filter((c) => c.scryfallId !== action.scryfallId);
+            if (section === 'side') return { ...d, sidedeck: filtered };
+            if (section === 'tokens') return { ...d, tokens: filtered };
             return {
               ...d,
               cards: filtered,
@@ -315,14 +355,14 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
               coverCardId: d.coverCardId === action.scryfallId ? null : (d.coverCardId || null),
             };
           }
-          return {
-            ...d,
-            cards: d.cards.map((c) =>
-              c.scryfallId === action.scryfallId
-                ? { ...c, quantity: action.quantity }
-                : c
-            ),
-          };
+
+          const updated = cardsList.map((c) =>
+            c.scryfallId === action.scryfallId ? { ...c, quantity: action.quantity } : c
+          );
+
+          if (section === 'side') return { ...d, sidedeck: updated };
+          if (section === 'tokens') return { ...d, tokens: updated };
+          return { ...d, cards: updated };
         }),
       };
     }
@@ -330,18 +370,21 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case 'INCREMENT_QUANTITY': {
       const targetId = action.deckId || state.activeDeckId;
       if (!targetId) return state;
+      const section = action.targetSection || 'main';
+
       return {
         ...state,
         decks: state.decks.map((d) => {
           if (d.id !== targetId) return d;
-          return {
-            ...d,
-            cards: d.cards.map((c) =>
-              c.scryfallId === action.scryfallId
-                ? { ...c, quantity: c.quantity + 1 }
-                : c
-            ),
-          };
+
+          let cardsList = section === 'side' ? (d.sidedeck || []) : section === 'tokens' ? (d.tokens || []) : d.cards;
+          const updated = cardsList.map((c) =>
+            c.scryfallId === action.scryfallId ? { ...c, quantity: c.quantity + 1 } : c
+          );
+
+          if (section === 'side') return { ...d, sidedeck: updated };
+          if (section === 'tokens') return { ...d, tokens: updated };
+          return { ...d, cards: updated };
         }),
       };
     }
@@ -349,14 +392,21 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case 'DECREMENT_QUANTITY': {
       const targetId = action.deckId || state.activeDeckId;
       if (!targetId) return state;
+      const section = action.targetSection || 'main';
+
       return {
         ...state,
         decks: state.decks.map((d) => {
           if (d.id !== targetId) return d;
-          const card = d.cards.find((c) => c.scryfallId === action.scryfallId);
+
+          let cardsList = section === 'side' ? (d.sidedeck || []) : section === 'tokens' ? (d.tokens || []) : d.cards;
+          const card = cardsList.find((c) => c.scryfallId === action.scryfallId);
           if (!card) return d;
+
           if (card.quantity <= 1) {
-            const filtered = d.cards.filter((c) => c.scryfallId !== action.scryfallId);
+            const filtered = cardsList.filter((c) => c.scryfallId !== action.scryfallId);
+            if (section === 'side') return { ...d, sidedeck: filtered };
+            if (section === 'tokens') return { ...d, tokens: filtered };
             return {
               ...d,
               cards: filtered,
@@ -364,14 +414,14 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
               coverCardId: d.coverCardId === action.scryfallId ? null : (d.coverCardId || null),
             };
           }
-          return {
-            ...d,
-            cards: d.cards.map((c) =>
-              c.scryfallId === action.scryfallId
-                ? { ...c, quantity: c.quantity - 1 }
-                : c
-            ),
-          };
+
+          const updated = cardsList.map((c) =>
+            c.scryfallId === action.scryfallId ? { ...c, quantity: c.quantity - 1 } : c
+          );
+
+          if (section === 'side') return { ...d, sidedeck: updated };
+          if (section === 'tokens') return { ...d, tokens: updated };
+          return { ...d, cards: updated };
         }),
       };
     }
@@ -506,6 +556,9 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
           return {
             ...d,
             cards: [],
+            tokens: [],
+            sidedeck: [],
+            isSideDeckEnabled: false,
             commanderId: null,
             coverCardId: null,
             customCardbackUrl: null,
@@ -519,32 +572,160 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case 'UPDATE_CARD_DATA': {
       const targetId = action.deckId || state.activeDeckId;
       if (!targetId) return state;
+      const section = action.targetSection || 'main';
+
       return {
         ...state,
         decks: state.decks.map((d) => {
           if (d.id !== targetId) return d;
 
-          const isTargetCommander = d.commanderId === action.scryfallId;
-          const isTargetCover = d.coverCardId === action.scryfallId;
-          
-          const updatedCards = d.cards.map((c) => {
-            if (c.scryfallId !== action.scryfallId) return c;
+          if (section === 'side') {
+            const updated = (d.sidedeck || []).map((c) => {
+              if (c.scryfallId !== action.scryfallId) return c;
+              return {
+                ...c,
+                scryfallId: action.newCardData.id,
+                name: action.newCardData.name,
+                scryfallData: action.newCardData,
+                category: getCardCategory(action.newCardData),
+              };
+            });
+            return { ...d, sidedeck: updated };
+          } else if (section === 'tokens') {
+            const updated = (d.tokens || []).map((c) => {
+              if (c.scryfallId !== action.scryfallId) return c;
+              return {
+                ...c,
+                scryfallId: action.newCardData.id,
+                name: action.newCardData.name,
+                scryfallData: action.newCardData,
+                category: getCardCategory(action.newCardData),
+              };
+            });
+            return { ...d, tokens: updated };
+          } else {
+            const isTargetCommander = d.commanderId === action.scryfallId;
+            const isTargetCover = d.coverCardId === action.scryfallId;
+            
+            const updatedCards = d.cards.map((c) => {
+              if (c.scryfallId !== action.scryfallId) return c;
+              return {
+                ...c,
+                scryfallId: action.newCardData.id,
+                name: action.newCardData.name,
+                scryfallData: action.newCardData,
+                category: getCardCategory(action.newCardData),
+              };
+            });
+
             return {
-              ...c,
-              scryfallId: action.newCardData.id,
-              name: action.newCardData.name,
-              scryfallData: action.newCardData,
-              category: getCardCategory(action.newCardData),
+              ...d,
+              cards: updatedCards,
+              commanderId: isTargetCommander ? action.newCardData.id : d.commanderId,
+              coverCardId: isTargetCover ? action.newCardData.id : (d.coverCardId || null),
             };
-          });
+          }
+        }),
+      };
+    }
+
+    case 'MOVE_CARD_TO_SIDEDECK': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+
+      return {
+        ...state,
+        decks: state.decks.map((d) => {
+          if (d.id !== targetId) return d;
+
+          const cardToMove = d.cards.find((c) => c.scryfallId === action.scryfallId);
+          if (!cardToMove) return d;
+
+          const updatedCards = d.cards.map((c) =>
+            c.scryfallId === action.scryfallId ? { ...c, quantity: c.quantity - 1 } : c
+          ).filter((c) => c.quantity > 0);
+
+          const sidedeckList = d.sidedeck || [];
+          const existingInSide = sidedeckList.find((c) => c.scryfallId === action.scryfallId);
+          let updatedSide: DeckCard[];
+
+          if (existingInSide) {
+            updatedSide = sidedeckList.map((c) =>
+              c.scryfallId === action.scryfallId ? { ...c, quantity: c.quantity + 1 } : c
+            );
+          } else {
+            updatedSide = [...sidedeckList, { ...cardToMove, quantity: 1, isCommander: false }];
+          }
+
+          const isCommanderRemoved = d.commanderId === action.scryfallId && !updatedCards.some((c) => c.scryfallId === action.scryfallId);
 
           return {
             ...d,
             cards: updatedCards,
-            commanderId: isTargetCommander ? action.newCardData.id : d.commanderId,
-            coverCardId: isTargetCover ? action.newCardData.id : (d.coverCardId || null),
+            sidedeck: updatedSide,
+            commanderId: isCommanderRemoved ? null : d.commanderId,
+            coverCardId: d.coverCardId === action.scryfallId && !updatedCards.some((c) => c.scryfallId === action.scryfallId) ? null : d.coverCardId,
           };
         }),
+      };
+    }
+
+    case 'MOVE_CARD_TO_MAINDECK': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+
+      return {
+        ...state,
+        decks: state.decks.map((d) => {
+          if (d.id !== targetId) return d;
+
+          const sidedeckList = d.sidedeck || [];
+          const cardToMove = sidedeckList.find((c) => c.scryfallId === action.scryfallId);
+          if (!cardToMove) return d;
+
+          const updatedSide = sidedeckList.map((c) =>
+            c.scryfallId === action.scryfallId ? { ...c, quantity: c.quantity - 1 } : c
+          ).filter((c) => c.quantity > 0);
+
+          const existingInMain = d.cards.find((c) => c.scryfallId === action.scryfallId);
+          let updatedCards: DeckCard[];
+
+          if (existingInMain) {
+            updatedCards = d.cards.map((c) =>
+              c.scryfallId === action.scryfallId ? { ...c, quantity: c.quantity + 1 } : c
+            );
+          } else {
+            updatedCards = [...d.cards, { ...cardToMove, quantity: 1 }];
+          }
+
+          return {
+            ...d,
+            cards: updatedCards,
+            sidedeck: updatedSide,
+          };
+        }),
+      };
+    }
+
+    case 'TOGGLE_SIDEDECK': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+      return {
+        ...state,
+        decks: state.decks.map((d) =>
+          d.id === targetId ? { ...d, isSideDeckEnabled: !d.isSideDeckEnabled } : d
+        ),
+      };
+    }
+
+    case 'SET_SIDEDECK_ENABLED': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+      return {
+        ...state,
+        decks: state.decks.map((d) =>
+          d.id === targetId ? { ...d, isSideDeckEnabled: action.enabled } : d
+        ),
       };
     }
 
@@ -576,6 +757,9 @@ function init(initial: DeckState): DeckState {
         parsed.decks = parsed.decks.map((d: any) => ({
           ...d,
           tags: d.tags || [],
+          tokens: d.tokens || [],
+          sidedeck: d.sidedeck || [],
+          isSideDeckEnabled: d.isSideDeckEnabled ?? false,
         }));
       }
       return parsed;
