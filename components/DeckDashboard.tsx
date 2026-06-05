@@ -26,7 +26,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
         const data = cover.scryfallData;
         const id = cover.scryfallId;
         const art = data.image_uris?.art_crop || data.card_faces?.[0]?.image_uris?.art_crop || data.image_uris?.normal || '';
-        if (art.endsWith('.webm') || art.includes('.webm') || art.includes('catbox.moe') || art.includes('pixeldrain.com')) {
+        if (art.endsWith('.webm') || art.includes('.webm') || art.includes('catbox.moe') || art.includes('pixeldrain.com') || art.includes('ufs.sh') || art.includes('utfs.io')) {
           return `https://cards.scryfall.io/art_crop/front/${id[0]}/${id[1]}/${id}.jpg`;
         }
         if (art) return art;
@@ -39,7 +39,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
       const data = commander.scryfallData;
       const id = commander.scryfallId;
       const art = data.image_uris?.art_crop || data.card_faces?.[0]?.image_uris?.art_crop || data.image_uris?.normal || '';
-      if (art.endsWith('.webm') || art.includes('.webm') || art.includes('catbox.moe') || art.includes('pixeldrain.com')) {
+      if (art.endsWith('.webm') || art.includes('.webm') || art.includes('catbox.moe') || art.includes('pixeldrain.com') || art.includes('ufs.sh') || art.includes('utfs.io')) {
         return `https://cards.scryfall.io/art_crop/front/${id[0]}/${id[1]}/${id}.jpg`;
       }
       if (art) return art;

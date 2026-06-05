@@ -233,10 +233,10 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
     }
 
     // Bypass WebM / Custom alters for banner canvas creation (use static Scryfall base art)
-    if (artCropUrl && (artCropUrl.endsWith('.webm') || artCropUrl.includes('.webm') || artCropUrl.includes('catbox.moe') || artCropUrl.includes('pixeldrain.com'))) {
+    if (artCropUrl && (artCropUrl.endsWith('.webm') || artCropUrl.includes('.webm') || artCropUrl.includes('catbox.moe') || artCropUrl.includes('pixeldrain.com') || artCropUrl.includes('ufs.sh') || artCropUrl.includes('utfs.io'))) {
       artCropUrl = `https://cards.scryfall.io/art_crop/front/${scryCard.id[0]}/${scryCard.id[1]}/${scryCard.id}.jpg`;
     }
-    if (normalUrl && (normalUrl.endsWith('.webm') || normalUrl.includes('.webm') || normalUrl.includes('catbox.moe') || normalUrl.includes('pixeldrain.com'))) {
+    if (normalUrl && (normalUrl.endsWith('.webm') || normalUrl.includes('.webm') || normalUrl.includes('catbox.moe') || normalUrl.includes('pixeldrain.com') || normalUrl.includes('ufs.sh') || normalUrl.includes('utfs.io'))) {
       normalUrl = `https://cards.scryfall.io/normal/front/${scryCard.id[0]}/${scryCard.id[1]}/${scryCard.id}.jpg`;
     }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { UTApi } from 'uploadthing/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,52 +12,23 @@ export async function POST(req: NextRequest) {
     // Check if it is a video (e.g. WebM)
     if (file.type.startsWith('video/') || file.name.endsWith('.webm')) {
       try {
-        const pixeldrainFormData = new FormData();
-        pixeldrainFormData.append('file', file);
-
-        const res = await fetch('https://pixeldrain.com/api/file', {
-          method: 'POST',
-          body: pixeldrainFormData,
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.id) {
-            return NextResponse.json({
-              data: {
-                url: `https://pixeldrain.com/api/file/${data.id}`
-              }
-            });
-          }
-        }
-      } catch (pixeldrainErr) {
-        console.error('Pixeldrain upload failed, falling back to Catbox:', pixeldrainErr);
-      }
-
-      // Fallback to Catbox.moe
-      try {
-        const catboxFormData = new FormData();
-        catboxFormData.append('reqtype', 'fileupload');
-        catboxFormData.append('fileToUpload', file);
-
-        const res = await fetch('https://catbox.moe/user/api.php', {
-          method: 'POST',
-          body: catboxFormData,
-        });
-
-        if (res.ok) {
-          const catboxUrl = (await res.text()).trim();
+        const utapi = new UTApi();
+        const response = await utapi.uploadFiles(file);
+        
+        if (response && response.data) {
+          const url = response.data.ufsUrl || response.data.url;
           return NextResponse.json({
             data: {
-              url: catboxUrl
+              url: url
             }
           });
         } else {
-          const errText = await res.text();
-          return NextResponse.json({ error: `Upload failed on all providers (Pixeldrain failed, and Catbox failed: ${errText})` }, { status: res.status });
+          const errMessage = response?.error?.message || 'Unknown Uploadthing error';
+          return NextResponse.json({ error: `Uploadthing failed: ${errMessage}` }, { status: 500 });
         }
-      } catch (catboxErr: any) {
-        return NextResponse.json({ error: `Upload failed on all providers. Catbox exception: ${catboxErr.message || catboxErr}` }, { status: 500 });
+      } catch (uploadthingErr: any) {
+        console.error('Uploadthing upload failed:', uploadthingErr);
+        return NextResponse.json({ error: `Uploadthing failed: ${uploadthingErr.message || uploadthingErr}` }, { status: 500 });
       }
     }
 

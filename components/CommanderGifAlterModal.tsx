@@ -98,6 +98,21 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
   const isRotatingRef = useRef(false);
   const rotateStartRef = useRef({ x: 0, y: 0, angle: 0 });
   const ignoreNextBackdropClickRef = useRef(false);
+  const localUrlsRef = useRef<string[]>([]);
+
+  // Cleanup object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      localUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error('Failed to revoke object URL on cleanup:', err);
+        }
+      });
+      localUrlsRef.current = [];
+    };
+  }, []);
 
   let cardImageUrl =
     card.scryfallData.image_uris?.normal ||
@@ -110,7 +125,9 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
     (cardImageUrl.endsWith('.webm') ||
       cardImageUrl.includes('.webm') ||
       cardImageUrl.includes('catbox.moe') ||
-      cardImageUrl.includes('pixeldrain.com'))
+      cardImageUrl.includes('pixeldrain.com') ||
+      cardImageUrl.includes('ufs.sh') ||
+      cardImageUrl.includes('utfs.io'))
   ) {
     const scryId = card.scryfallId;
     if (scryId && scryId.length >= 2) {
@@ -154,6 +171,27 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
     } finally {
       setLoadingSearch(false);
     }
+  }
+
+  // Handle local GIF file upload and read as in-memory blob URL
+  function handleLocalGifUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'image/gif') {
+      alert('Please select a valid GIF file.');
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    localUrlsRef.current.push(objectUrl);
+    
+    // Extract file name without extension
+    const cleanName = file.name ? file.name.replace(/\.[^/.]+$/, "") : 'Local GIF Overlay';
+    addLayer(objectUrl, cleanName);
+
+    // Reset input value so the same file can be selected again
+    e.target.value = '';
   }
 
   // Add layer helper
@@ -402,6 +440,15 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
 
   // Delete Layer
   function deleteLayer(layerId: string) {
+    const layer = layers.find(l => l.id === layerId);
+    if (layer && layer.url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(layer.url);
+      } catch (err) {
+        console.error('Failed to revoke object URL on deleteLayer:', err);
+      }
+      localUrlsRef.current = localUrlsRef.current.filter((url) => url !== layer.url);
+    }
     setLayers(prev => prev.filter(l => l.id !== layerId));
   }
 
@@ -915,7 +962,7 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="w-[80vw] max-w-[1350px] sm:max-w-none bg-card border border-border shadow-2xl flex flex-col h-[88vh] max-h-[92vh] overflow-hidden p-0">
+      <DialogContent showCloseButton={false} className="w-[80vw] max-w-[1350px] sm:max-w-none bg-card border border-border shadow-2xl flex flex-col h-[88vh] max-h-[92vh] overflow-hidden p-0">
 
         {/* Modal Header */}
         <div className="p-4 border-b border-border/80 flex items-center justify-between shrink-0 bg-secondary/10">
@@ -1269,7 +1316,19 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
               <span>{layers.length} Layers Added</span>
               {layers.length > 0 && (
                 <button
-                  onClick={() => setLayers([])}
+                  onClick={() => {
+                    layers.forEach((lyr) => {
+                      if (lyr.url.startsWith('blob:')) {
+                        try {
+                          URL.revokeObjectURL(lyr.url);
+                        } catch (err) {
+                          console.error('Failed to revoke object URL on Clear All:', err);
+                        }
+                      }
+                    });
+                    localUrlsRef.current = [];
+                    setLayers([]);
+                  }}
                   className="text-[10px] text-red-400 hover:text-red-300 ml-2 border border-red-500/20 hover:border-red-500/40 px-1.5 py-0.5 rounded transition-all active:scale-95"
                 >
                   Clear All
@@ -1286,6 +1345,18 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
                 <Search className="w-3.5 h-3.5 text-primary" />
                 Find Overlay Effects
               </h3>
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/gif"
+                  className="hidden"
+                  onChange={handleLocalGifUpload}
+                />
+                <div className="flex items-center gap-1 text-[10.5px] font-bold text-primary hover:text-primary/80 transition-colors bg-primary/10 border border-primary/20 rounded-md px-2.5 py-1 select-none active:scale-95 transition-all">
+                  <Plus className="w-3 h-3" />
+                  <span>Upload Local GIF</span>
+                </div>
+              </label>
             </div>
 
             {/* Preselected curated quick-search buttons */}

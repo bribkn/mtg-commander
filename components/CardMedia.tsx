@@ -17,7 +17,9 @@ export function isVideoUrl(url?: string): boolean {
     url.endsWith('.webm') ||
     url.includes('.webm') ||
     url.includes('pixeldrain.com/api/file/') ||
-    url.includes('files.catbox.moe/')
+    url.includes('files.catbox.moe/') ||
+    url.includes('ufs.sh') ||
+    url.includes('utfs.io')
   );
 }
 
