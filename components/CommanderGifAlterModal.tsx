@@ -559,13 +559,19 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
       const recordedChunks: Blob[] = [];
 
       let mimeType = 'video/webm;codecs=vp8';
+      let isVp8Supported = true;
       if (typeof MediaRecorder !== 'undefined') {
         if (!MediaRecorder.isTypeSupported(mimeType)) {
+          isVp8Supported = false;
           mimeType = 'video/webm;codecs=vp9';
           if (!MediaRecorder.isTypeSupported(mimeType)) {
             mimeType = 'video/webm';
           }
         }
+      }
+
+      if (!isVp8Supported) {
+        alert("Warning: Your browser does not support the VP8 video codec natively. The compiled WebM alter might not load correctly in Tabletop Simulator (TTS). For best compatibility, please use Chrome, Edge, or Firefox on desktop.");
       }
 
       const recorder = new MediaRecorder(stream, { mimeType });
@@ -578,7 +584,7 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
       const downloadPromise = new Promise<void>((resolve, reject) => {
         recorder.onstop = () => {
           try {
-            const blob = new Blob(recordedChunks, { type: mimeType });
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
             const cleanCardName = card.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
             const link = document.createElement('a');
@@ -778,12 +784,23 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
       const recordedChunks: Blob[] = [];
 
       let mimeType = 'video/webm;codecs=vp8';
+      let isVp8Supported = true;
       if (typeof MediaRecorder !== 'undefined') {
         if (!MediaRecorder.isTypeSupported(mimeType)) {
+          isVp8Supported = false;
           mimeType = 'video/webm;codecs=vp9';
           if (!MediaRecorder.isTypeSupported(mimeType)) {
             mimeType = 'video/webm';
           }
+        }
+      }
+
+      if (!isVp8Supported) {
+        const confirmUpload = window.confirm(
+          "Warning: Your browser does not support the VP8 video codec natively. The uploaded WebM alter might not be compatible with Tabletop Simulator. Do you want to proceed with the upload anyway?"
+        );
+        if (!confirmUpload) {
+          throw new Error('Upload cancelled due to unsupported VP8 codec.');
         }
       }
 
@@ -800,9 +817,9 @@ export function CommanderGifAlterModal({ card, open, onClose }: CommanderGifAlte
             setCompileStatus('Uploading WebM to host...');
             setCompileProgress(95);
 
-            const blob = new Blob(recordedChunks, { type: mimeType });
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
             const cleanCardName = card.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-            const file = new File([blob], `${cleanCardName}_webm_alter.webm`, { type: mimeType });
+            const file = new File([blob], `${cleanCardName}_webm_alter.webm`, { type: 'video/webm' });
 
             const formData = new FormData();
             formData.append('image', file);

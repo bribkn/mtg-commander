@@ -78,6 +78,7 @@ export interface ScryfallCard {
   toughness?: string;
   loyalty?: string;
   defense?: string;
+  released_at?: string;
   prices?: {
     usd?: string | null;
     usd_foil?: string | null;
@@ -277,7 +278,12 @@ export function getThumbnailUrl(card: ScryfallCard): string {
 
 /** Determine card type category for UI grouping */
 export function getCardCategory(card: ScryfallCard): CardCategory {
-  const type = card.type_line?.toLowerCase() ?? '';
+  let type = card.type_line?.toLowerCase() ?? '';
+  if (card.card_faces && card.card_faces.length > 0) {
+    type = card.card_faces[0].type_line?.toLowerCase() ?? '';
+  }
+
+  if (type.includes('land')) return 'Land';
   if (type.includes('commander') || type.includes('legendary creature')) return 'Creature';
   if (type.includes('creature')) return 'Creature';
   if (type.includes('instant')) return 'Instant';
@@ -286,7 +292,6 @@ export function getCardCategory(card: ScryfallCard): CardCategory {
   if (type.includes('artifact')) return 'Artifact';
   if (type.includes('planeswalker')) return 'Planeswalker';
   if (type.includes('battle')) return 'Battle';
-  if (type.includes('land')) return 'Land';
   return 'Other';
 }
 

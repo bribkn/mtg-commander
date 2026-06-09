@@ -13,7 +13,8 @@ import {
   Zap,
   HelpCircle,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  RotateCw
 } from 'lucide-react';
 import {
   Dialog,
@@ -64,23 +65,29 @@ export function CombosModal({ open, onClose, deckId }: CombosModalProps) {
     });
   }
 
+  const fetchCombos = useCallback(() => {
+    if (!state?.cards) return;
+    setIsLoading(true);
+    setError('');
+    findMyCombos(state.cards)
+      .then((res) => {
+        setData(res);
+      })
+      .catch((err) => {
+        setError('Error loading combos from Commander Spellbook: ' + err.message);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [state?.cards]);
+
   // Fetch combos on modal open
   useEffect(() => {
-    if (open && state?.cards) {
-      setIsLoading(true);
-      setError('');
-      findMyCombos(state.cards)
-        .then((res) => {
-          setData(res);
-        })
-        .catch((err) => {
-          setError('Error loading combos from Commander Spellbook: ' + err.message);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+    if (open) {
+      fetchCombos();
     }
-  }, [open, state?.cards]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!state) return null;
 
@@ -306,6 +313,20 @@ export function CombosModal({ open, onClose, deckId }: CombosModalProps) {
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                 {presenceFilter === 'included' ? 'Combos fully assembled in your deck' : 'Potential Combos (missing exactly 1 card)'}
               </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchCombos}
+                disabled={isLoading}
+                className="h-6 text-[10px] font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-secondary/40 px-2 rounded transition-colors active:scale-95"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <RotateCw className="w-3 h-3" />
+                )}
+                <span>Update Combos</span>
+              </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar min-h-0">

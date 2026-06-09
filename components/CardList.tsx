@@ -32,6 +32,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Archive,
+  ArrowDownAZ,
+  Calendar,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -1012,10 +1014,11 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterQuery, setFilterQuery] = useState('');
   const [gifAlterCard, setGifAlterCard] = useState<DeckCard | null>(null);
-  const [selectedCmc, setSelectedCmc] = useState<string>('all');
+  const [selectedCmcs, setSelectedCmcs] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedSubtype, setSelectedSubtype] = useState<string>('all');
   const [selectedColor, setSelectedColor] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'mana' | 'date'>('name');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showOnlyGameChangers, setShowOnlyGameChangers] = useState(false);
 
@@ -1160,13 +1163,15 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
     }
 
     // CMC filter
-    if (selectedCmc !== 'all') {
+    if (selectedCmcs.length > 0) {
       const cardCmc = card.scryfallData.cmc ?? 0;
-      if (selectedCmc === '7+') {
-        if (cardCmc < 7) return false;
-      } else {
-        if (cardCmc !== parseInt(selectedCmc, 10)) return false;
-      }
+      const matchesCmc = selectedCmcs.some((val) => {
+        if (val === '7+') {
+          return cardCmc >= 7;
+        }
+        return cardCmc === parseInt(val, 10);
+      });
+      if (!matchesCmc) return false;
     }
 
     // Type filter
@@ -1214,6 +1219,28 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
 
   const totalFilteredCount = filteredCards.length + filteredSidedeck.length + filteredTokens.length;
 
+  // Sort within each category: commander first, then alphabetically or by release date
+  const sortCardList = (list: DeckCard[]) => {
+    return [...list].sort((a, b) => {
+      if (a.isCommander && !b.isCommander) return -1;
+      if (!a.isCommander && b.isCommander) return 1;
+      if (sortBy === 'mana') {
+        const cmcA = a.scryfallData.cmc ?? 0;
+        const cmcB = b.scryfallData.cmc ?? 0;
+        if (cmcA !== cmcB) {
+          return cmcA - cmcB;
+        }
+      } else if (sortBy === 'date') {
+        const dateA = a.scryfallData.released_at || '';
+        const dateB = b.scryfallData.released_at || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+      }
+      return a.name.localeCompare(b.name);
+    });
+  };
+
   // Group cards by category
   const grouped = new Map<string, DeckCard[]>();
   grouped.set('Commander', []);
@@ -1228,14 +1255,13 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
     }
   }
 
-  // Sort within each category: commander first, then alphabetically
-  for (const [, cards] of grouped) {
-    cards.sort((a, b) => {
-      if (a.isCommander && !b.isCommander) return -1;
-      if (!a.isCommander && b.isCommander) return 1;
-      return a.name.localeCompare(b.name);
-    });
+  // Sort each category
+  for (const [key, cards] of grouped) {
+    grouped.set(key, sortCardList(cards));
   }
+
+  const sortedSidedeck = sortCardList(filteredSidedeck);
+  const sortedTokens = sortCardList(filteredTokens);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -1267,7 +1293,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               size="sm"
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
               className={`h-8 text-xs gap-1.5 shrink-0 px-2.5 border-border hover:border-primary/50 hover:text-primary transition-colors ${
-                showAdvancedFilters || selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all'
+                showAdvancedFilters || selectedCmcs.length > 0 || selectedType !== 'all' || selectedSubtype !== 'all'
                   ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/15'
                   : 'hover:bg-secondary'
               }`}
@@ -1275,7 +1301,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Filters</span>
-              {(selectedCmc !== 'all' || selectedType !== 'all' || selectedSubtype !== 'all') && (
+              {(selectedCmcs.length > 0 || selectedType !== 'all' || selectedSubtype !== 'all') && (
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
               )}
             </Button>
@@ -1322,6 +1348,43 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                 <span>List</span>
               </button>
             </div>
+
+            {/* Sort Selector */}
+            <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60 shrink-0">
+              <button
+                onClick={() => setSortBy('name')}
+                className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${sortBy === 'name'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                title="Sort by Name"
+              >
+                <ArrowDownAZ className="w-3.5 h-3.5" />
+                <span>Name</span>
+              </button>
+              <button
+                onClick={() => setSortBy('mana')}
+                className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${sortBy === 'mana'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                title="Sort by Mana Value (CMC)"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Mana</span>
+              </button>
+              <button
+                onClick={() => setSortBy('date')}
+                className={`p-1 px-2.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${sortBy === 'date'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                title="Sort by Release Date"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Date</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1333,11 +1396,21 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider min-w-[75px]">Mana Value:</span>
               <div className="flex flex-wrap gap-0.5 bg-secondary/30 p-0.5 rounded-md border border-border/40">
                 {['all', '0', '1', '2', '3', '4', '5', '6', '7+'].map((cmcVal) => {
-                  const isActive = selectedCmc === cmcVal;
+                  const isActive = cmcVal === 'all' ? selectedCmcs.length === 0 : selectedCmcs.includes(cmcVal);
                   return (
                     <button
                       key={cmcVal}
-                      onClick={() => setSelectedCmc(cmcVal)}
+                      onClick={() => {
+                        if (cmcVal === 'all') {
+                          setSelectedCmcs([]);
+                        } else {
+                          if (selectedCmcs.includes(cmcVal)) {
+                            setSelectedCmcs(selectedCmcs.filter((x) => x !== cmcVal));
+                          } else {
+                            setSelectedCmcs([...selectedCmcs, cmcVal]);
+                          }
+                        }
+                      }}
                       className={`h-5 px-2 rounded text-[9px] font-bold transition-all ${
                         isActive
                           ? 'bg-primary text-primary-foreground shadow-sm'
@@ -1540,11 +1613,11 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                 </div>
               </div>
 
-              {state.isSideDeckEnabled && filteredSidedeck.length > 0 && (
+              {state.isSideDeckEnabled && sortedSidedeck.length > 0 && (
                 <div className="border-t border-border/30 pt-6">
                   <PremiumListSection
                     category="Side Deck"
-                    cards={filteredSidedeck}
+                    cards={sortedSidedeck}
                     onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'side'); }}
                     deckId={deckId}
                     section="side"
@@ -1554,11 +1627,11 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                 </div>
               )}
 
-              {filteredTokens.length > 0 && (
+              {sortedTokens.length > 0 && (
                 <div className="border-t border-border/30 pt-6">
                   <PremiumListSection
                     category="Tokens"
-                    cards={filteredTokens}
+                    cards={sortedTokens}
                     onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'tokens'); }}
                     deckId={deckId}
                     section="tokens"
@@ -1590,11 +1663,11 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                 );
               })}
 
-              {state.isSideDeckEnabled && filteredSidedeck.length > 0 && (
+              {state.isSideDeckEnabled && sortedSidedeck.length > 0 && (
                 <div className="border-t border-border/30 pt-4">
                   <CategorySection
                     category="Side Deck"
-                    cards={filteredSidedeck}
+                    cards={sortedSidedeck}
                     viewMode={viewMode}
                     onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'side'); }}
                     deckId={deckId}
@@ -1606,11 +1679,11 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                 </div>
               )}
 
-              {filteredTokens.length > 0 && (
+              {sortedTokens.length > 0 && (
                 <div className="border-t border-border/30 pt-4">
                   <CategorySection
                     category="Tokens"
-                    cards={filteredTokens}
+                    cards={sortedTokens}
                     viewMode={viewMode}
                     onVariantOpen={(card, sect) => { setVariantCard(card); setVariantCardSection(sect || 'tokens'); }}
                     deckId={deckId}
