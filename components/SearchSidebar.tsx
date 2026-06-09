@@ -24,6 +24,41 @@ import { CardMedia } from './CardMedia';
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
+// EDHREC Deck Salt Sum global distribution data (provided by the user)
+const SALT_DISTRIBUTION = [
+  { name: 5, total: 120354 },
+  { name: 10, total: 14574 },
+  { name: 15, total: 13188 },
+  { name: 20, total: 15466 },
+  { name: 25, total: 60554 },
+  { name: 30, total: 430381 },
+  { name: 35, total: 1033650 },
+  { name: 40, total: 1184448 },
+  { name: 45, total: 975927 },
+  { name: 50, total: 670931 },
+  { name: 55, total: 419771 },
+  { name: 60, total: 247068 },
+  { name: 65, total: 144567 },
+  { name: 70, total: 86412 },
+  { name: 75, total: 55091 },
+  { name: 80, total: 35928 },
+  { name: 85, total: 24875 },
+  { name: 90, total: 18890 },
+  { name: 95, total: 13043 },
+  { name: 100, total: 6069 }
+];
+
+const FILTERED_DISTRIBUTION = SALT_DISTRIBUTION;
+const MAX_TOTAL = 1184448; // Peak bucket total at name: 40
+
+function getPercentPosition(val: number): number {
+  const minVal = 5;
+  const maxVal = 100;
+  if (val <= minVal) return 0;
+  if (val >= maxVal) return 100;
+  return ((val - minVal) / (maxVal - minVal)) * 100;
+}
+
 const COLOR_CLASSES: Record<string, string> = {
   W: 'bg-yellow-100/90 text-yellow-900 border-yellow-300 shadow-yellow-100/10',
   U: 'bg-blue-600/25 text-blue-400 border-blue-500/30 shadow-blue-500/10',
@@ -81,6 +116,33 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
   // Modals inside sidebar
   const [addLandOpen, setAddLandOpen] = useState(false);
   const [editingStats, setEditingStats] = useState(false);
+
+  // Salt Scores of deck cards state
+  const [saltScores, setSaltScores] = useState<Record<string, number>>({});
+
+  // Fetch salt scores for all cards in the deck
+  useEffect(() => {
+    if (state?.cards && state.cards.length > 0) {
+      const cardNames = state.cards.map((c) => c.name);
+      fetch('/api/salt-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardNames }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to fetch salt scores');
+          return res.json();
+        })
+        .then((resData) => {
+          if (resData.saltScores) {
+            setSaltScores(resData.saltScores);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching salt scores:', err);
+        });
+    }
+  }, [state?.cards]);
 
   // Search input state
   const [query, setQuery] = useState('');
@@ -224,6 +286,18 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
   for (const card of state.cards) {
     typeCounts.set(card.category, (typeCounts.get(card.category) ?? 0) + card.quantity);
   }
+
+  // Compute Estimated Deck Price & Salt Sum
+  const estimatedDeckPrice = state?.cards ? state.cards.reduce((sum, card) => {
+    const usdPrice = card.scryfallData?.prices?.usd || card.scryfallData?.prices?.usd_foil || '0';
+    const price = parseFloat(usdPrice) || 0;
+    return sum + (price * card.quantity);
+  }, 0) : 0;
+
+  const saltSum = state?.cards ? state.cards.reduce((sum, card) => {
+    const score = saltScores[card.name] || saltScores[card.name.toLowerCase().trim()] || 0;
+    return sum + (score * card.quantity);
+  }, 0) : 0;
 
   let totalCmc = 0;
   let nonLandCount = 0;
@@ -624,6 +698,81 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                     isGameChanger={true}
                   />
                 )}
+
+                <StatBox label="Est. Price" value={`$${estimatedDeckPrice.toFixed(2)}`} sublabel="usd value" highlight={estimatedDeckPrice > 0} />
+                
+                <div className="relative group/salt select-none">
+                  <div className="rounded-lg p-3 text-center border bg-secondary border-border hover:border-border/80 transition-all duration-300 cursor-help">
+                    <div className="text-xl font-bold font-mono text-orange-400">
+                      {saltSum.toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5 border-b border-dashed border-muted-foreground/30 inline-block">
+                      Deck Salt
+                    </div>
+                    <div className="text-[10px] text-muted-foreground/60">sum score</div>
+                  </div>
+                  
+                  {/* Popover Hover Graph Chart */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2.5 hidden group-hover/salt:block z-50 bg-popover border border-border p-4 rounded-xl shadow-2xl w-[280px] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 text-center">
+                      Salt Sum Distribution
+                    </div>
+                    
+                    {/* Chart viewport */}
+                    <div className="h-28 flex items-end gap-[3px] border-b border-border/45 pb-1 justify-between relative">
+                      {/* Average Line */}
+                      <div 
+                        className="absolute bottom-0 top-0 w-[1px] border-l border-dashed border-red-500/50 z-10" 
+                        style={{ left: `${getPercentPosition(41.09)}%` }}
+                      />
+                      
+                      {/* Deck Position Line */}
+                      <div 
+                        className="absolute bottom-0 top-0 w-[2px] bg-orange-400 z-20" 
+                        style={{ left: `${getPercentPosition(saltSum)}%` }}
+                      >
+                        <div className="absolute -top-1 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-orange-400 shadow shadow-orange-400/50 border border-background" />
+                      </div>
+
+                      {/* Bars */}
+                      {FILTERED_DISTRIBUTION.map((d) => {
+                        const heightPercent = (d.total / MAX_TOTAL) * 100;
+                        const isCurrentBucket = Math.abs(saltSum - d.name) <= 2.5;
+                        return (
+                          <div 
+                            key={d.name}
+                            className={`w-[6px] rounded-t-[1px] transition-all duration-300 ${
+                              isCurrentBucket 
+                                ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]' 
+                                : 'bg-muted-foreground/25 hover:bg-muted-foreground/45'
+                            }`}
+                            style={{ height: `${heightPercent}%` }}
+                            title={`Bucket ${d.name}: ${d.total.toLocaleString()} decks`}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* X-axis labels */}
+                    <div className="flex justify-between text-[8px] text-muted-foreground font-mono mt-1.5 px-0.5">
+                      <span>5</span>
+                      <span style={{ marginLeft: '-10px' }}>41.1 (Avg)</span>
+                      <span>100+</span>
+                    </div>
+
+                    {/* Stats Summary */}
+                    <div className="mt-3.5 grid grid-cols-2 gap-2.5 text-[10px] bg-secondary/30 rounded-lg p-2 font-mono">
+                      <div className="text-center border-r border-border/40">
+                        <div className="text-muted-foreground text-[8px] uppercase font-bold mb-0.5">Your Deck</div>
+                        <div className="font-extrabold text-orange-400 text-xs">{saltSum.toFixed(2)}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-muted-foreground text-[8px] uppercase font-bold mb-0.5">Global Avg</div>
+                        <div className="font-extrabold text-foreground text-xs">41.09</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Winrate Stats Box */}

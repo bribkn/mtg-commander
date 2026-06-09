@@ -5,12 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function getEdhrecUrl(commanderName: string): string {
+export function getEdhrecSlug(name: string): string {
   // If the card is double-faced (e.g. "Esika, God of the Tree // The Prismatic Bridge"), 
   // EDHREC only uses the front face name.
-  const frontFace = commanderName.split('//')[0].trim();
+  const frontFace = name.split('//')[0].trim();
   
-  const normalized = frontFace
+  return frontFace
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // Remove accents
@@ -18,6 +18,8 @@ export function getEdhrecUrl(commanderName: string): string {
     .trim()
     .replace(/\s+/g, "-")           // Convert spaces to hyphens
     .replace(/-+/g, "-");           // Deduplicate consecutive hyphens
-    
-  return `https://edhrec.com/commanders/${normalized}`;
+}
+
+export function getEdhrecUrl(commanderName: string): string {
+  return `https://edhrec.com/commanders/${getEdhrecSlug(commanderName)}`;
 }

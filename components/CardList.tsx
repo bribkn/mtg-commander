@@ -53,6 +53,7 @@ import { CommanderGifAlterModal } from './CommanderGifAlterModal';
 import { CATEGORY_ORDER, CardCategory, getThumbnailUrl, ScryfallCard, isDoubleFaced, isGameChangerCard, getManaSymbolUrl } from '@/lib/scryfall';
 import { CardMedia } from './CardMedia';
 import { getEdhrecUrl } from '@/lib/utils';
+import { EdhrecSuggestionsModal } from './EdhrecSuggestionsModal';
 
 // Mana symbol colors
 const MANA_COLORS: Record<string, string> = {
@@ -92,10 +93,11 @@ interface CardRowProps {
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  onSuggestionsOpen?: (cardName: string) => void;
   section?: 'main' | 'side' | 'tokens';
 }
 
-function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, section = 'main' }: CardRowProps) {
+function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, onSuggestionsOpen, section = 'main' }: CardRowProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const [imgError, setImgError] = useState(false);
@@ -282,15 +284,15 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, 
 
         {/* View EDHREC Synergies */}
         {section === 'main' && card.isCommander && (
-          <a
-            href={getEdhrecUrl(card.name)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-6 h-6 rounded hover:bg-orange-500/10 text-muted-foreground hover:text-orange-400 flex items-center justify-center transition-colors"
-            title={`View ${card.name} Synergies on EDHREC`}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-6 h-6 text-muted-foreground hover:text-orange-400 hover:bg-orange-500/10"
+            title={`View ${card.name} Suggestions`}
+            onClick={() => onSuggestionsOpen?.(card.name)}
           >
             <Flame className="w-3.5 h-3.5 text-orange-500 hover:scale-110 transition-transform" />
-          </a>
+          </Button>
         )}
 
         {/* Quantity controls */}
@@ -336,6 +338,7 @@ function PremiumListRow({
   deckId, 
   onTransferCard,
   onGifAlterOpen,
+  onSuggestionsOpen,
   section = 'main'
 }: { 
   card: DeckCard; 
@@ -343,6 +346,7 @@ function PremiumListRow({
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  onSuggestionsOpen?: (cardName: string) => void;
   section?: 'main' | 'side' | 'tokens';
 }) {
   const { customCards, dispatch, state: globalState, decks } = useDeck();
@@ -510,15 +514,13 @@ function PremiumListRow({
 
           {/* EDHREC Synergies */}
           {section === 'main' && card.isCommander && (
-            <a
-              href={getEdhrecUrl(card.name)}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => onSuggestionsOpen?.(card.name)}
               className="p-0.5 rounded bg-secondary hover:bg-orange-500/20 text-muted-foreground hover:text-orange-400 active:scale-95 transition-transform flex items-center justify-center"
-              title="EDHREC Synergies"
+              title="EDHREC Suggestions"
             >
               <Flame className="w-3 h-3 text-orange-500" />
-            </a>
+            </button>
           )}
 
           {/* Delete */}
@@ -557,6 +559,7 @@ function PremiumListSection({
   deckId,
   onTransferCard,
   onGifAlterOpen,
+  onSuggestionsOpen,
   section = 'main',
 }: {
   category: string;
@@ -565,6 +568,7 @@ function PremiumListSection({
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  onSuggestionsOpen?: (cardName: string) => void;
   section?: 'main' | 'side' | 'tokens';
 }) {
   const totalQuantity = cards.reduce((sum, c) => sum + c.quantity, 0);
@@ -593,6 +597,7 @@ function PremiumListSection({
             deckId={deckId}
             onTransferCard={onTransferCard}
             onGifAlterOpen={onGifAlterOpen}
+            onSuggestionsOpen={onSuggestionsOpen}
             section={section}
           />
         ))}
@@ -721,6 +726,7 @@ interface CategorySectionProps {
   deckId?: string;
   onTransferCard?: (card: DeckCard, mode: 'copy' | 'move') => void;
   onGifAlterOpen?: (card: DeckCard) => void;
+  onSuggestionsOpen?: (cardName: string) => void;
   section?: 'main' | 'side' | 'tokens';
 }
 
@@ -732,6 +738,7 @@ function CategorySection({
   deckId,
   onTransferCard,
   onGifAlterOpen,
+  onSuggestionsOpen,
   section = 'main',
 }: CategorySectionProps) {
   const { state: globalState, decks, dispatch } = useDeck();
@@ -764,7 +771,7 @@ function CategorySection({
           {viewMode === 'text' && (
             <div className="space-y-0.5">
               {cards.map((card) => (
-                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} onGifAlterOpen={onGifAlterOpen} section={section} />
+                <CardRow key={card.scryfallId} card={card} onVariantOpen={onVariantOpen} deckId={deckId} onTransferCard={onTransferCard} onGifAlterOpen={onGifAlterOpen} onSuggestionsOpen={onSuggestionsOpen} section={section} />
               ))}
             </div>
           )}
@@ -954,17 +961,15 @@ function CategorySection({
                         </div>
 
                         {section === 'main' && card.isCommander && (
-                          <a
-                            href={getEdhrecUrl(card.name)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => onSuggestionsOpen?.(card.name)}
                             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 active:scale-98 text-[11px] font-bold text-white shadow-lg shadow-orange-600/20 border border-orange-500/30 transition-all duration-200"
-                            title={`Open ${card.name} on EDHREC`}
+                            title={`Open ${card.name} Suggestions`}
                           >
                             <Flame className="w-3.5 h-3.5 text-white animate-pulse" />
-                            <span>EDHREC Synergies</span>
+                            <span>EDHREC Suggestions</span>
                             <span className="text-[9px] opacity-75">↗</span>
-                          </a>
+                          </button>
                         )}
 
                         <div className="flex items-center justify-between bg-black/75 border border-border/40 rounded-lg py-1 px-3 shadow-inner">
@@ -1014,6 +1019,13 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterQuery, setFilterQuery] = useState('');
   const [gifAlterCard, setGifAlterCard] = useState<DeckCard | null>(null);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const [suggestionsCommanderName, setSuggestionsCommanderName] = useState<string | null>(null);
+
+  const handleOpenSuggestions = (commanderName: string) => {
+    setSuggestionsCommanderName(commanderName);
+    setIsSuggestionsOpen(true);
+  };
   const [selectedCmcs, setSelectedCmcs] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedSubtype, setSelectedSubtype] = useState<string>('all');
@@ -1567,6 +1579,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                         section="main"
                         onTransferCard={onTransferCard}
                         onGifAlterOpen={(card) => setGifAlterCard(card)}
+                        onSuggestionsOpen={handleOpenSuggestions}
                       />
                     );
                   })}
@@ -1587,6 +1600,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                         section="main"
                         onTransferCard={onTransferCard}
                         onGifAlterOpen={(card) => setGifAlterCard(card)}
+                        onSuggestionsOpen={handleOpenSuggestions}
                       />
                     );
                   })}
@@ -1607,6 +1621,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                         section="main"
                         onTransferCard={onTransferCard}
                         onGifAlterOpen={(card) => setGifAlterCard(card)}
+                        onSuggestionsOpen={handleOpenSuggestions}
                       />
                     );
                   })}
@@ -1623,6 +1638,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                     section="side"
                     onTransferCard={onTransferCard}
                     onGifAlterOpen={(card) => setGifAlterCard(card)}
+                    onSuggestionsOpen={handleOpenSuggestions}
                   />
                 </div>
               )}
@@ -1637,6 +1653,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                     section="tokens"
                     onTransferCard={onTransferCard}
                     onGifAlterOpen={(card) => setGifAlterCard(card)}
+                    onSuggestionsOpen={handleOpenSuggestions}
                   />
                 </div>
               )}
@@ -1657,6 +1674,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                       section="main"
                       onTransferCard={onTransferCard}
                       onGifAlterOpen={(card) => setGifAlterCard(card)}
+                      onSuggestionsOpen={handleOpenSuggestions}
                     />
                     <Separator className="my-1 opacity-30" />
                   </div>
@@ -1674,6 +1692,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                     section="side"
                     onTransferCard={onTransferCard}
                     onGifAlterOpen={(card) => setGifAlterCard(card)}
+                    onSuggestionsOpen={handleOpenSuggestions}
                   />
                   <Separator className="my-1 opacity-30" />
                 </div>
@@ -1690,6 +1709,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                     section="tokens"
                     onTransferCard={onTransferCard}
                     onGifAlterOpen={(card) => setGifAlterCard(card)}
+                    onSuggestionsOpen={handleOpenSuggestions}
                   />
                   <Separator className="my-1 opacity-30" />
                 </div>
@@ -2042,6 +2062,19 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
           card={gifAlterCard}
           open={gifAlterCard !== null}
           onClose={() => setGifAlterCard(null)}
+        />
+      )}
+
+      {/* EDHREC Suggestions Modal */}
+      {suggestionsCommanderName && (
+        <EdhrecSuggestionsModal
+          open={isSuggestionsOpen}
+          onClose={() => {
+            setIsSuggestionsOpen(false);
+            setSuggestionsCommanderName(null);
+          }}
+          commanderName={suggestionsCommanderName}
+          deckId={deckId}
         />
       )}
     </div>
