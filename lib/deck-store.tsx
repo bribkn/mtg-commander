@@ -195,21 +195,25 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
             cardsList = d.tokens || [];
           }
 
-          const existing = cardsList.find((c) => c.scryfallId === action.card.id);
+          const existing = section === 'tokens'
+            ? cardsList.find((c) => c.name.toLowerCase() === action.card.name.toLowerCase())
+            : cardsList.find((c) => c.scryfallId === action.card.id);
           const qty = action.quantity ?? 1;
 
           let updatedList: DeckCard[];
           if (existing) {
-            updatedList = cardsList.map((c) =>
-              c.scryfallId === action.card.id
-                ? { ...c, quantity: c.quantity + qty }
-                : c
-            );
+            updatedList = cardsList.map((c) => {
+              const isMatch = section === 'tokens'
+                ? c.name.toLowerCase() === action.card.name.toLowerCase()
+                : c.scryfallId === action.card.id;
+              const newQty = section === 'tokens' ? 1 : c.quantity + qty;
+              return isMatch ? { ...c, quantity: newQty } : c;
+            });
           } else {
             const newCard: DeckCard = {
               scryfallId: action.card.id,
               name: action.card.name,
-              quantity: qty,
+              quantity: section === 'tokens' ? 1 : qty,
               scryfallData: action.card,
               category: getCardCategory(action.card),
               isCommander: section === 'main' ? (action.isCommander ?? false) : false,
@@ -251,7 +255,9 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       let newCommanderId = tempDeck.commanderId;
 
       for (const { card, quantity, isCommander } of action.cards) {
-        const existingIndex = cardsList.findIndex((c) => c.scryfallId === card.id);
+        const existingIndex = section === 'tokens'
+          ? cardsList.findIndex((c) => c.name.toLowerCase() === card.name.toLowerCase())
+          : cardsList.findIndex((c) => c.scryfallId === card.id);
 
         if (section === 'main' && isCommander) {
           newCommanderId = card.id;
@@ -262,7 +268,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
             idx === existingIndex
               ? {
                   ...c,
-                  quantity: c.quantity + quantity,
+                  quantity: section === 'tokens' ? 1 : c.quantity + quantity,
                   isCommander: section === 'main' && isCommander ? true : c.isCommander,
                 }
               : c
@@ -271,7 +277,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
           const newCard: DeckCard = {
             scryfallId: card.id,
             name: card.name,
-            quantity,
+            quantity: section === 'tokens' ? 1 : quantity,
             scryfallData: card,
             category: getCardCategory(card),
             isCommander: section === 'main' ? (isCommander ?? false) : false,
@@ -754,13 +760,26 @@ function init(initial: DeckState): DeckState {
         parsed.customCards = [];
       }
       if (Array.isArray(parsed.decks)) {
-        parsed.decks = parsed.decks.map((d: any) => ({
-          ...d,
-          tags: d.tags || [],
-          tokens: d.tokens || [],
-          sidedeck: d.sidedeck || [],
-          isSideDeckEnabled: d.isSideDeckEnabled ?? false,
-        }));
+        parsed.decks = parsed.decks.map((d: any) => {
+          const tokensList: DeckCard[] = d.tokens || [];
+          const dedupedTokensMap = new Map<string, DeckCard>();
+          for (const token of tokensList) {
+            const normName = token.name.toLowerCase().trim();
+            const existing = dedupedTokensMap.get(normName);
+            if (existing) {
+              existing.quantity = 1;
+            } else {
+              dedupedTokensMap.set(normName, { ...token, quantity: 1 });
+            }
+          }
+          return {
+            ...d,
+            tags: d.tags || [],
+            tokens: Array.from(dedupedTokensMap.values()),
+            sidedeck: d.sidedeck || [],
+            isSideDeckEnabled: d.isSideDeckEnabled ?? false,
+          };
+        });
       }
       return parsed;
     }

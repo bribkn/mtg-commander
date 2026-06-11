@@ -296,27 +296,31 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, 
         )}
 
         {/* Quantity controls */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-6 h-6 text-muted-foreground hover:text-foreground"
-          onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
-        >
-          <Minus className="w-3 h-3" />
-        </Button>
+        {section !== 'tokens' && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6 text-muted-foreground hover:text-foreground"
+              onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
+            >
+              <Minus className="w-3 h-3" />
+            </Button>
 
-        <span className="w-6 text-center text-sm font-mono font-semibold text-foreground">
-          {card.quantity}
-        </span>
+            <span className="w-6 text-center text-sm font-mono font-semibold text-foreground">
+              {card.quantity}
+            </span>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-6 h-6 text-muted-foreground hover:text-foreground"
-          onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
-        >
-          <Plus className="w-3 h-3" />
-        </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6 text-muted-foreground hover:text-foreground"
+              onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
+            >
+              <Plus className="w-3 h-3" />
+            </Button>
+          </>
+        )}
 
         {/* Remove */}
         <Button
@@ -371,9 +375,11 @@ function PremiumListRow({
     <div className="group flex items-center justify-between py-1 px-1.5 rounded-md hover:bg-secondary/40 transition-colors text-xs select-none">
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         {/* Quantity */}
-        <span className="font-mono font-bold text-neutral-400 w-5 shrink-0 text-left">
-          {card.quantity}
-        </span>
+        {section !== 'tokens' && (
+          <span className="font-mono font-bold text-neutral-400 w-5 shrink-0 text-left">
+            {card.quantity}
+          </span>
+        )}
         
         {/* Card Name with Badges */}
         <div className="flex items-center gap-1 min-w-0 truncate">
@@ -447,22 +453,26 @@ function PremiumListRow({
           )}
 
           {/* Decrement */}
-          <button
-            onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
-            className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
-            title="Decrease Quantity"
-          >
-            <Minus className="w-3 h-3" />
-          </button>
+          {section !== 'tokens' && (
+            <button
+              onClick={() => dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
+              className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+              title="Decrease Quantity"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+          )}
           
           {/* Increment */}
-          <button
-            onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
-            className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
-            title="Increase Quantity"
-          >
-            <Plus className="w-3 h-3" />
-          </button>
+          {section !== 'tokens' && (
+            <button
+              onClick={() => dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })}
+              className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+              title="Increase Quantity"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          )}
 
           {/* Commander set */}
           {section === 'main' && !card.isCommander && (
@@ -829,10 +839,12 @@ function CategorySection({
                     )}
 
                     {/* Centered Bottom Quantity Pill */}
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/85 px-3 py-1 rounded-full border border-border/40 z-10 flex items-center gap-1.5 shadow-md shadow-black/50 transition-opacity duration-300 group-hover/visual:opacity-0 select-none animate-fade-in">
-                      <span className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase font-mono">QTY:</span>
-                      <span className="text-xs font-mono font-extrabold text-primary">{card.quantity}</span>
-                    </div>
+                    {section !== 'tokens' && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/85 px-3 py-1 rounded-full border border-border/40 z-10 flex items-center gap-1.5 shadow-md shadow-black/50 transition-opacity duration-300 group-hover/visual:opacity-0 select-none animate-fade-in">
+                        <span className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase font-mono">QTY:</span>
+                        <span className="text-xs font-mono font-extrabold text-primary">{card.quantity}</span>
+                      </div>
+                    )}
 
                     {/* Dark Crimson Hover Overlay */}
                     <div className="absolute inset-0 bg-black/90 border border-primary/30 opacity-0 group-hover/visual:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-2.5 z-10 text-center">
@@ -972,27 +984,29 @@ function CategorySection({
                           </button>
                         )}
 
-                        <div className="flex items-center justify-between bg-black/75 border border-border/40 rounded-lg py-1 px-3 shadow-inner">
-                          <button
-                            onClick={() =>
-                              dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })
-                            }
-                            className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
-                          >
-                            -
-                          </button>
-                          <span className="text-xs font-mono font-bold text-foreground">
-                            {card.quantity}
-                          </span>
-                          <button
-                            onClick={() =>
-                              dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })
-                            }
-                            className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
-                          >
-                            +
-                          </button>
-                        </div>
+                        {section !== 'tokens' && (
+                          <div className="flex items-center justify-between bg-black/75 border border-border/40 rounded-lg py-1 px-3 shadow-inner">
+                            <button
+                              onClick={() =>
+                                dispatch({ type: 'DECREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })
+                              }
+                              className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
+                            >
+                              -
+                            </button>
+                            <span className="text-xs font-mono font-bold text-foreground">
+                              {card.quantity}
+                            </span>
+                            <button
+                              onClick={() =>
+                                dispatch({ type: 'INCREMENT_QUANTITY', scryfallId: card.scryfallId, deckId, targetSection: section })
+                              }
+                              className="text-muted-foreground hover:text-foreground font-bold text-base px-2 hover:scale-125 transition-transform duration-150"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1088,7 +1102,15 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
     }
 
     // Fetch printings of card ordered by release date descending (newest first)
-    const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=prints&order=released`;
+    const isTokenCard = variantCardSection === 'tokens' ||
+      variantCard?.scryfallData?.layout === 'token' ||
+      variantCard?.scryfallData?.layout === 'double_faced_token' ||
+      variantCard?.scryfallData?.layout === 'emblem';
+
+    let url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=prints&order=released`;
+    if (isTokenCard) {
+      url += '&include_extras=true';
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -1119,7 +1141,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
       controller.abort();
       clearTimeout(timeoutId);
     };
-  }, [variantCard, printsFilter, printsSetSearch]);
+  }, [variantCard, printsFilter, printsSetSearch, variantCardSection]);
 
   if (!state) return null;
 
