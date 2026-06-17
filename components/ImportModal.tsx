@@ -354,7 +354,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
   // Ensure there is an active deck to import into; creates one if createNewDeck is set
   function ensureActiveDeck(name?: string) {
     if (createNewDeck && !activeDeckId) {
-      dispatch({ type: 'CREATE_DECK', name: name || 'Imported Deck' });
+      dispatch({ type: 'CREATE_DECK', name: name || 'Imported Deck', id: `deck-${Date.now()}` });
     }
   }
 
