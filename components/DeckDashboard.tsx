@@ -125,7 +125,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
           )}
 
           <Button
-            onClick={() => dispatch({ type: 'CREATE_DECK' })}
+            onClick={() => dispatch({ type: 'CREATE_DECK', id: `deck-${Date.now()}` })}
             className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-lg shadow-primary/10 h-9 text-xs"
           >
             <Plus className="w-4 h-4" /> New Deck
@@ -150,7 +150,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 justify-items-center">
             {/* "Create Deck" Card Option */}
             <Card
-              onClick={() => dispatch({ type: 'CREATE_DECK' })}
+              onClick={() => dispatch({ type: 'CREATE_DECK', id: `deck-${Date.now()}` })}
               className="w-[220px] aspect-[5/7] flex flex-col items-center justify-center border-dashed border-2 border-border/80 hover:border-primary/60 hover:bg-primary/5 cursor-pointer transition-all duration-300 group rounded-xl bg-card/20 shadow-md relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 group-hover:to-black/30 transition-all" />
@@ -287,7 +287,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              dispatch({ type: 'DUPLICATE_DECK', deckId: deck.id });
+                              dispatch({ type: 'DUPLICATE_DECK', deckId: deck.id, newDeckId: `deck-${Date.now()}` });
                             }}
                             className="w-7 h-7 text-muted-foreground hover:text-foreground border border-border/30 rounded bg-black/40 hover:bg-black/60 shrink-0"
                             title="Duplicate"

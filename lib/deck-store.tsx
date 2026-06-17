@@ -55,7 +55,7 @@ interface DeckState {
 type DeckAction =
   | { type: 'LOAD_STORE'; state: DeckState }
   | { type: 'CREATE_DECK'; name?: string; id?: string }
-  | { type: 'DUPLICATE_DECK'; deckId: string }
+  | { type: 'DUPLICATE_DECK'; deckId: string; newDeckId?: string }
   | { type: 'DELETE_DECK'; deckId: string }
   | { type: 'OPEN_DECK'; deckId: string }
   | { type: 'CLOSE_DECK' }
@@ -117,7 +117,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case 'DUPLICATE_DECK': {
       const source = state.decks.find((d) => d.id === action.deckId);
       if (!source) return state;
-      const newId = `deck-${Date.now()}`;
+      const newId = action.newDeckId || `deck-${Date.now()}`;
       const duplicate: SavedDeck = {
         id: newId,
         deckName: `${source.deckName} (Copia)`,
