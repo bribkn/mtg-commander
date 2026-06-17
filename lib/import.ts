@@ -10,6 +10,7 @@ export interface ParsedDeckEntry {
   name: string;
   quantity: number;
   isCommander?: boolean;
+  artUrl?: string;
 }
 
 /** Extract deck ID from a Moxfield URL */
@@ -269,10 +270,10 @@ export function parseTTSJson(jsonText: string): ParsedTTSImport {
 
     /**
      * Count cards in a single TTS object (pile/deck).
-     * Returns a map of { cardName → count } for that pile only.
+     * Returns a map of { cardName\nartUrl → count } for that pile only.
      */
-    function countCardsInPile(obj: any): Record<string, number> {
-      const counts: Record<string, number> = {};
+    function countCardsInPile(obj: any): Record<string, { quantity: number; artUrl?: string }> {
+      const counts: Record<string, { quantity: number; artUrl?: string }> = {};
 
       function traverse(node: any) {
         if (!node || typeof node !== 'object') return;
@@ -281,7 +282,20 @@ export function parseTTSJson(jsonText: string): ParsedTTSImport {
         if (node.Name === 'Card' && typeof node.Nickname === 'string') {
           const fullName = node.Nickname.trim();
           const name = fullName.split('\n')[0].trim();
-          if (name) counts[name] = (counts[name] || 0) + 1;
+          if (name) {
+            let artUrl: string | undefined = undefined;
+            if (typeof node.CardID === 'number' && obj.CustomDeck) {
+              const deckId = Math.floor(node.CardID / 100);
+              artUrl = obj.CustomDeck[String(deckId)]?.FaceURL;
+            }
+
+            const key = artUrl ? `${name}\n${artUrl}` : name;
+            if (counts[key]) {
+              counts[key].quantity += 1;
+            } else {
+              counts[key] = { quantity: 1, artUrl };
+            }
+          }
           return;
         }
 
@@ -296,9 +310,9 @@ export function parseTTSJson(jsonText: string): ParsedTTSImport {
       return counts;
     }
 
-    const mainCounts: Record<string, number> = {};
-    const tokenCounts: Record<string, number> = {};
-    const sideCounts: Record<string, number> = {};
+    const mainCounts: Record<string, { quantity: number; artUrl?: string }> = {};
+    const tokenCounts: Record<string, { quantity: number; artUrl?: string }> = {};
+    const sideCounts: Record<string, { quantity: number; artUrl?: string }> = {};
 
     if (parsed && Array.isArray(parsed.ObjectStates)) {
       for (const subDeck of parsed.ObjectStates) {
@@ -307,49 +321,63 @@ export function parseTTSJson(jsonText: string): ParsedTTSImport {
 
         if (Math.abs(posX - 2.2) < 0.1) {
           // Token pile
-          for (const [name, count] of Object.entries(pileCounts)) {
-            tokenCounts[name] = Math.max(tokenCounts[name] ?? 0, count);
+          for (const [key, item] of Object.entries(pileCounts)) {
+            const existing = tokenCounts[key];
+            if (existing) {
+              existing.quantity = Math.max(existing.quantity, item.quantity);
+            } else {
+              tokenCounts[key] = { ...item };
+            }
           }
         } else if (Math.abs(posX + 2.2) < 0.1) {
           // Sidedeck pile
-          for (const [name, count] of Object.entries(pileCounts)) {
-            sideCounts[name] = Math.max(sideCounts[name] ?? 0, count);
+          for (const [key, item] of Object.entries(pileCounts)) {
+            const existing = sideCounts[key];
+            if (existing) {
+              existing.quantity = Math.max(existing.quantity, item.quantity);
+            } else {
+              sideCounts[key] = { ...item };
+            }
           }
         } else if (Math.abs(posX - 4.4) < 0.1) {
           // DFC helper pile — ignore this pile completely on import to prevent double-adding cards
           continue;
         } else {
           // Main deck pile
-          for (const [name, count] of Object.entries(pileCounts)) {
-            mainCounts[name] = Math.max(mainCounts[name] ?? 0, count);
+          for (const [key, item] of Object.entries(pileCounts)) {
+            const existing = mainCounts[key];
+            if (existing) {
+              existing.quantity = Math.max(existing.quantity, item.quantity);
+            } else {
+              mainCounts[key] = { ...item };
+            }
           }
         }
       }
     } else {
       // Flat file — just count everything into main
       const counts = countCardsInPile(parsed);
-      for (const [name, count] of Object.entries(counts)) {
-        mainCounts[name] = count;
+      for (const [key, item] of Object.entries(counts)) {
+        mainCounts[key] = { ...item };
       }
     }
 
-    const cards = Object.entries(mainCounts).map(([name, quantity]) => ({
-      name,
-      quantity,
-      isCommander: false,
-    }));
+    const mapToEntries = (countsMap: Record<string, { quantity: number; artUrl?: string }>) => {
+      return Object.entries(countsMap).map(([key, item]) => {
+        const parts = key.split('\n');
+        const name = parts[0];
+        return {
+          name,
+          quantity: item.quantity,
+          isCommander: false,
+          artUrl: item.artUrl,
+        };
+      });
+    };
 
-    const tokens = Object.entries(tokenCounts).map(([name, quantity]) => ({
-      name,
-      quantity,
-      isCommander: false,
-    }));
-
-    const sidedeck = Object.entries(sideCounts).map(([name, quantity]) => ({
-      name,
-      quantity,
-      isCommander: false,
-    }));
+    const cards = mapToEntries(mainCounts);
+    const tokens = mapToEntries(tokenCounts);
+    const sidedeck = mapToEntries(sideCounts);
 
     return { cards, tokens, sidedeck };
   } catch (err) {

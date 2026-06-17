@@ -6,8 +6,12 @@ import React, {
   useReducer,
   useEffect,
   ReactNode,
+  useState,
+  useRef,
 } from 'react';
 import { ScryfallCard, getCardCategory, CardCategory } from './scryfall';
+import { supabase } from './supabase';
+import { User } from '@supabase/supabase-js';
 
 export interface DeckCard {
   scryfallId: string;
@@ -750,6 +754,13 @@ const initialState: DeckState = {
 function init(initial: DeckState): DeckState {
   if (typeof window === 'undefined') return initial;
   try {
+    // Bypass loading local storage if a Supabase auth token is present
+    const keys = Object.keys(localStorage);
+    const hasSessionKey = keys.some((key) => key.startsWith('sb-') && key.endsWith('-auth-token'));
+    if (hasSessionKey) {
+      return initial;
+    }
+
     const stored = localStorage.getItem(STORE_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
@@ -818,26 +829,308 @@ interface DeckContextValue {
   state: SavedDeck | null; // active deck (or null if dashboard is open)
   decks: SavedDeck[];
   activeDeckId: string | null;
-  dispatch: React.Dispatch<DeckAction>;
+  dispatch: (action: DeckAction) => Promise<void>;
   totalCards: number;
   commander: DeckCard | null;
   savedCardbacks: string[];
   customCards: CustomCard[];
+  user: User | null;
+  authLoading: boolean;
+  isCloudMode: boolean;
+  logout: () => Promise<void>;
 }
 
 const DeckContext = createContext<DeckContextValue | null>(null);
 
 export function DeckProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(deckReducer, initialState, init);
+  const [state, rawDispatch] = useReducer(deckReducer, initialState, init);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  // Sync state changes back to localStorage
-  useEffect(() => {
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
+
+  // Helper for API calls
+  const apiCall = async (path: string, options: RequestInit = {}, userToken?: string) => {
+    const activeToken = userToken || token;
+    if (!activeToken) return null;
+
     try {
-      localStorage.setItem(STORE_STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // ignore
+      const res = await fetch(`${BACKEND_URL}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${activeToken}`,
+          ...options.headers,
+        },
+      });
+      if (!res.ok) {
+        throw new Error(`API error: ${res.statusText}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error(`API call to ${path} failed:`, err);
+      return null;
     }
-  }, [state]);
+  };
+
+  // Sync local localStorage state to cloud when user logs in
+  const syncLocalToCloud = async (userToken: string) => {
+    try {
+      const stored = localStorage.getItem(STORE_STORAGE_KEY);
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored);
+      const localDecks = parsed.decks || [];
+      const localCardbacks = parsed.savedCardbacks || [];
+      const localCustomCards = parsed.customCards || [];
+
+      // 1. Sync decks in bulk
+      if (localDecks.length > 0) {
+        await fetch(`${BACKEND_URL}/api/decks`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${userToken}`,
+          },
+          body: JSON.stringify(localDecks),
+        });
+      }
+
+      // 2. Sync cardbacks
+      for (const url of localCardbacks) {
+        await fetch(`${BACKEND_URL}/api/cardbacks`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ url }),
+        });
+      }
+
+      // 3. Sync custom cards
+      if (localCustomCards.length > 0) {
+        await fetch(`${BACKEND_URL}/api/custom-cards`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${userToken}`,
+          },
+          body: JSON.stringify(localCustomCards),
+        });
+      }
+
+      // Clear local storage key after a successful migration
+      localStorage.removeItem(STORE_STORAGE_KEY);
+    } catch (err) {
+      console.error('Error syncing local storage to cloud:', err);
+    }
+  };
+
+  // Fetch all user data from cloud
+  const fetchCloudData = async (userToken: string) => {
+    try {
+      const decks = await apiCall('/api/decks', {}, userToken) || [];
+      const cardbacksData = await apiCall('/api/cardbacks', {}, userToken) || [];
+      const customCards = await apiCall('/api/custom-cards', {}, userToken) || [];
+
+      // Format databases snake_case back to camelCase
+      const formattedDecks: SavedDeck[] = decks.map((d: any) => ({
+        id: d.id,
+        deckName: d.deck_name,
+        cards: d.cards,
+        tokens: d.tokens,
+        sidedeck: d.sidedeck,
+        commanderId: d.commander_id,
+        coverCardId: d.cover_card_id,
+        customCardbackUrl: d.custom_cardback_url,
+        wins: d.wins,
+        losses: d.losses,
+        tags: d.tags,
+        isSideDeckEnabled: d.is_sidedeck_enabled,
+      }));
+
+      const formattedCardbacks = cardbacksData.map((cb: any) => cb.url);
+
+      const formattedCustomCards = customCards.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        imageUrl: c.image_url,
+        associatedScryfallId: c.associated_scryfall_id,
+        associatedName: c.associated_name,
+      }));
+
+      rawDispatch({
+        type: 'LOAD_STORE',
+        state: {
+          decks: formattedDecks,
+          activeDeckId: null, // start at dashboard
+          savedCardbacks: formattedCardbacks,
+          customCards: formattedCustomCards,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to load cloud data:', err);
+    }
+  };
+
+  // Handle Auth changes
+  useEffect(() => {
+    let active = true;
+
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!active) return;
+      if (session) {
+        setUser(session.user);
+        setToken(session.access_token);
+        // Sync local storage on first login
+        syncLocalToCloud(session.access_token).then(() => {
+          fetchCloudData(session.access_token).then(() => {
+            setAuthLoading(false);
+          });
+        });
+      } else {
+        setUser(null);
+        setToken(null);
+        setAuthLoading(false);
+      }
+    });
+
+    // Listen to changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!active) return;
+      setAuthLoading(true);
+      if (session) {
+        setUser(session.user);
+        setToken(session.access_token);
+        if (event === 'SIGNED_IN') {
+          await syncLocalToCloud(session.access_token);
+        }
+        await fetchCloudData(session.access_token);
+      } else {
+        setUser(null);
+        setToken(null);
+        // Reload local store from localStorage on logout
+        const localState = init(initialState);
+        rawDispatch({ type: 'LOAD_STORE', state: localState });
+      }
+      setAuthLoading(false);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Sync state changes back to localStorage (only if NOT logged in)
+  useEffect(() => {
+    if (!user) {
+      try {
+        localStorage.setItem(STORE_STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        // ignore
+      }
+    }
+  }, [state, user]);
+
+  // Intercept actions to sync with Express API
+  const dispatch = async (action: DeckAction) => {
+    // 1. Run local reducer (optimistic UI update)
+    rawDispatch(action);
+
+    // 2. If logged in, perform backend side-effects
+    if (user && token) {
+      const nextState = deckReducer(state, action);
+
+      try {
+        switch (action.type) {
+          case 'CREATE_DECK':
+          case 'DUPLICATE_DECK': {
+            // Find the newly created deck (exists in nextState but not in state)
+            const created = nextState.decks.find(
+              (d) => !state.decks.some((sd) => sd.id === d.id)
+            );
+            if (created) {
+              await apiCall('/api/decks', {
+                method: 'POST',
+                body: JSON.stringify(created),
+              });
+            }
+            break;
+          }
+
+          case 'DELETE_DECK': {
+            await apiCall(`/api/decks/${action.deckId}`, {
+              method: 'DELETE',
+            });
+            break;
+          }
+
+          case 'SAVE_CARDBACK_URL': {
+            await apiCall('/api/cardbacks', {
+              method: 'POST',
+              body: JSON.stringify({ url: action.url }),
+            });
+            break;
+          }
+
+          case 'DELETE_CARDBACK_URL': {
+            await apiCall(`/api/cardbacks?url=${encodeURIComponent(action.url)}`, {
+              method: 'DELETE',
+            });
+            break;
+          }
+
+          case 'ADD_CUSTOM_CARD': {
+            // Find the newly added custom card
+            const created = nextState.customCards?.find(
+              (c) => !state.customCards?.some((sc) => sc.id === c.id)
+            );
+            if (created) {
+              await apiCall('/api/custom-cards', {
+                method: 'POST',
+                body: JSON.stringify(created),
+              });
+            }
+            break;
+          }
+
+          case 'DELETE_CUSTOM_CARD': {
+            await apiCall(`/api/custom-cards/${action.id}`, {
+              method: 'DELETE',
+            });
+            break;
+          }
+
+          default: {
+            // It's a deck modification action
+            // Most actions modify a deck. Let's find which deck was target of modifications.
+            // Action payload might have deckId, or we fall back to state.activeDeckId
+            const targetId = (action as any).deckId || state.activeDeckId;
+            if (targetId) {
+              const updatedDeck = nextState.decks.find((d) => d.id === targetId);
+              if (updatedDeck) {
+                await apiCall(`/api/decks/${targetId}`, {
+                  method: 'PUT',
+                  body: JSON.stringify(updatedDeck),
+                });
+              }
+            }
+            break;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync action to cloud:', err);
+      }
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const activeDeck = state.decks.find((d) => d.id === state.activeDeckId) ?? null;
   const totalCards = activeDeck ? activeDeck.cards.reduce((sum, c) => sum + c.quantity, 0) : 0;
@@ -856,6 +1149,10 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         commander,
         savedCardbacks,
         customCards,
+        user,
+        authLoading,
+        isCloudMode: !!user,
+        logout,
       }}
     >
       {children}

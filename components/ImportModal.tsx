@@ -29,6 +29,7 @@ import {
   autocompleteCardName,
   ScryfallCard,
   isToken,
+  getCardsBatchByIds,
 } from '@/lib/scryfall';
 
 interface FuzzyCorrection {
@@ -47,7 +48,7 @@ interface ImportModalProps {
 }
 
 export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModalProps) {
-  const { dispatch, activeDeckId } = useDeck();
+  const { dispatch, activeDeckId, customCards } = useDeck();
 
   // URL import
   const [urlInput, setUrlInput] = useState('');
@@ -106,13 +107,14 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
 
   // Process parsed entries: batch-fetch from Scryfall, handle not-found
   const processEntries = useCallback(async (entries: ParsedDeckEntry[], targetSection: 'main' | 'side' | 'tokens' = 'main') => {
-    // Deduplicate entries by normalized name, prioritizing isCommander: true
+    // Deduplicate entries by normalized name + artUrl, prioritizing isCommander: true
     const normalizedEntriesMap = new Map<string, ParsedDeckEntry>();
     for (const entry of entries) {
-      const norm = entry.name.trim().toLowerCase().split('//')[0].trim();
-      const existing = normalizedEntriesMap.get(norm);
+      const normName = entry.name.trim().toLowerCase().split('//')[0].trim();
+      const normKey = entry.artUrl ? `${normName}|${entry.artUrl.trim()}` : normName;
+      const existing = normalizedEntriesMap.get(normKey);
       if (!existing) {
-        normalizedEntriesMap.set(norm, { ...entry });
+        normalizedEntriesMap.set(normKey, { ...entry });
       } else {
         if (entry.isCommander || existing.isCommander) {
           existing.isCommander = true;
@@ -126,62 +128,200 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
     }
     const uniqueEntries = Array.from(normalizedEntriesMap.values());
 
-    const names = uniqueEntries.map((e) => e.name);
-    const { found, notFound } = await getCardsBatch(names);
+    const scryfallUuidRegex = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
-    // Map found cards back to entries
-    const foundMap = new Map<string, ScryfallCard>();
-    for (const card of found) {
-      foundMap.set(card.name.toLowerCase(), card);
-      // Map front face name as well to handle double-faced card mismatches
-      const frontName = card.name.split('//')[0].trim().toLowerCase();
-      foundMap.set(frontName, card);
+    const scryfallIdToEntries = new Map<string, ParsedDeckEntry[]>();
+    const nameToEntries = new Map<string, ParsedDeckEntry[]>();
+
+    for (const entry of uniqueEntries) {
+      let resolvedId: string | null = null;
+
+      if (entry.artUrl) {
+        const isScryfallUrl = entry.artUrl.includes('scryfall.io');
+        const uuidMatch = entry.artUrl.match(scryfallUuidRegex);
+
+        if (isScryfallUrl && uuidMatch) {
+          resolvedId = uuidMatch[1].toLowerCase();
+        } else {
+          // Check if custom URL matches a custom card
+          const matchedCustom = customCards.find(
+            (cc) => cc.imageUrl.trim() === entry.artUrl?.trim()
+          );
+          if (matchedCustom) {
+            resolvedId = matchedCustom.associatedScryfallId.toLowerCase();
+          }
+        }
+      }
+
+      if (resolvedId) {
+        const list = scryfallIdToEntries.get(resolvedId) || [];
+        list.push(entry);
+        scryfallIdToEntries.set(resolvedId, list);
+      } else {
+        const normName = entry.name.trim().toLowerCase();
+        const list = nameToEntries.get(normName) || [];
+        list.push(entry);
+        nameToEntries.set(normName, list);
+      }
+    }
+
+    // Fetch cards by ID
+    const idToCardMap = new Map<string, ScryfallCard>();
+    if (scryfallIdToEntries.size > 0) {
+      const fetchedCards = await getCardsBatchByIds(Array.from(scryfallIdToEntries.keys()));
+      for (const card of fetchedCards) {
+        idToCardMap.set(card.id.toLowerCase(), card);
+      }
+    }
+
+    // Fetch cards by Name
+    const nameToFetchSet = new Set<string>();
+    for (const normName of nameToEntries.keys()) {
+      const entriesList = nameToEntries.get(normName) || [];
+      if (entriesList.length > 0) {
+        nameToFetchSet.add(entriesList[0].name);
+      }
+    }
+    // Fall back to fetching by name for any ID lookups that failed
+    for (const [id, entriesList] of scryfallIdToEntries.entries()) {
+      if (!idToCardMap.has(id)) {
+        for (const entry of entriesList) {
+          nameToFetchSet.add(entry.name);
+          const normName = entry.name.trim().toLowerCase();
+          const list = nameToEntries.get(normName) || [];
+          if (!list.includes(entry)) {
+            list.push(entry);
+            nameToEntries.set(normName, list);
+          }
+        }
+      }
+    }
+
+    const nameToCardMap = new Map<string, ScryfallCard>();
+    const notFoundNamesSet = new Set<string>();
+
+    if (nameToFetchSet.size > 0) {
+      const { found, notFound } = await getCardsBatch(Array.from(nameToFetchSet));
+      for (const card of found) {
+        nameToCardMap.set(card.name.toLowerCase(), card);
+        const frontName = card.name.split('//')[0].trim().toLowerCase();
+        nameToCardMap.set(frontName, card);
+      }
+      for (const nf of notFound) {
+        if (typeof nf === 'string') {
+          notFoundNamesSet.add(nf.toLowerCase());
+          notFoundNamesSet.add(nf.split('//')[0].trim().toLowerCase());
+        }
+      }
     }
 
     const resolvedCards: Array<{ card: ScryfallCard; quantity: number; isCommander: boolean }> = [];
     const needsFuzzy: ParsedDeckEntry[] = [];
 
     for (const entry of uniqueEntries) {
-      const lower = entry.name.toLowerCase();
-      const norm = entry.name.trim().toLowerCase().split('//')[0].trim();
+      let resolvedCard: ScryfallCard | undefined = undefined;
+      let hasIdMatch = false;
 
-      // Try exact match or normalized front face match
-      const exactCard = foundMap.get(lower) || foundMap.get(norm);
-      if (exactCard) {
-        // Skip token, double-faced token, or emblem cards from the mainboard/commander slots
-        if (isToken(exactCard)) continue;
+      if (entry.artUrl) {
+        const uuidMatch = entry.artUrl.match(scryfallUuidRegex);
+        const isScryfallUrl = entry.artUrl.includes('scryfall.io');
+        if (isScryfallUrl && uuidMatch) {
+          const id = uuidMatch[1].toLowerCase();
+          resolvedCard = idToCardMap.get(id);
+          if (resolvedCard) {
+            hasIdMatch = true;
+          }
+        } else {
+          // Custom URL matching
+          const matchedCustom = customCards.find(
+            (cc) => cc.imageUrl.trim() === entry.artUrl?.trim()
+          );
+          if (matchedCustom) {
+            const id = matchedCustom.associatedScryfallId.toLowerCase();
+            const scryfallCard = idToCardMap.get(id);
+            if (scryfallCard) {
+              hasIdMatch = true;
+              // Override ScryfallCard images with custom URL
+              resolvedCard = {
+                ...scryfallCard,
+                image_uris: {
+                  ...scryfallCard.image_uris,
+                  small: entry.artUrl,
+                  normal: entry.artUrl,
+                  large: entry.artUrl,
+                  png: entry.artUrl,
+                  art_crop: entry.artUrl,
+                },
+                card_faces: scryfallCard.card_faces?.map((face, index) =>
+                  index === 0
+                    ? {
+                        ...face,
+                        image_uris: {
+                          ...face.image_uris,
+                          small: entry.artUrl,
+                          normal: entry.artUrl,
+                          large: entry.artUrl,
+                          png: entry.artUrl,
+                          art_crop: entry.artUrl,
+                        },
+                      }
+                    : face
+                ),
+              };
+            }
+          }
+        }
+      }
+
+      // Verify that if we resolved by ID, the name matches (case-insensitive) to prevent mismatches
+      if (resolvedCard && hasIdMatch && entry.artUrl?.includes('scryfall.io')) {
+        const importedNameNorm = entry.name.toLowerCase().trim().split('//')[0].trim();
+        const scryfallNameNorm = resolvedCard.name.toLowerCase().trim().split('//')[0].trim();
+        if (importedNameNorm !== scryfallNameNorm) {
+          resolvedCard = undefined;
+        }
+      }
+
+      // If ID resolution failed or was mismatched, resolve by name
+      if (!resolvedCard) {
+        const lower = entry.name.toLowerCase().trim();
+        const norm = entry.name.trim().toLowerCase().split('//')[0].trim();
+        resolvedCard = nameToCardMap.get(lower) || nameToCardMap.get(norm);
+      }
+
+      if (resolvedCard) {
+        if (isToken(resolvedCard)) {
+          if (targetSection !== 'tokens') {
+            continue;
+          }
+        }
 
         resolvedCards.push({
-          card: exactCard,
+          card: resolvedCard,
           quantity: entry.quantity,
           isCommander: entry.isCommander ?? false,
         });
-        continue;
-      }
-
-      // Check if it's in notFound
-      const isNotFound = notFound.some(
-        (n) => typeof n === 'string' ? (n.toLowerCase() === lower || n.toLowerCase().split('//')[0].trim() === norm) : false
-      );
-      if (isNotFound || (!foundMap.has(lower) && !foundMap.has(norm))) {
-        needsFuzzy.push(entry);
+      } else {
+        // Check if it's in notFound
+        const lower = entry.name.toLowerCase().trim();
+        const norm = entry.name.trim().toLowerCase().split('//')[0].trim();
+        const isNotFound = notFoundNamesSet.has(lower) || notFoundNamesSet.has(norm);
+        if (isNotFound || (!nameToCardMap.has(lower) && !nameToCardMap.has(norm))) {
+          needsFuzzy.push(entry);
+        }
       }
     }
 
     if (needsFuzzy.length === 0) {
-      // Final dedup by Scryfall card ID — if two entries resolved to the same
-      // card (e.g. front-face name + full DFC name), merge them instead of
-      // sending duplicates that the reducer would accumulate into 101 cards.
+      // Final dedup by Scryfall card ID
       const deduped = new Map<string, { card: ScryfallCard; quantity: number; isCommander: boolean }>();
       for (const entry of resolvedCards) {
         const existing = deduped.get(entry.card.id);
         if (!existing) {
           deduped.set(entry.card.id, { ...entry });
         } else {
-          // Prefer commander flag; keep the lower quantity (usually 1 for singleton)
           if (entry.isCommander) existing.isCommander = true;
           if (entry.isCommander || existing.isCommander) {
-            // Commander: keep quantity 1
             existing.quantity = 1;
           } else {
             existing.quantity = Math.max(existing.quantity, entry.quantity);
@@ -209,7 +349,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
     setShowCorrections(true);
 
     return { addedCount: resolvedCards.length, fuzzyNeeded: needsFuzzy.length };
-  }, [dispatch]);
+  }, [dispatch, customCards]);
 
   // Ensure there is an active deck to import into; creates one if createNewDeck is set
   function ensureActiveDeck(name?: string) {
