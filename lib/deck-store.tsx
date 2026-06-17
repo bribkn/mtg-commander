@@ -847,6 +847,12 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const userIdRef = useRef<string | null>(null);
+
+  // Sync ref with state
+  useEffect(() => {
+    userIdRef.current = user ? user.id : null;
+  }, [user]);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
 
@@ -931,35 +937,41 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   // Fetch all user data from cloud
   const fetchCloudData = async (userToken: string) => {
     try {
-      const decks = await apiCall('/api/decks', {}, userToken) || [];
-      const cardbacksData = await apiCall('/api/cardbacks', {}, userToken) || [];
-      const customCards = await apiCall('/api/custom-cards', {}, userToken) || [];
+      const decks = await apiCall('/api/decks', {}, userToken);
+      const cardbacksData = await apiCall('/api/cardbacks', {}, userToken);
+      const customCards = await apiCall('/api/custom-cards', {}, userToken);
 
-      // Format databases snake_case back to camelCase
-      const formattedDecks: SavedDeck[] = decks.map((d: any) => ({
-        id: d.id,
-        deckName: d.deck_name,
-        cards: d.cards,
-        tokens: d.tokens,
-        sidedeck: d.sidedeck,
-        commanderId: d.commander_id,
-        coverCardId: d.cover_card_id,
-        customCardbackUrl: d.custom_cardback_url,
-        wins: d.wins,
-        losses: d.losses,
-        tags: d.tags,
-        isSideDeckEnabled: d.is_sidedeck_enabled,
-      }));
+      // Verify that the responses are arrays to prevent crashes on error payloads
+      const formattedDecks: SavedDeck[] = Array.isArray(decks)
+        ? decks.map((d: any) => ({
+            id: d.id,
+            deckName: d.deck_name || d.deckName || 'New Commander Deck',
+            cards: d.cards || [],
+            tokens: d.tokens || [],
+            sidedeck: d.sidedeck || [],
+            commanderId: d.commander_id || d.commanderId || null,
+            coverCardId: d.cover_card_id || d.coverCardId || null,
+            customCardbackUrl: d.custom_cardback_url || d.customCardbackUrl || null,
+            wins: d.wins || 0,
+            losses: d.losses || 0,
+            tags: d.tags || [],
+            isSideDeckEnabled: d.is_sidedeck_enabled || d.isSideDeckEnabled || false,
+          }))
+        : [];
 
-      const formattedCardbacks = cardbacksData.map((cb: any) => cb.url);
+      const formattedCardbacks = Array.isArray(cardbacksData)
+        ? cardbacksData.map((cb: any) => cb.url)
+        : [];
 
-      const formattedCustomCards = customCards.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        imageUrl: c.image_url,
-        associatedScryfallId: c.associated_scryfall_id,
-        associatedName: c.associated_name,
-      }));
+      const formattedCustomCards = Array.isArray(customCards)
+        ? customCards.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            imageUrl: c.image_url || c.imageUrl,
+            associatedScryfallId: c.associated_scryfall_id || c.associatedRefId || c.associatedScryfallId,
+            associatedName: c.associated_name || c.associatedName,
+          }))
+        : [];
 
       rawDispatch({
         type: 'LOAD_STORE',
@@ -985,15 +997,18 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       if (session) {
         setUser(session.user);
         setToken(session.access_token);
+        userIdRef.current = session.user.id;
         // Sync local storage on first login
-        syncLocalToCloud(session.access_token).then(() => {
-          fetchCloudData(session.access_token).then(() => {
-            setAuthLoading(false);
+        syncLocalToCloud(session.access_token)
+          .then(() => fetchCloudData(session.access_token))
+          .catch((err) => console.error('Error in getSession flow:', err))
+          .finally(() => {
+            if (active) setAuthLoading(false);
           });
-        });
       } else {
         setUser(null);
         setToken(null);
+        userIdRef.current = null;
         setAuthLoading(false);
       }
     });
@@ -1001,22 +1016,41 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     // Listen to changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!active) return;
-      setAuthLoading(true);
-      if (session) {
-        setUser(session.user);
-        setToken(session.access_token);
-        if (event === 'SIGNED_IN') {
-          await syncLocalToCloud(session.access_token);
+
+      try {
+        if (session) {
+          const isSameUser = userIdRef.current === session.user.id;
+
+          setUser(session.user);
+          setToken(session.access_token);
+          userIdRef.current = session.user.id;
+
+          // Only show full screen loader and sync/fetch if it's actually a new user session
+          if (!isSameUser) {
+            setAuthLoading(true);
+            if (event === 'SIGNED_IN') {
+              await syncLocalToCloud(session.access_token);
+            }
+            await fetchCloudData(session.access_token);
+          }
+        } else {
+          const wasLoggedIn = userIdRef.current !== null;
+          setUser(null);
+          setToken(null);
+          userIdRef.current = null;
+
+          if (wasLoggedIn) {
+            setAuthLoading(true);
+            // Reload local store from localStorage on logout
+            const localState = init(initialState);
+            rawDispatch({ type: 'LOAD_STORE', state: localState });
+          }
         }
-        await fetchCloudData(session.access_token);
-      } else {
-        setUser(null);
-        setToken(null);
-        // Reload local store from localStorage on logout
-        const localState = init(initialState);
-        rawDispatch({ type: 'LOAD_STORE', state: localState });
+      } catch (err) {
+        console.error('Error in onAuthStateChange handler:', err);
+      } finally {
+        if (active) setAuthLoading(false);
       }
-      setAuthLoading(false);
     });
 
     return () => {
