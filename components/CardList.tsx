@@ -1047,6 +1047,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
   const [sortBy, setSortBy] = useState<'name' | 'mana' | 'date'>('name');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showOnlyGameChangers, setShowOnlyGameChangers] = useState(false);
+  const [showOnlyLegendary, setShowOnlyLegendary] = useState(false);
 
   // Variant selector states
   const [variantCard, setVariantCard] = useState<DeckCard | null>(null);
@@ -1196,6 +1197,16 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
       if (!isGameChangerCard(card.name)) return false;
     }
 
+    // Legendary filter
+    if (showOnlyLegendary) {
+      const typeLine = card.scryfallData.type_line || '';
+      const typeLines = card.scryfallData.card_faces
+        ? card.scryfallData.card_faces.map((f) => f.type_line || '')
+        : [typeLine];
+      const isLegendary = typeLines.some((line) => line.includes('Legendary'));
+      if (!isLegendary) return false;
+    }
+
     // CMC filter
     if (selectedCmcs.length > 0) {
       const cardCmc = card.scryfallData.cmc ?? 0;
@@ -1327,7 +1338,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               size="sm"
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
               className={`h-8 text-xs gap-1.5 shrink-0 px-2.5 border-border hover:border-primary/50 hover:text-primary transition-colors ${
-                showAdvancedFilters || selectedCmcs.length > 0 || selectedType !== 'all' || selectedSubtype !== 'all'
+                showAdvancedFilters || selectedCmcs.length > 0 || selectedType !== 'all' || selectedSubtype !== 'all' || showOnlyGameChangers || showOnlyLegendary
                   ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/15'
                   : 'hover:bg-secondary'
               }`}
@@ -1335,7 +1346,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Filters</span>
-              {(selectedCmcs.length > 0 || selectedType !== 'all' || selectedSubtype !== 'all') && (
+              {(selectedCmcs.length > 0 || selectedType !== 'all' || selectedSubtype !== 'all' || showOnlyGameChangers || showOnlyLegendary) && (
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
               )}
             </Button>
@@ -1565,6 +1576,17 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               >
                 <Crown className="w-3 h-3 text-amber-500" />
                 <span>Game Changers Only</span>
+              </button>
+              <button
+                onClick={() => setShowOnlyLegendary(!showOnlyLegendary)}
+                className={`h-5.5 px-3 rounded-full text-[9px] font-bold transition-all border flex items-center gap-1.5 ${
+                  showOnlyLegendary
+                    ? 'bg-primary/20 border-primary text-primary font-bold shadow-sm shadow-primary/10'
+                    : 'border-border/60 text-muted-foreground hover:border-primary/30 hover:text-primary hover:bg-secondary/40'
+                }`}
+              >
+                <Crown className="w-3 h-3 text-primary animate-pulse" />
+                <span>Legendary Only</span>
               </button>
             </div>
           </div>

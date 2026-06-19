@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   SlidersHorizontal, Plus, Minus, Check, Loader2, Search, X, 
-  ChevronLeft, ChevronRight, Sparkles, User, Image as ImageIcon, Info, HelpCircle
+  ChevronLeft, ChevronRight, Sparkles, User, Image as ImageIcon, Info, HelpCircle, Crown
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -415,7 +415,21 @@ export function AdvancedSearchModal({ open, onClose, deckId }: AdvancedSearchMod
                 
                 {/* Search Text input */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Text Search</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Text Search</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsLegendary(!isLegendary)}
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all duration-300 flex items-center gap-1 active:scale-95 cursor-pointer select-none
+                        ${isLegendary
+                          ? 'bg-primary/15 border-primary/30 text-primary shadow-sm shadow-primary/5 hover:bg-primary/25'
+                          : 'bg-secondary border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                        }`}
+                    >
+                      <Crown className="w-2.5 h-2.5 text-primary animate-pulse" />
+                      <span>Legendary</span>
+                    </button>
+                  </div>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                     <Input
