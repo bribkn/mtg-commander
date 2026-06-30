@@ -98,33 +98,27 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
     // 1. Commanders
     const commanders = state.cards.filter((c) => c.isCommander);
     if (commanders.length > 0) {
-      lines.push('// Commander');
       commanders.forEach((c) => {
         lines.push(`${c.quantity} ${c.name}`);
       });
-      lines.push(''); // spacing
     }
 
     // 2. Main Deck (excluding commanders)
     const mainCards = state.cards.filter((c) => !c.isCommander);
     if (mainCards.length > 0) {
-      lines.push('// Main Deck');
       // Sort alphabetically for clean look
       const sortedMain = [...mainCards].sort((a, b) => a.name.localeCompare(b.name));
       sortedMain.forEach((c) => {
         lines.push(`${c.quantity} ${c.name}`);
       });
-      lines.push(''); // spacing
     }
 
     // 3. Side Deck (Sidedeck)
     if (state.isSideDeckEnabled && state.sidedeck && state.sidedeck.length > 0) {
-      lines.push('// Sideboard');
       const sortedSide = [...state.sidedeck].sort((a, b) => a.name.localeCompare(b.name));
       sortedSide.forEach((c) => {
         lines.push(`${c.quantity} ${c.name}`);
       });
-      lines.push(''); // spacing
     }
 
     return lines.join('\n').trim();
@@ -161,7 +155,7 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) onClose(); }}>
-      <DialogContent className="max-w-xl bg-card border-border shadow-2xl flex flex-col max-h-[85vh] p-6">
+      <DialogContent className="max-w-2xl bg-card border-border shadow-2xl flex flex-col max-h-[85vh] p-6">
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Download className="w-5 h-5 text-primary" />
@@ -180,7 +174,7 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
             </TabsTrigger>
             <TabsTrigger value="text" className="flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-md">
               <FileText className="w-3.5 h-3.5" />
-              Lista de Texto (TXT)
+              Text List (TXT)
             </TabsTrigger>
           </TabsList>
 
@@ -346,9 +340,9 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
                 className="gap-2 border-border hover:bg-secondary transition-all"
               >
                 {copied ? (
-                  <><Check className="w-4 h-4 text-green-400" />¡Copiado!</>
+                  <><Check className="w-4 h-4 text-green-400" />Copied!</>
                 ) : (
-                  <><Copy className="w-4 h-4" />Copiar al Portapapeles</>
+                  <><Copy className="w-4 h-4" />Copy to Clipboard</>
                 )}
               </Button>
               <Button
@@ -357,7 +351,7 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
                 className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow shadow-primary/10 transition-all"
               >
                 <Download className="w-4 h-4" />
-                Descargar TXT
+                Download TXT
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground text-center leading-relaxed mt-1 shrink-0">
