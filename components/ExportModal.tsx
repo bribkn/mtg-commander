@@ -155,7 +155,7 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) onClose(); }}>
-      <DialogContent className="max-w-4xl bg-card border-border shadow-2xl flex flex-col max-h-[90vh] p-6">
+      <DialogContent className="sm:max-w-4xl w-full bg-card border-border shadow-2xl flex flex-col max-h-[90vh] p-6">
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Download className="w-5 h-5 text-primary" />
@@ -321,7 +321,7 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 shrink-0">
                 Decklist Preview
               </h3>
-              
+
               <div className="flex-1 min-h-0 rounded-lg border border-border bg-secondary/30 relative flex flex-col">
                 <textarea
                   readOnly

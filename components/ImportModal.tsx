@@ -522,7 +522,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
     const allResolved = corrections.every((c) => c.chosen !== null || c.skip);
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-lg bg-card border-border">
+        <DialogContent className="sm:max-w-lg w-full bg-card border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wand2 className="w-5 h-5 text-primary" />
@@ -664,7 +664,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
   // ── Main import UI ────────────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg bg-card border-border">
+      <DialogContent className="sm:max-w-lg w-full bg-card border-border">
         <DialogHeader>
           <DialogTitle>Import Cards</DialogTitle>
           <DialogDescription>
