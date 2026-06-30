@@ -243,6 +243,19 @@ export async function collectTokens(
 
 // ─── Main Export Function ────────────────────────────────────────────────────
 
+/**
+ * Helper to wrap Scryfall image URLs in a proxy to bypass the UnityPlayer user-agent block.
+ */
+export function cleanImageUrlForTTS(url: string): string {
+  if (!url) return '';
+  // If it's a Scryfall image URL, route it through images.weserv.nl
+  if (url.includes('scryfall.io')) {
+    const cleanUrl = url.split('?')[0];
+    return `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}`;
+  }
+  return url;
+}
+
 export interface ExportResult {
   json: string;
   mainDeckCount: number;
@@ -305,14 +318,26 @@ export async function generateTTSExport(
     const { nickname, description } = getCardNicknameAndDescription(card);
  
     // In the main deck pile, all cards must use the standard cardback
-    mainCards.push({ name: card.name, faceUrl, backUrl: standardBack, nickname, description });
+    mainCards.push({
+      name: card.name,
+      faceUrl: cleanImageUrlForTTS(faceUrl),
+      backUrl: cleanImageUrlForTTS(standardBack),
+      nickname,
+      description
+    });
  
     if (isDoubleFaced(card)) {
       dfcCount++;
       if (!seenDfcNames.has(card.name)) {
         seenDfcNames.add(card.name);
         const backUrl = getBackImageUrl(card) ?? MTG_CARD_BACK;
-        dfcCards.push({ name: card.name, faceUrl, backUrl, nickname, description });
+        dfcCards.push({
+          name: card.name,
+          faceUrl: cleanImageUrlForTTS(faceUrl),
+          backUrl: cleanImageUrlForTTS(backUrl),
+          nickname,
+          description
+        });
       }
     }
   }
@@ -327,7 +352,13 @@ export async function generateTTSExport(
       const faceUrl = getFrontImageUrl(card);
       const standardBack = customCardbackUrl || MTG_CARD_BACK;
       const { nickname, description } = getCardNicknameAndDescription(card);
-      sidedeckCards.push({ name: card.name, faceUrl, backUrl: standardBack, nickname, description });
+      sidedeckCards.push({
+        name: card.name,
+        faceUrl: cleanImageUrlForTTS(faceUrl),
+        backUrl: cleanImageUrlForTTS(standardBack),
+        nickname,
+        description
+      });
 
       // Add double faced helper cards if any exist in the sidedeck
       if (isDoubleFaced(card)) {
@@ -335,7 +366,13 @@ export async function generateTTSExport(
         if (!seenDfcNames.has(card.name)) {
           seenDfcNames.add(card.name);
           const backUrl = getBackImageUrl(card) ?? MTG_CARD_BACK;
-          dfcCards.push({ name: card.name, faceUrl, backUrl, nickname, description });
+          dfcCards.push({
+            name: card.name,
+            faceUrl: cleanImageUrlForTTS(faceUrl),
+            backUrl: cleanImageUrlForTTS(backUrl),
+            nickname,
+            description
+          });
         }
       }
     }
@@ -351,8 +388,8 @@ export async function generateTTSExport(
       const { nickname, description } = getCardNicknameAndDescription(card);
       return {
         name: card.name,
-        faceUrl,
-        backUrl,
+        faceUrl: cleanImageUrlForTTS(faceUrl),
+        backUrl: cleanImageUrlForTTS(backUrl),
         nickname,
         description,
       };
@@ -366,8 +403,8 @@ export async function generateTTSExport(
       const { nickname, description } = getCardNicknameAndDescription(card);
       return {
         name: card.name,
-        faceUrl,
-        backUrl,
+        faceUrl: cleanImageUrlForTTS(faceUrl),
+        backUrl: cleanImageUrlForTTS(backUrl),
         nickname,
         description,
       };

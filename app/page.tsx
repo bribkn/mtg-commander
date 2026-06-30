@@ -18,7 +18,7 @@ import { DeckDashboard } from '@/components/DeckDashboard';
 import { CustomCardsModal } from '@/components/CustomCardsModal';
 import { CombosModal } from '@/components/CombosModal';
 import { ShareBannerModal } from '@/components/ShareBannerModal';
-import { generateTTSExport, downloadJSON } from '@/lib/tts-export';
+import { ExportModal } from '@/components/ExportModal';
 import { getCardsBatchByIds } from '@/lib/scryfall';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers } from 'lucide-react';
@@ -247,7 +247,8 @@ function AppContent() {
   const [customOpen, setCustomOpen] = useState(false);
   const [combosOpen, setCombosOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportTargetDeckId, setExportTargetDeckId] = useState<string | undefined>(undefined);
   const [sidebarMode, setSidebarMode] = useState<'stats' | 'search'>('stats');
 
   // Target deck ID for modals
@@ -261,6 +262,11 @@ function AppContent() {
   function openShare(deckId?: string) {
     setModalTargetDeckId(deckId);
     setShareOpen(true);
+  }
+
+  function openExport(deckId?: string) {
+    setExportTargetDeckId(deckId);
+    setExportOpen(true);
   }
 
   // Split view states
@@ -305,27 +311,7 @@ function AppContent() {
     return deck.cards.find((c: any) => c.isCommander) ?? null;
   }
 
-  async function handleExportDeck(deckId?: string) {
-    const targetId = deckId || activeDeckId;
-    if (!targetId) return;
-    const targetDeck = decks.find((d) => d.id === targetId);
-    if (!targetDeck || targetDeck.cards.length === 0) return;
-
-    setIsExporting(true);
-    try {
-      const result = await generateTTSExport(
-        targetDeck.cards,
-        targetDeck.customCardbackUrl,
-        targetDeck.tokens || [],
-        targetDeck.isSideDeckEnabled ? (targetDeck.sidedeck || []) : []
-      );
-      const deckName =
-        targetDeck.deckName.replace(/[^a-zA-Z0-9\s_-]/g, '').trim() || 'commander-deck';
-      downloadJSON(result.json, `${deckName}.json`);
-    } finally {
-      setIsExporting(false);
-    }
-  }
+  // Export modal trigger is openExport
 
   function handleClearDeck(deckId?: string) {
     const targetId = deckId || activeDeckId;
@@ -485,6 +471,11 @@ function AppContent() {
         open={shareOpen}
         onClose={() => { setShareOpen(false); setModalTargetDeckId(undefined); }}
         deckId={modalTargetDeckId}
+      />
+      <ExportModal
+        open={exportOpen}
+        onClose={() => { setExportOpen(false); setExportTargetDeckId(undefined); }}
+        deckId={exportTargetDeckId}
       />
     </>
   );
@@ -702,8 +693,8 @@ function AppContent() {
                         {leftStatsOpen ? 'Hide Stats' : 'Stats'}
                       </Button>
                       <Button
-                        onClick={() => handleExportDeck(leftDeck.id)}
-                        disabled={isExporting || leftTotalQty === 0}
+                        onClick={() => openExport(leftDeck.id)}
+                        disabled={leftTotalQty === 0}
                         className="text-[10px] h-7 px-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow shadow-primary/10"
                         size="xs"
                       >
@@ -848,8 +839,8 @@ function AppContent() {
                         {rightStatsOpen ? 'Hide Stats' : 'Stats'}
                       </Button>
                       <Button
-                        onClick={() => handleExportDeck(rightDeck.id)}
-                        disabled={isExporting || rightTotalQty === 0}
+                        onClick={() => openExport(rightDeck.id)}
+                        disabled={rightTotalQty === 0}
                         className="text-[10px] h-7 px-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow shadow-primary/10"
                         size="xs"
                       >
@@ -913,12 +904,11 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <DeckHeader
-        onExport={() => handleExportDeck(state?.id)}
+        onExport={() => openExport(state?.id)}
         onImportOpen={() => openImport(state?.id)}
         onCardbackOpen={() => openCardback(state?.id)}
         onCustomOpen={() => setCustomOpen(true)}
         onClear={() => handleClearDeck(state?.id)}
-        isExporting={isExporting}
         onSplitOpen={() => handleOpenSplit(state!.id)}
         splitMode={splitMode}
         onCombosOpen={() => openCombos(state?.id)}

@@ -12,7 +12,6 @@ interface DeckHeaderProps {
   onCardbackOpen: () => void;
   onCustomOpen: () => void;
   onClear: () => void;
-  isExporting: boolean;
   onSplitOpen?: () => void;
   splitMode?: boolean;
   onCombosOpen: () => void;
@@ -26,7 +25,6 @@ export function DeckHeader({
   onCardbackOpen,
   onCustomOpen,
   onClear,
-  isExporting,
   onSplitOpen,
   splitMode,
   onCombosOpen,
@@ -182,12 +180,12 @@ export function DeckHeader({
 
           <Button
             onClick={onExport}
-            disabled={isExporting || totalCards === 0}
-            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all"
+            disabled={totalCards === 0}
+            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all font-semibold"
             size="sm"
           >
-            <Download className={`w-4 h-4 ${isExporting ? 'animate-bounce' : ''}`} />
-            {isExporting ? 'Generating...' : 'Export TTS'}
+            <Download className="w-4 h-4" />
+            Export
           </Button>
         </div>
       </div>
