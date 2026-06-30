@@ -250,9 +250,8 @@ export function cleanImageUrlForTTS(url: string): string {
   if (!url) return '';
   // If it's a Scryfall image URL, route it through images.weserv.nl
   if (url.includes('scryfall.io')) {
-    const cleanUrl = url.split('?')[0];
     const fallbackUrl = 'https://images.weserv.nl/?url=https%3A%2F%2Fcards.scryfall.io%2Flarge%2Fback%2F0%2Fa%2F0aeebaf5-8c7d-4636-9e82-8c27447861f7.jpg';
-    return `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}&default=${encodeURIComponent(fallbackUrl)}`;
+    return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&default=${encodeURIComponent(fallbackUrl)}`;
   }
   return url;
 }
