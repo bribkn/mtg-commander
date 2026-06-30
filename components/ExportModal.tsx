@@ -72,7 +72,7 @@ export function ExportModal({ open, onClose, deckId }: ExportModalProps) {
       setProgressLabel('Writing JSON...');
 
       const deckName = state.deckName.replace(/[^a-zA-Z0-9\s_-]/g, '').trim() || 'commander-deck';
-      downloadJSON(result.json, `${deckName}-tts.json`);
+      downloadJSON(result.json, `${deckName}.json`);
 
       setLastResult({
         mainCount: result.mainDeckCount,
