@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useDeck } from '@/lib/deck-store';
+import { useDeck, applyFavoriteArt } from '@/lib/deck-store';
 import {
   importFromMoxfield,
   importFromArchidekt,
@@ -48,7 +48,7 @@ interface ImportModalProps {
 }
 
 export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModalProps) {
-  const { dispatch, activeDeckId, customCards } = useDeck();
+  const { dispatch, activeDeckId, customCards, favoriteArts } = useDeck();
 
   // URL import
   const [urlInput, setUrlInput] = useState('');
@@ -314,11 +314,14 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
 
     if (needsFuzzy.length === 0) {
       // Final dedup by Scryfall card ID
+      // Apply favorite arts before deduplication
       const deduped = new Map<string, { card: ScryfallCard; quantity: number; isCommander: boolean }>();
       for (const entry of resolvedCards) {
-        const existing = deduped.get(entry.card.id);
+        // Apply saved favorite art if one exists for this card
+        const cardWithFav = applyFavoriteArt(entry.card, favoriteArts);
+        const existing = deduped.get(cardWithFav.id);
         if (!existing) {
-          deduped.set(entry.card.id, { ...entry });
+          deduped.set(cardWithFav.id, { ...entry, card: cardWithFav });
         } else {
           if (entry.isCommander) existing.isCommander = true;
           if (entry.isCommander || existing.isCommander) {
@@ -349,7 +352,7 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
     setShowCorrections(true);
 
     return { addedCount: resolvedCards.length, fuzzyNeeded: needsFuzzy.length };
-  }, [dispatch, customCards]);
+  }, [dispatch, customCards, favoriteArts]);
 
   // Ensure there is an active deck to import into; creates one if createNewDeck is set
   function ensureActiveDeck(name?: string) {
@@ -500,7 +503,10 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
       }
     }
 
-    const allCards = [...pendingCards, ...extraCards];
+    const allCards = [
+      ...pendingCards.map((e) => ({ ...e, card: applyFavoriteArt(e.card, favoriteArts) })),
+      ...extraCards.map((e) => ({ ...e, card: applyFavoriteArt(e.card, favoriteArts) })),
+    ];
     dispatch({ type: 'BULK_ADD_CARDS', cards: allCards, deckId, targetSection: pendingSection });
     handleClose();
   }

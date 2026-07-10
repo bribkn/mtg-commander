@@ -34,6 +34,7 @@ import {
   Archive,
   ArrowDownAZ,
   Calendar,
+  Star,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useDeck, DeckCard } from '@/lib/deck-store';
+import { useDeck, DeckCard, FavoriteArt } from '@/lib/deck-store';
 import { CustomCardsModal } from './CustomCardsModal';
 import { CommanderGifAlterModal } from './CommanderGifAlterModal';
 import { CATEGORY_ORDER, CardCategory, getThumbnailUrl, ScryfallCard, isDoubleFaced, isGameChangerCard, getManaSymbolUrl } from '@/lib/scryfall';
@@ -1026,7 +1027,7 @@ interface CardListProps {
 }
 
 export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
-  const { state: globalState, decks, totalCards: globalTotalCards, customCards, dispatch } = useDeck();
+  const { state: globalState, decks, totalCards: globalTotalCards, customCards, favoriteArts, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const totalCards = state ? state.cards.reduce((sum, c) => sum + c.quantity, 0) : globalTotalCards;
 
@@ -1772,10 +1773,22 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
               Art & Printing Variants
             </DialogTitle>
             <DialogDescription className="flex flex-col sm:flex-row sm:items-start md:items-center justify-between gap-3 text-muted-foreground mt-1">
-              <span className="max-w-xl">
+              <span className="max-w-xl flex items-center gap-2 flex-wrap">
                 Choose your preferred printing for{' '}
                 <strong className="text-foreground">{variantCard?.name}</strong>. This will update the
                 card art across the builder and exported files.
+                {/* Favorite art indicator */}
+                {variantCard && (() => {
+                  const normName = variantCard.name.toLowerCase().trim().split('//')[0].trim();
+                  const hasFav = favoriteArts.some((f) => f.cardName === normName);
+                  if (!hasFav) return null;
+                  return (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                      <Star className="w-2.5 h-2.5 fill-amber-500" />
+                      Arte favorita guardada
+                    </span>
+                  );
+                })()}
               </span>
               {variantCard && (
                 <Button
@@ -1963,6 +1976,43 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                 <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
                               </div>
                             )}
+
+                            {/* Favorite star button for custom alters */}
+                            {(() => {
+                              const normName = variantCard?.name.toLowerCase().trim().split('//')[0].trim() ?? '';
+                              const isFav = favoriteArts.some(
+                                (f) => f.cardName === normName && f.imageUrl === custom.imageUrl
+                              );
+                              return (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!variantCard) return;
+                                    if (isFav) {
+                                      dispatch({ type: 'REMOVE_FAVORITE_ART', cardName: normName });
+                                    } else {
+                                      dispatch({
+                                        type: 'SET_FAVORITE_ART',
+                                        favoriteArt: {
+                                          cardName: normName,
+                                          scryfallId: variantCard.scryfallId,
+                                          scryfallData: variantCard.scryfallData,
+                                          imageUrl: custom.imageUrl,
+                                        },
+                                      });
+                                    }
+                                  }}
+                                  className={`absolute bottom-2 left-2 p-1 rounded-full transition-all duration-200 z-20 shadow flex items-center justify-center ${
+                                    isFav
+                                      ? 'bg-amber-500 text-white opacity-100 scale-110'
+                                      : 'bg-black/60 text-muted-foreground opacity-0 group-hover/print:opacity-100 hover:text-amber-400 hover:bg-black/80'
+                                  }`}
+                                  title={isFav ? 'Quitar arte favorita' : 'Marcar como arte favorita'}
+                                >
+                                  <Star className={`w-3 h-3 ${isFav ? 'fill-white' : ''}`} />
+                                </button>
+                              );
+                            })()}
                           </div>
                         );
                       })}
@@ -2043,6 +2093,40 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                           <Crown className="w-3.5 h-3.5 text-primary-foreground" />
                         </div>
                       )}
+
+                      {/* Favorite star button */}
+                      {(() => {
+                        const normName = variantCard?.name.toLowerCase().trim().split('//')[0].trim() ?? '';
+                        const isFav = favoriteArts.some((f) => f.cardName === normName && f.scryfallId === print.id);
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!variantCard) return;
+                              if (isFav) {
+                                dispatch({ type: 'REMOVE_FAVORITE_ART', cardName: normName });
+                              } else {
+                                dispatch({
+                                  type: 'SET_FAVORITE_ART',
+                                  favoriteArt: {
+                                    cardName: normName,
+                                    scryfallId: print.id,
+                                    scryfallData: print,
+                                  },
+                                });
+                              }
+                            }}
+                            className={`absolute top-2 left-2 p-1 rounded-full transition-all duration-200 z-20 shadow flex items-center justify-center ${
+                              isFav
+                                ? 'bg-amber-500 text-white opacity-100 scale-110'
+                                : 'bg-black/60 text-muted-foreground opacity-0 group-hover/print:opacity-100 hover:text-amber-400 hover:bg-black/80'
+                            }`}
+                            title={isFav ? 'Quitar arte favorita' : 'Marcar como arte favorita'}
+                          >
+                            <Star className={`w-3 h-3 ${isFav ? 'fill-white' : ''}`} />
+                          </button>
+                        );
+                      })()}
                     </div>
                   );
                 })}

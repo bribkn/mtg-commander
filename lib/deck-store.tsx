@@ -45,11 +45,25 @@ export interface CustomCard {
   associatedName: string;
 }
 
+/**
+ * A globally-saved preferred art for a card.
+ * cardName is normalized (lowercase, front-face only).
+ * scryfallData holds the full preferred printing — no extra fetch needed.
+ * imageUrl is only set for custom alter overrides.
+ */
+export interface FavoriteArt {
+  cardName: string;       // normalized: lowercase, front-face only
+  scryfallId: string;     // preferred printing scryfall ID
+  scryfallData: ScryfallCard; // full card data for the preferred printing
+  imageUrl?: string;      // if it's a custom alter, override image URL
+}
+
 interface DeckState {
   decks: SavedDeck[];
   activeDeckId: string | null; // ID of currently open deck, null means dashboard
   savedCardbacks?: string[]; // Global registry of custom uploaded cardbacks
   customCards?: CustomCard[]; // Global registry of custom cards
+  favoriteArts?: FavoriteArt[]; // Global registry of preferred card arts
 }
 
 type DeckAction =
@@ -82,7 +96,9 @@ type DeckAction =
   | { type: 'MOVE_CARD_TO_SIDEDECK'; scryfallId: string; deckId?: string }
   | { type: 'MOVE_CARD_TO_MAINDECK'; scryfallId: string; deckId?: string }
   | { type: 'TOGGLE_SIDEDECK'; deckId?: string }
-  | { type: 'SET_SIDEDECK_ENABLED'; enabled: boolean; deckId?: string };
+  | { type: 'SET_SIDEDECK_ENABLED'; enabled: boolean; deckId?: string }
+  | { type: 'SET_FAVORITE_ART'; favoriteArt: FavoriteArt }
+  | { type: 'REMOVE_FAVORITE_ART'; cardName: string };
 
 const STORE_STORAGE_KEY = 'mtg-commander-decks-store';
 
@@ -739,6 +755,27 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
       };
     }
 
+    case 'SET_FAVORITE_ART': {
+      const currentList = state.favoriteArts || [];
+      const normName = action.favoriteArt.cardName;
+      // Replace existing entry for this card or add new one
+      const alreadyExists = currentList.some((f) => f.cardName === normName);
+      return {
+        ...state,
+        favoriteArts: alreadyExists
+          ? currentList.map((f) => f.cardName === normName ? action.favoriteArt : f)
+          : [...currentList, action.favoriteArt],
+      };
+    }
+
+    case 'REMOVE_FAVORITE_ART': {
+      const currentList = state.favoriteArts || [];
+      return {
+        ...state,
+        favoriteArts: currentList.filter((f) => f.cardName !== action.cardName),
+      };
+    }
+
     default:
       return state;
   }
@@ -749,6 +786,7 @@ const initialState: DeckState = {
   activeDeckId: null,
   savedCardbacks: [],
   customCards: [],
+  favoriteArts: [],
 };
 
 function init(initial: DeckState): DeckState {
@@ -769,6 +807,9 @@ function init(initial: DeckState): DeckState {
       }
       if (!parsed.customCards) {
         parsed.customCards = [];
+      }
+      if (!parsed.favoriteArts) {
+        parsed.favoriteArts = [];
       }
       if (Array.isArray(parsed.decks)) {
         parsed.decks = parsed.decks.map((d: any) => {
@@ -834,6 +875,7 @@ interface DeckContextValue {
   commander: DeckCard | null;
   savedCardbacks: string[];
   customCards: CustomCard[];
+  favoriteArts: FavoriteArt[];
   user: User | null;
   authLoading: boolean;
   isCloudMode: boolean;
@@ -1171,6 +1213,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const commander = activeDeck ? activeDeck.cards.find((c) => c.isCommander) ?? null : null;
   const savedCardbacks = state.savedCardbacks || [];
   const customCards = state.customCards || [];
+  const favoriteArts = state.favoriteArts || [];
 
   return (
     <DeckContext.Provider
@@ -1183,6 +1226,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         commander,
         savedCardbacks,
         customCards,
+        favoriteArts,
         user,
         authLoading,
         isCloudMode: !!user,
@@ -1198,4 +1242,50 @@ export function useDeck() {
   const ctx = useContext(DeckContext);
   if (!ctx) throw new Error('useDeck must be used within DeckProvider');
   return ctx;
+}
+
+/**
+ * Apply a saved favorite art to a ScryfallCard if one exists.
+ * For custom alters (imageUrl set): overlays the imageUrl over the cached scryfallData.
+ * For normal printings: returns the cached scryfallData directly.
+ * Returns the original card if no favorite is found.
+ */
+export function applyFavoriteArt(card: ScryfallCard, favoriteArts: FavoriteArt[]): ScryfallCard {
+  const normName = card.name.toLowerCase().trim().split('//')[0].trim();
+  const favorite = favoriteArts.find((f) => f.cardName === normName);
+  if (!favorite) return card;
+
+  // Custom alter: override image_uris with the alter URL
+  if (favorite.imageUrl) {
+    const base = favorite.scryfallData;
+    return {
+      ...base,
+      image_uris: {
+        ...base.image_uris,
+        small: favorite.imageUrl,
+        normal: favorite.imageUrl,
+        large: favorite.imageUrl,
+        png: favorite.imageUrl,
+        art_crop: favorite.imageUrl,
+      },
+      card_faces: base.card_faces?.map((face, index) =>
+        index === 0
+          ? {
+              ...face,
+              image_uris: {
+                ...face.image_uris,
+                small: favorite.imageUrl,
+                normal: favorite.imageUrl,
+                large: favorite.imageUrl,
+                png: favorite.imageUrl,
+                art_crop: favorite.imageUrl,
+              },
+            }
+          : face
+      ),
+    };
+  }
+
+  // Normal printing: use the cached scryfallData as-is
+  return favorite.scryfallData;
 }

@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { useDeck } from '@/lib/deck-store';
+import { useDeck, applyFavoriteArt } from '@/lib/deck-store';
 import {
   ScryfallCard, searchCards, getFrontImageUrl, getManaSymbolUrl,
   isGameChangerCard, CATEGORY_ORDER, autocompleteCardName, getCardByExactName
@@ -110,7 +110,7 @@ interface SearchSidebarProps {
 }
 
 export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps) {
-  const { state: activeDeck, decks, dispatch } = useDeck();
+  const { state: activeDeck, decks, dispatch, favoriteArts } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : activeDeck;
 
   // Modals inside sidebar
@@ -524,9 +524,11 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
     const key = `${card.id}-${targetSection}`;
     setAddingIds((prev) => ({ ...prev, [key]: true }));
     try {
+      // Apply saved favorite art if one exists for this card
+      const cardToAdd = applyFavoriteArt(card, favoriteArts);
       dispatch({
         type: 'ADD_CARD',
-        card,
+        card: cardToAdd,
         quantity: 1,
         deckId,
         targetSection,
@@ -547,7 +549,9 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
     try {
       const card = await getCardByExactName(name);
       if (card) {
-        dispatch({ type: 'ADD_CARD', card, quantity: 1, deckId });
+        // Apply saved favorite art if one exists for this card
+        const cardToAdd = applyFavoriteArt(card, favoriteArts);
+        dispatch({ type: 'ADD_CARD', card: cardToAdd, quantity: 1, deckId });
       }
     } finally {
       setIsAutocompleteLoading(false);
