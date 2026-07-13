@@ -9,33 +9,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
     }
 
-    // Check if it is a video (e.g. WebM)
-    if (file.type.startsWith('video/') || file.name.endsWith('.webm')) {
-      try {
-        const utapi = new UTApi();
-        const response = await utapi.uploadFiles(file);
-        
-        if (response && response.data) {
-          const url = response.data.ufsUrl || response.data.url;
-          return NextResponse.json({
-            data: {
-              url: url
-            }
-          });
-        } else {
-          const errMessage = response?.error?.message || 'Unknown Uploadthing error';
-          return NextResponse.json({ error: `Uploadthing failed: ${errMessage}` }, { status: 500 });
-        }
-      } catch (uploadthingErr: any) {
-        console.error('Uploadthing upload failed:', uploadthingErr);
-        return NextResponse.json({ error: `Uploadthing failed: ${uploadthingErr.message || uploadthingErr}` }, { status: 500 });
+    // --- Primary upload: UploadThing (handles both images and videos) ---
+    try {
+      const utapi = new UTApi();
+      const response = await utapi.uploadFiles(file);
+
+      if (response && response.data) {
+        const url = response.data.ufsUrl || response.data.url;
+        return NextResponse.json({ data: { url } });
       }
+
+      const errMessage = response?.error?.message || 'Unknown UploadThing error';
+      console.warn('UploadThing did not return a URL, falling back to ImgBB:', errMessage);
+    } catch (uploadthingErr: unknown) {
+      console.warn(
+        'UploadThing upload failed, falling back to ImgBB:',
+        uploadthingErr instanceof Error ? uploadthingErr.message : uploadthingErr
+      );
     }
 
-    // Otherwise, handle as image and upload to ImgBB
+    // --- Fallback: ImgBB (images only) ---
+    if (file.type.startsWith('video/') || file.name.endsWith('.webm')) {
+      // Videos have no ImgBB fallback
+      return NextResponse.json(
+        { error: 'UploadThing failed and ImgBB does not support video files.' },
+        { status: 500 }
+      );
+    }
+
     const apiKey = process.env.IMGBB_APIKEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'ImgBB API key is not configured on the server.' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'UploadThing failed and ImgBB API key is not configured.' },
+        { status: 500 }
+      );
     }
 
     const imgbbFormData = new FormData();
@@ -48,12 +55,21 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       const errText = await res.text();
-      return NextResponse.json({ error: `ImgBB upload failed: ${errText}` }, { status: res.status });
+      return NextResponse.json(
+        { error: `ImgBB fallback upload failed: ${errText}` },
+        { status: res.status }
+      );
     }
 
+    // ImgBB returns { data: { url, ... }, status, success }
+    // Shape is already compatible with what callers expect.
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Server error uploading file' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Server error uploading file' },
+      { status: 500 }
+    );
   }
 }
+

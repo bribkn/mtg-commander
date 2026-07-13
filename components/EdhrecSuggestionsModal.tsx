@@ -36,10 +36,14 @@ interface EDHRECCardView {
   id: string;
   name: string;
   sanitized: string;
-  inclusion: number;
+  // New API uses num_decks; old API used inclusion — support both.
+  num_decks?: number;
+  inclusion?: number;
   potential_decks: number;
-  label: string;
+  label?: string;
   synergy?: number;
+  slug?: string;
+  url?: string;
 }
 
 interface EDHRECCardList {
@@ -49,6 +53,7 @@ interface EDHRECCardList {
 }
 
 interface EDHRECResponse {
+  // The API now returns pageData directly, which contains container.
   container?: {
     json_dict?: {
       cardlists?: EDHRECCardList[];
@@ -352,8 +357,10 @@ export function EdhrecSuggestionsModal({
                           const isAdding = addingCardNames[cardName];
                           
                           // Inclusion & Synergy Values
+                          // Support both new (num_decks) and old (inclusion) field names.
+                          const deckCount = card.num_decks ?? card.inclusion ?? 0;
                           const inclusionPercent = card.potential_decks > 0 
-                            ? Math.round((card.inclusion / card.potential_decks) * 100) 
+                            ? Math.round((deckCount / card.potential_decks) * 100) 
                             : 0;
                           
                           const synergyVal = typeof card.synergy === 'number' 
@@ -403,7 +410,7 @@ export function EdhrecSuggestionsModal({
                                     <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">inclusion</span>
                                   </div>
                                   <div className="flex flex-col items-end text-[10px] text-muted-foreground font-mono leading-none">
-                                    <span className="font-bold text-foreground">{formatDeckCount(card.inclusion)} decks</span>
+                                    <span className="font-bold text-foreground">{formatDeckCount(card.num_decks ?? card.inclusion ?? 0)} decks</span>
                                     <div className="w-10 h-[1px] bg-muted-foreground/30 my-1" />
                                     <span>{formatDeckCount(card.potential_decks)} decks</span>
                                   </div>
