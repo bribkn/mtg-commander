@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { SavedDeck, useDeck } from '@/lib/deck-store';
 import { isGameChangerCard } from '@/lib/scryfall';
 import { AuthModal } from './AuthModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface DeckDashboardProps {
   onOpenSplit?: (deckId: string) => void;
@@ -18,6 +20,8 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
   const { decks, dispatch, user, authLoading, logout, isCloudMode } = useDeck();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createDeckSource, setCreateDeckSource] = useState<string>('new');
 
   // Helper to extract art crop (bypassing WebM video alters for dashboard preview compatibility)
   function getDeckArt(deck: SavedDeck): string {
@@ -123,13 +127,6 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
               <Cloud className="w-4 h-4 text-primary" /> Log In / Sync
             </Button>
           )}
-
-          <Button
-            onClick={() => dispatch({ type: 'CREATE_DECK', id: `deck-${Date.now()}` })}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-lg shadow-primary/10 h-9 text-xs"
-          >
-            <Plus className="w-4 h-4" /> New Deck
-          </Button>
         </div>
       </div>
 
@@ -147,11 +144,11 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 justify-items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-stretch">
             {/* "Create Deck" Card Option */}
             <Card
-              onClick={() => dispatch({ type: 'CREATE_DECK', id: `deck-${Date.now()}` })}
-              className="w-[220px] aspect-[5/7] flex flex-col items-center justify-center border-dashed border-2 border-border/80 hover:border-primary/60 hover:bg-primary/5 cursor-pointer transition-all duration-300 group rounded-xl bg-card/20 shadow-md relative overflow-hidden"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="w-full aspect-[21/9] sm:aspect-video flex flex-col items-center justify-center border-dashed border-2 border-border/80 hover:border-primary/60 hover:bg-primary/5 cursor-pointer transition-all duration-300 group rounded-xl bg-card/20 shadow-md relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 group-hover:to-black/30 transition-all" />
               <div className="flex flex-col items-center gap-3 relative z-10 text-center p-4">
@@ -186,7 +183,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
               return (
                 <Card
                   key={deck.id}
-                  className="w-[220px] aspect-[5/7] relative overflow-hidden rounded-xl border border-border/60 shadow-lg shadow-black/30 hover:shadow-black/50 hover:border-primary/40 transition-all duration-300 group"
+                  className="w-full aspect-[21/9] sm:aspect-video relative overflow-hidden rounded-xl border border-border/60 shadow-lg shadow-black/30 hover:shadow-black/50 hover:border-primary/40 transition-all duration-300 group flex flex-col"
                 >
                   {/* Background Art Crop */}
                   <div
@@ -232,7 +229,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
                     </div>
     
                     {/* Dashboard Actions - Slide Up or Appear on Hover */}
-                    <div className="mt-3 flex items-center justify-between gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300">
+                    <div className="mt-3 flex items-center justify-between gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 h-8">
                       {isConfirmingDelete ? (
                         <div className="flex items-center gap-1 w-full bg-destructive/90 rounded p-1 text-[10px] text-destructive-foreground justify-between font-medium">
                           <span>Delete?</span>
@@ -341,6 +338,52 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
           )}
         </>
       )}
+
+      {/* Create Deck Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Create New Deck</DialogTitle>
+            <DialogDescription>
+              Start from scratch or copy an existing deck.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Select value={createDeckSource} onValueChange={(val) => setCreateDeckSource(val || 'new')}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select starting point" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new">Start from Scratch</SelectItem>
+                {decks.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>Copy "{d.deckName}"</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (createDeckSource === 'new') {
+                  dispatch({ type: 'CREATE_DECK', id: `deck-${Date.now()}` });
+                } else {
+                  dispatch({
+                    type: 'DUPLICATE_DECK',
+                    deckId: createDeckSource,
+                    newDeckId: `deck-${Date.now()}`,
+                  });
+                }
+                setIsCreateModalOpen(false);
+              }}
+            >
+              Create Deck
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
