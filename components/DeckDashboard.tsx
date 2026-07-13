@@ -353,10 +353,10 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
               <SelectTrigger>
                 <SelectValue placeholder="Select starting point" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="new">Start from Scratch</SelectItem>
+              <SelectContent className="max-h-64 custom-scrollbar">
+                <SelectItem value="new">Create New Deck</SelectItem>
                 {decks.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>Copy "{d.deckName}"</SelectItem>
+                  <SelectItem key={d.id} value={d.id}>Copy from: {d.deckName}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
