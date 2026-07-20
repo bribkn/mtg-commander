@@ -15,6 +15,7 @@ import { CardbackModal } from '@/components/CardbackModal';
 import { SearchSidebar } from '@/components/SearchSidebar';
 import { StatsPanel } from '@/components/StatsPanel';
 import { DeckDashboard } from '@/components/DeckDashboard';
+import { StorageOnboardingModal } from '@/components/StorageOnboardingModal';
 import { CustomCardsModal } from '@/components/CustomCardsModal';
 import { CombosModal } from '@/components/CombosModal';
 import { ShareBannerModal } from '@/components/ShareBannerModal';
@@ -485,6 +486,7 @@ function AppContent() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <DeckDashboard onOpenSplit={handleOpenSplit} onShareOpen={openShare} />
+        <StorageOnboardingModal />
         {modals}
       </div>
     );

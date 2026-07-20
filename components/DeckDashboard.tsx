@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns, Share2, Cloud, LogOut, Loader2 } from 'lucide-react';
+import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns, Share2, Cloud, Database, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SavedDeck, useDeck } from '@/lib/deck-store';
 import { isGameChangerCard } from '@/lib/scryfall';
-import { AuthModal } from './AuthModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -17,9 +16,8 @@ interface DeckDashboardProps {
 }
 
 export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps = {}) {
-  const { decks, dispatch, user, authLoading, logout, isCloudMode } = useDeck();
+  const { decks, dispatch, storagePreference, setStoragePreference, storageLoading } = useDeck();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createDeckSource, setCreateDeckSource] = useState<string>('new');
 
@@ -89,51 +87,43 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
             </h1>
           </div>
           <p className="text-sm text-muted-foreground max-w-lg">
-            Create, edit, and export your decks directly to Tabletop Simulator. Everything is saved automatically in {isCloudMode ? 'the cloud (Supabase sync)' : "your browser's local storage"}.
+            Create, edit, and export your decks directly to Tabletop Simulator. Everything is saved automatically in {storagePreference === 'folder' ? 'your selected local folder' : "your browser's local storage"}.
           </p>
         </div>
 
         <div className="mt-6 md:mt-0 flex flex-wrap gap-3 justify-center items-center relative z-10">
-          {authLoading ? (
+          {storageLoading ? (
             <Button disabled variant="outline" className="gap-2 h-9 text-xs">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Verifying...
+              Loading Storage...
             </Button>
-          ) : isCloudMode ? (
+          ) : storagePreference ? (
             <div className="flex items-center gap-2 bg-secondary/80 border border-border/60 rounded-lg p-1 pr-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-bold text-xs uppercase" title={user?.email || 'User'}>
-                {user?.email?.[0] || 'U'}
+              <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center text-primary font-bold text-xs">
+                {storagePreference === 'folder' ? <Cloud className="w-4 h-4" /> : <Database className="w-4 h-4" />}
               </div>
               <div className="flex flex-col items-start hidden sm:flex">
-                <span className="text-[10px] text-muted-foreground font-semibold uppercase leading-none">Cloud Mode</span>
-                <span className="text-xs text-foreground truncate max-w-[120px] font-medium leading-tight mt-0.5">{user?.email}</span>
+                <span className="text-[10px] text-muted-foreground font-semibold uppercase leading-none">Storage</span>
+                <span className="text-xs text-foreground font-medium leading-tight mt-0.5">
+                  {storagePreference === 'folder' ? 'Local Folder' : 'Browser Storage'}
+                </span>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={logout}
-                className="w-7 h-7 text-muted-foreground hover:text-destructive rounded ml-2"
-                title="Log Out / Revert to Local Storage"
+                onClick={() => setStoragePreference(null)}
+                className="w-7 h-7 text-muted-foreground hover:text-primary rounded ml-2"
+                title="Change Storage Preference"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <Settings className="w-3.5 h-3.5" />
               </Button>
             </div>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => setIsAuthOpen(true)}
-              className="gap-2 h-9 text-xs border-primary/45 hover:border-primary hover:bg-primary/5 text-foreground"
-            >
-              <Cloud className="w-4 h-4 text-primary" /> Log In / Sync
-            </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
-      <AuthModal open={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-
       {/* Grid of Decks */}
-      {authLoading ? (
+      {storageLoading ? (
         <div className="w-full flex flex-col items-center justify-center py-20 gap-4">
           <div className="relative w-16 h-20 rounded-lg border-2 border-primary/20 bg-card/40 flex items-center justify-center animate-pulse">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
