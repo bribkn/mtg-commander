@@ -287,6 +287,37 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
         const lower = entry.name.toLowerCase().trim();
         const norm = entry.name.trim().toLowerCase().split('//')[0].trim();
         resolvedCard = nameToCardMap.get(lower) || nameToCardMap.get(norm);
+
+        // If resolved by name and there's a non-Scryfall artUrl, apply it as image override
+        if (resolvedCard && entry.artUrl && !entry.artUrl.includes('scryfall.io')) {
+          const altUrl = entry.artUrl;
+          resolvedCard = {
+            ...resolvedCard,
+            image_uris: {
+              ...resolvedCard.image_uris,
+              small: altUrl,
+              normal: altUrl,
+              large: altUrl,
+              png: altUrl,
+              art_crop: altUrl,
+            },
+            card_faces: resolvedCard.card_faces?.map((face, idx) =>
+              idx === 0
+                ? {
+                    ...face,
+                    image_uris: {
+                      ...face.image_uris,
+                      small: altUrl,
+                      normal: altUrl,
+                      large: altUrl,
+                      png: altUrl,
+                      art_crop: altUrl,
+                    },
+                  }
+                : face
+            ),
+          };
+        }
       }
 
       if (resolvedCard) {
@@ -319,15 +350,20 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
       for (const entry of resolvedCards) {
         // Apply saved favorite art if one exists for this card
         const cardWithFav = applyFavoriteArt(entry.card, favoriteArts);
+        const isLand = (cardWithFav.type_line ?? cardWithFav.card_faces?.[0]?.type_line ?? '').toLowerCase().includes('land');
         const existing = deduped.get(cardWithFav.id);
         if (!existing) {
-          deduped.set(cardWithFav.id, { ...entry, card: cardWithFav });
+          deduped.set(cardWithFav.id, { ...entry, card: cardWithFav, quantity: entry.isCommander ? entry.quantity : isLand ? entry.quantity : 1 });
         } else {
           if (entry.isCommander) existing.isCommander = true;
           if (entry.isCommander || existing.isCommander) {
             existing.quantity = 1;
+          } else if (isLand) {
+            // Basic lands can appear multiple times — sum quantities
+            existing.quantity += entry.quantity;
           } else {
-            existing.quantity = Math.max(existing.quantity, entry.quantity);
+            // Non-land: singleton rule, quantity stays 1
+            existing.quantity = 1;
           }
         }
       }

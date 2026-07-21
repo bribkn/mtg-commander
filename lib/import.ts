@@ -430,6 +430,7 @@ async function enrichCardEntries(entries: any[]): Promise<any[]> {
       category: 'Creature' as any,
       isCommander: !!isCommander,
       imageUrl: '',
+      _artUrl: artUrl || undefined, // preserve for post-enrichment override
     };
     cards.push(cardObj);
 
@@ -505,6 +506,45 @@ async function enrichCardEntries(entries: any[]): Promise<any[]> {
     }
   }
 
+  // Apply non-Scryfall artUrls as image overrides.
+  // When a TTS file stores a custom/alternate art URL that isn't from scryfall.io,
+  // we overlay it onto the card's image_uris so the art is preserved after re-import.
+  for (const card of cards) {
+    const altUrl: string | undefined = card._artUrl;
+    if (!altUrl || altUrl.includes('scryfall.io')) continue; // Scryfall URLs are already handled
+    if (!card.scryfallData || !card.scryfallData.id) continue; // unresolved card — skip
+
+    // Apply the alt URL as an image override across all size variants
+    card.scryfallData = {
+      ...card.scryfallData,
+      image_uris: {
+        ...card.scryfallData.image_uris,
+        small: altUrl,
+        normal: altUrl,
+        large: altUrl,
+        png: altUrl,
+        art_crop: altUrl,
+      },
+      card_faces: card.scryfallData.card_faces?.map((face: any, i: number) =>
+        i === 0
+          ? {
+              ...face,
+              image_uris: {
+                ...face.image_uris,
+                small: altUrl,
+                normal: altUrl,
+                large: altUrl,
+                png: altUrl,
+                art_crop: altUrl,
+              },
+            }
+          : face
+      ),
+    };
+    card.imageUrl = altUrl;
+    delete card._artUrl;
+  }
+
   return cards;
 }
 
@@ -553,6 +593,15 @@ export async function parseLegacyTTSFile(jsonText: string, baseName: string): Pr
  * Automatically fetches the missing details from Scryfall to heal the deck.
  */
 export async function ensureDeckEnriched(deck: SavedDeck): Promise<SavedDeck> {
+  // Helper: a card is a "land" if its type_line (or first face) includes "land"
+  const isLandCard = (card: any): boolean => {
+    const typeLine: string =
+      card.scryfallData?.type_line ??
+      card.scryfallData?.card_faces?.[0]?.type_line ??
+      '';
+    return typeLine.toLowerCase().includes('land');
+  };
+
   const deduplicateSection = (section?: any[]): any[] => {
     if (!section) return [];
     const map = new Map<string, any>();
@@ -563,14 +612,22 @@ export async function ensureDeckEnriched(deck: SavedDeck): Promise<SavedDeck> {
         if (card.isCommander || existing.isCommander) {
           existing.isCommander = true;
           existing.quantity = card.isCommander ? card.quantity : existing.quantity;
-        } else {
+        } else if (isLandCard(existing)) {
+          // Lands can stack (basic lands can have multiple copies)
           existing.quantity += card.quantity;
+        } else {
+          // Non-land cards: cap at 1 (Commander singleton rule)
+          existing.quantity = 1;
         }
       } else {
         map.set(key, card);
       }
     }
-    return Array.from(map.values());
+    // Also enforce qty=1 for non-land, non-commander cards in case the source had wrong quantities
+    return Array.from(map.values()).map((card) => ({
+      ...card,
+      quantity: card.isCommander || isLandCard(card) ? card.quantity : 1,
+    }));
   };
 
   deck.cards = deduplicateSection(deck.cards);

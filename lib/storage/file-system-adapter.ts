@@ -251,6 +251,32 @@ export class FileSystemAdapter implements StorageAdapter {
             }
           }
         }
+        // Enforce Commander singleton rule: deduplicate and cap non-land cards at qty=1
+        const isLandCard = (c: any): boolean => {
+          const typeLine: string =
+            c.scryfallData?.type_line ?? c.scryfallData?.card_faces?.[0]?.type_line ?? '';
+          return typeLine.toLowerCase().includes('land');
+        };
+        const dedupeCards = (cards: any[]) => {
+          const seen = new Map<string, any>();
+          for (const c of cards) {
+            const key = c.scryfallId || c.name;
+            if (!seen.has(key)) {
+              seen.set(key, { ...c });
+            } else {
+              const existing = seen.get(key)!;
+              if (isLandCard(existing)) {
+                existing.quantity = Math.max(existing.quantity, c.quantity);
+              }
+            }
+          }
+          return Array.from(seen.values()).map((c) => ({
+            ...c,
+            quantity: c.isCommander || isLandCard(c) ? c.quantity : 1,
+          }));
+        };
+        deck.cards = dedupeCards(deck.cards);
+        if (deck.sidedeck) deck.sidedeck = dedupeCards(deck.sidedeck);
         deck.needsFullLoad = false;
         return deck;
       }
@@ -342,13 +368,21 @@ export class FileSystemAdapter implements StorageAdapter {
       for await (const entry of dir.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.json') && entry.name !== 'settings.json') {
           try {
+            const entryBaseName = entry.name.replace(/\.json$/i, '');
+            // 1. Check if the file base name matches the deck ID directly (imported or legacy decks)
+            if (entryBaseName === deckId) {
+              foundBaseName = entryBaseName;
+              break;
+            }
+
+            // 2. Check inside the file for the builder state ID
             const handle = await dir.getFileHandle(entry.name);
             const file = await handle.getFile();
             const text = await file.text();
             const parsed = JSON.parse(text);
             const deck: SavedDeck = parsed.__mtgTtsBuilderState || parsed;
-            if (deck && deck.id === deckId) {
-              foundBaseName = entry.name.replace('.json', '');
+            if (deck && (deck.id === deckId || entryBaseName === deckId)) {
+              foundBaseName = entryBaseName;
               break;
             }
           } catch(e) {}

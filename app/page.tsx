@@ -243,7 +243,7 @@ function DeckTagsEditor({ deckId }: { deckId?: string } = {}) {
 }
 
 function AppContent() {
-  const { state, activeDeckId, decks, dispatch } = useDeck();
+  const { state, activeDeckId, decks, dispatch, saveCurrentDeck } = useDeck();
   const [importOpen, setImportOpen] = useState(false);
   const [cardbackOpen, setCardbackOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -950,6 +950,7 @@ function AppContent() {
         splitMode={splitMode}
         onCombosOpen={() => openCombos(state?.id)}
         onShareOpen={() => openShare(state?.id)}
+        onSave={saveCurrentDeck}
       />
 
       <div className="flex flex-1 overflow-hidden w-full max-w-full px-2 sm:px-4">

@@ -890,6 +890,9 @@ interface DeckContextValue {
   storagePreference: StoragePreference;
   setStoragePreference: (pref: StoragePreference) => Promise<boolean>;
   storageLoading: boolean;
+
+  // Manual save
+  saveCurrentDeck: () => Promise<boolean>;
 }
 
 const DeckContext = createContext<DeckContextValue | null>(null);
@@ -911,6 +914,10 @@ export function DeckProvider({ children }: { children: ReactNode }) {
           const loadedState = await adapter.loadState();
           if (loadedState) {
             rawDispatch({ type: 'LOAD_STORE', state: loadedState });
+          } else if (pref === 'folder') {
+            // Permission not granted or directory handle lost on page reload!
+            // Set preference to null to show the onboarding modal immediately.
+            setPref(null);
           }
         }
       }
@@ -1000,6 +1007,20 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const customCards = state.customCards || [];
   const favoriteArts = state.favoriteArts || [];
 
+  const saveCurrentDeck = async (): Promise<boolean> => {
+    const adapter = storageManager.getAdapter();
+    if (!adapter) return false;
+    const deck = state.decks.find((d) => d.id === state.activeDeckId);
+    if (!deck) return false;
+    try {
+      await adapter.saveDeck(deck);
+      return true;
+    } catch (err) {
+      console.error('Manual save failed:', err);
+      return false;
+    }
+  };
+
   return (
     <DeckContext.Provider
       value={{
@@ -1015,6 +1036,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         storagePreference,
         setStoragePreference,
         storageLoading,
+        saveCurrentDeck,
       }}
     >
       {children}
