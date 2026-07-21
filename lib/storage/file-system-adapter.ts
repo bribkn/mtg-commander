@@ -1,8 +1,15 @@
 import type { StorageAdapter } from './types';
 import type { DeckState, SavedDeck, FavoriteArt, CustomCard } from '../deck-store';
 import { get, set } from 'idb-keyval';
+import { generateTTSExport } from '../tts-export';
+import { parseLegacyTTSFile, ensureDeckEnriched } from '../import';
+import { MTG_CARD_BACK, isToken } from '../scryfall';
 
 const DIRECTORY_HANDLE_KEY = 'mtg-tts-directory-handle';
+
+function sanitizeFileName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9\s_-]/g, '').trim() || 'deck';
+}
 
 export class FileSystemAdapter implements StorageAdapter {
   private directoryHandle: FileSystemDirectoryHandle | null = null;
@@ -66,14 +73,24 @@ export class FileSystemAdapter implements StorageAdapter {
     }
   }
 
-  private async getDecksDirectory(): Promise<FileSystemDirectoryHandle | null> {
-    if (!this.directoryHandle) return null;
-    try {
-      return await this.directoryHandle.getDirectoryHandle('Decks', { create: true });
-    } catch (err) {
-      console.error('Failed to get Decks directory:', err);
-      return null;
+  /** Ensure we have a directory handle with read/write permission */
+  async ensureAccess(): Promise<boolean> {
+    if (!this.directoryHandle) {
+      // No handle yet; request access
+      return await this.requestDirectoryAccess();
     }
+    const perm = await this.directoryHandle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      return true;
+    }
+    // Try to request permission again (may require user gesture)
+    const newPerm = await this.directoryHandle.requestPermission({ mode: 'readwrite' });
+    return newPerm === 'granted';
+  }
+
+  private async getDecksDirectory(): Promise<FileSystemDirectoryHandle | null> {
+    // We now just use the root directory directly
+    return this.directoryHandle;
   }
 
   async loadState(): Promise<DeckState | null> {
@@ -84,18 +101,22 @@ export class FileSystemAdapter implements StorageAdapter {
     }
 
     try {
-      // Verify we still have permission
-      const perm = await this.directoryHandle.queryPermission({ mode: 'readwrite' });
-      if (perm !== 'granted') {
-        // We cannot prompt here securely without user gesture in some browsers, 
-        // but we can try. If it fails, we return null and the UI should prompt them.
-        try {
-          const newPerm = await this.directoryHandle.requestPermission({ mode: 'readwrite' });
-          if (newPerm !== 'granted') return null;
-        } catch (e) {
-          return null;
-        }
-      }
+       // Verify we still have permission
+       let perm = await this.directoryHandle.queryPermission({ mode: 'readwrite' });
+       if (perm !== 'granted') {
+         // Try to request permission (may require user gesture)
+         try {
+           const newPerm = await this.directoryHandle.requestPermission({ mode: 'readwrite' });
+           perm = newPerm;
+         } catch (e) {
+           // fallback: ask user to re‑select the folder via UI button
+           console.warn('Permission not granted; UI should prompt for directory access');
+         }
+       }
+       if (perm !== 'granted') {
+         // Permission still not granted – abort loading. UI can call requestDirectoryAccess later.
+         return null;
+       }
 
       const state: DeckState = {
         decks: [],
@@ -107,40 +128,86 @@ export class FileSystemAdapter implements StorageAdapter {
 
       // 1. Load Settings
       try {
-        const settingsFileHandle = await this.directoryHandle.getFileHandle('settings.json');
-        const file = await settingsFileHandle.getFile();
-        const text = await file.text();
-        const settings = JSON.parse(text);
-        if (settings.savedCardbacks) state.savedCardbacks = settings.savedCardbacks;
-        if (settings.customCards) state.customCards = settings.customCards;
-        if (settings.favoriteArts) state.favoriteArts = settings.favoriteArts;
+         // Load optional settings.json if present
+         try {
+           const settingsFileHandle = await this.directoryHandle.getFileHandle('settings.json');
+           const file = await settingsFileHandle.getFile();
+           const text = await file.text();
+           const settings = JSON.parse(text);
+           if (settings.savedCardbacks) state.savedCardbacks = settings.savedCardbacks;
+           if (settings.customCards) state.customCards = settings.customCards;
+           if (settings.favoriteArts) state.favoriteArts = settings.favoriteArts;
+         } catch (_) { /* ignore missing settings */ }
       } catch (err: any) {
         if (err.name !== 'NotFoundError') {
           console.error('Error reading settings.json:', err);
         }
       }
 
-      // 2. Load Decks
-      const decksDir = await this.getDecksDirectory();
+      // 2. Load Decks from root (New Format)
+      const decksDir = this.directoryHandle;
+      let loaded = 0;
       if (decksDir) {
-        // Async iteration over directory
+        // First collect all JSON entries to know total count
+        const entries: FileSystemFileHandle[] = [];
         // @ts-ignore
-        for await (const entry of decksDir.values()) {
-          if (entry.kind === 'file' && entry.name.endsWith('.json')) {
-            try {
-              const fileHandle = await decksDir.getFileHandle(entry.name);
-              const file = await fileHandle.getFile();
-              const text = await file.text();
-              const deck: SavedDeck = JSON.parse(text);
-              if (deck && deck.id) {
+        for await (const e of decksDir.values()) {
+          if (e.kind === 'file' && e.name.endsWith('.json') && e.name !== 'settings.json') {
+            entries.push(e as any);
+          }
+        }
+        const total = entries.length;
+        // Update total in UI if present
+        const totalEl = document.getElementById('total');
+        if (totalEl) totalEl.textContent = String(total);
+        for (const entry of entries) {
+          try {
+            console.log('Loading deck file:', entry.name);
+            const fileHandle = await decksDir.getFileHandle(entry.name);
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            let deck: SavedDeck | null = null;
+            // Prefer the stored builder state if present
+            if (parsed.__mtgTtsBuilderState) {
+              deck = parsed.__mtgTtsBuilderState as SavedDeck;
+              deck.needsFullLoad = true;
+              deck._sourceFileName = entry.name;
+            } else if (parsed.deckName && parsed.cards) {
+              // New format without injected state
+              deck = parsed as SavedDeck;
+              deck.needsFullLoad = true;
+              deck._sourceFileName = entry.name;
+            } else if (parsed.ObjectStates) {
+              // Legacy TTS format: create a stub deck
+              const baseName = entry.name.replace(/\.json$/i, '');
+              deck = {
+                id: baseName, // Use filename as ID temporarily
+                deckName: baseName,
+                cards: [],
+                commanderId: null,
+                tokens: [],
+                sidedeck: [],
+                isSideDeckEnabled: false,
+                needsFullLoad: true,
+                _sourceFileName: entry.name,
+              };
+            }
+            if (deck && deck.id) {
+              if (!state.decks.find((d) => d.id === deck!.id)) {
                 state.decks.push(deck);
               }
-            } catch (err) {
-              console.error(`Error reading deck file ${entry.name}:`, err);
             }
+            // Update loaded count UI
+            loaded += 1;
+            const loadedEl = document.getElementById('loaded');
+            if (loadedEl) loadedEl.textContent = String(loaded);
+          } catch (err) {
+            console.error(`Error reading deck file ${entry.name}:`, err);
           }
         }
       }
+
 
       return state;
     } catch (err) {
@@ -149,32 +216,161 @@ export class FileSystemAdapter implements StorageAdapter {
     }
   }
 
+  async loadFullDeck(stubDeck: SavedDeck): Promise<SavedDeck | null> {
+    if (!this.directoryHandle || !stubDeck._sourceFileName) return stubDeck;
+    try {
+      const fileHandle = await this.directoryHandle.getFileHandle(stubDeck._sourceFileName);
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      let deck: SavedDeck | null = null;
+      if (parsed.__mtgTtsBuilderState) {
+        deck = parsed.__mtgTtsBuilderState as SavedDeck;
+      } else if (parsed.deckName && parsed.cards) {
+        deck = parsed as SavedDeck;
+      } else if (parsed.ObjectStates) {
+        const baseName = stubDeck._sourceFileName.replace(/\.json$/i, '');
+        deck = await parseLegacyTTSFile(text, baseName);
+      }
+      
+      if (deck && deck.id) {
+        deck = await ensureDeckEnriched(deck);
+        // Fix: When using the local folder, ensure tokens are not added as main cards
+        const tokensFromCards = deck.cards.filter((c) => c.scryfallData && isToken(c.scryfallData));
+        deck.cards = deck.cards.filter((c) => !(c.scryfallData && isToken(c.scryfallData)));
+        if (deck.sidedeck) {
+          const tokensFromSide = deck.sidedeck.filter((c) => c.scryfallData && isToken(c.scryfallData));
+          deck.sidedeck = deck.sidedeck.filter((c) => !(c.scryfallData && isToken(c.scryfallData)));
+          tokensFromCards.push(...tokensFromSide);
+        }
+        if (tokensFromCards.length > 0) {
+          if (!deck.tokens) deck.tokens = [];
+          for (const t of tokensFromCards) {
+            if (!deck.tokens.find((existing) => existing.scryfallId === t.scryfallId)) {
+              deck.tokens.push(t);
+            }
+          }
+        }
+        deck.needsFullLoad = false;
+        return deck;
+      }
+      return stubDeck;
+    } catch (err) {
+      console.error(`Error fully loading deck file ${stubDeck._sourceFileName}:`, err);
+      return stubDeck;
+    }
+  }
+
   async saveDeck(deck: SavedDeck): Promise<void> {
-    const decksDir = await this.getDecksDirectory();
-    if (!decksDir) return;
+    const dir = this.directoryHandle;
+    if (!dir) return;
 
     try {
-      const fileName = `${deck.id}.json`;
-      const fileHandle = await decksDir.getFileHandle(fileName, { create: true });
+      const baseName = sanitizeFileName(deck.deckName);
+      const jsonFileName = `${baseName}.json`;
+      const pngFileName = `${baseName}.png`;
+
+      // 1. Check for old file if renamed
+      // @ts-ignore
+      for await (const entry of dir.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.json') && entry.name !== 'settings.json' && entry.name !== jsonFileName) {
+          try {
+            const oldHandle = await dir.getFileHandle(entry.name);
+            const oldFile = await oldHandle.getFile();
+            const text = await oldFile.text();
+            const parsed = JSON.parse(text);
+            const oldDeck: SavedDeck = parsed.__mtgTtsBuilderState || parsed;
+            if (oldDeck && oldDeck.id === deck.id) {
+              await dir.removeEntry(entry.name);
+              const oldPngName = entry.name.replace('.json', '.png');
+              try { await dir.removeEntry(oldPngName); } catch (e) {}
+            }
+          } catch(e) {}
+        }
+      }
+
+      // 2. Generate TTS Export
+      const ttsResult = await generateTTSExport(
+        deck.cards,
+        deck.customCardbackUrl,
+        deck.tokens || [],
+        deck.isSideDeckEnabled ? (deck.sidedeck || []) : []
+      );
+      const ttsObj = JSON.parse(ttsResult.json);
+      ttsObj.__mtgTtsBuilderState = deck; // Inject state
+
+      // 3. Save JSON
+      const fileHandle = await dir.getFileHandle(jsonFileName, { create: true });
       const writable = await fileHandle.createWritable();
-      await writable.write(JSON.stringify(deck, null, 2));
+      await writable.write(JSON.stringify(ttsObj, null, 2));
       await writable.close();
+
+      // 4. Save PNG cover
+      const imageUrl = deck.customCardbackUrl || MTG_CARD_BACK;
+      try {
+        const res = await fetch(imageUrl);
+        const blob = await res.blob();
+        const pngHandle = await dir.getFileHandle(pngFileName, { create: true });
+        const pngWritable = await pngHandle.createWritable();
+        await pngWritable.write(blob);
+        await pngWritable.close();
+      } catch (err) {
+        console.error('Failed to save deck cover png', err);
+      }
+
+      // 5. Cleanup legacy file if it exists
+      try {
+        const legacyDir = await dir.getDirectoryHandle('Decks');
+        if (legacyDir) {
+          await legacyDir.removeEntry(`${deck.id}.json`);
+        }
+      } catch (e) {
+        // Ignore
+      }
     } catch (err) {
       console.error(`Failed to save deck ${deck.id}:`, err);
     }
   }
 
   async deleteDeck(deckId: string): Promise<void> {
-    const decksDir = await this.getDecksDirectory();
-    if (!decksDir) return;
+    const dir = this.directoryHandle;
+    if (!dir) return;
 
     try {
-      const fileName = `${deckId}.json`;
-      await decksDir.removeEntry(fileName);
-    } catch (err: any) {
-      if (err.name !== 'NotFoundError') {
-        console.error(`Failed to delete deck ${deckId}:`, err);
+      let foundBaseName = null;
+      // @ts-ignore
+      for await (const entry of dir.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.json') && entry.name !== 'settings.json') {
+          try {
+            const handle = await dir.getFileHandle(entry.name);
+            const file = await handle.getFile();
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            const deck: SavedDeck = parsed.__mtgTtsBuilderState || parsed;
+            if (deck && deck.id === deckId) {
+              foundBaseName = entry.name.replace('.json', '');
+              break;
+            }
+          } catch(e) {}
+        }
       }
+
+      if (foundBaseName) {
+        await dir.removeEntry(`${foundBaseName}.json`);
+        try { await dir.removeEntry(`${foundBaseName}.png`); } catch(e) {}
+      }
+
+      // Cleanup legacy file just in case
+      try {
+        const legacyDir = await dir.getDirectoryHandle('Decks');
+        if (legacyDir) {
+          await legacyDir.removeEntry(`${deckId}.json`);
+        }
+      } catch (e) {
+        // Ignore
+      }
+    } catch (err: any) {
+      console.error(`Failed to delete deck ${deckId}:`, err);
     }
   }
 

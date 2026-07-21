@@ -14,6 +14,11 @@ export interface StorageAdapter {
   loadState(): Promise<DeckState | null>;
 
   /**
+   * Lazily loads the full deck details (such as Scryfall API data) for a stub deck.
+   */
+  loadFullDeck?(deck: SavedDeck): Promise<SavedDeck | null>;
+
+  /**
    * Called when a deck is modified (created, updated).
    */
   saveDeck(deck: SavedDeck): Promise<void>;

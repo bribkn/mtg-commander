@@ -6,6 +6,9 @@
  *   https://www.moxfield.com/decks/abc123
  */
 
+import type { SavedDeck } from './deck-store';
+import { getCardsBatch, getCardsBatchByIds, isToken } from './scryfall';
+
 export interface ParsedDeckEntry {
   name: string;
   quantity: number;
@@ -281,8 +284,17 @@ export function parseTTSJson(jsonText: string): ParsedTTSImport {
         // Leaf card node
         if (node.Name === 'Card' && typeof node.Nickname === 'string') {
           const fullName = node.Nickname.trim();
-          const name = fullName.split('\n')[0].trim();
+          let name = fullName.split('\n')[0].trim();
           if (name) {
+            // Normalize/clean card name (strip set codes, quantity prefixes, and foil markers)
+            const qtyPrefixMatch = name.match(/^(\d+)x?\s+(.+)/i);
+            if (qtyPrefixMatch) {
+              name = qtyPrefixMatch[2];
+            }
+            name = name.replace(/\s*\([A-Z0-9]+\)\s*\d*\s*$/, '').trim();
+            name = name.replace(/\s*\[[A-Z0-9]+\]\s*\d*\s*$/, '').trim();
+            name = name.replace(/\s*\*[^*]+\*\s*$/, '').trim();
+
             let artUrl: string | undefined = undefined;
             if (typeof node.CardID === 'number' && obj.CustomDeck) {
               const deckId = Math.floor(node.CardID / 100);
@@ -383,4 +395,258 @@ export function parseTTSJson(jsonText: string): ParsedTTSImport {
   } catch (err) {
     throw new Error('Invalid JSON format. Please upload a valid Tabletop Simulator deck file.');
   }
+}
+
+/**
+ * Extract a Scryfall UUID from a Scryfall CDN URL.
+ * e.g. https://cards.scryfall.io/large/front/7/b/7b0d67b1-...jpg?t → "7b0d67b1-..."
+ */
+function extractScryfallUUID(url: string): string | null {
+  const m = url.match(/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/**
+ * Helper to enrich a list of ParsedDeckEntry items with Scryfall data.
+ */
+async function enrichCardEntries(entries: any[]): Promise<any[]> {
+  const cards: any[] = [];
+  const uuidEntries: Array<{ index: number; uuid: string }> = [];
+  const nameEntries: Array<{ index: number; name: string }> = [];
+  const uniqueUUIDs = new Set<string>();
+  const uniqueNames = new Set<string>();
+
+  for (const entryCard of entries) {
+    const name = entryCard.name;
+    const artUrl = entryCard.artUrl ?? '';
+    const isCommander = entryCard.isCommander ?? false;
+    const uuid = artUrl.includes('scryfall.io') ? extractScryfallUUID(artUrl) : null;
+
+    const cardObj = {
+      scryfallId: uuid ?? name,
+      name,
+      quantity: entryCard.quantity,
+      scryfallData: {} as any,
+      category: 'Creature' as any,
+      isCommander: !!isCommander,
+      imageUrl: '',
+    };
+    cards.push(cardObj);
+
+    const idx = cards.length - 1;
+    if (uuid) {
+      uuidEntries.push({ index: idx, uuid });
+      uniqueUUIDs.add(uuid);
+    } else {
+      nameEntries.push({ index: idx, name });
+      uniqueNames.add(name);
+    }
+  }
+
+  // 1. Fetch by Scryfall UUID (exact match)
+  if (uniqueUUIDs.size > 0) {
+    const byId = await getCardsBatchByIds(Array.from(uniqueUUIDs));
+    const idMap = new Map<string, any>(byId.map((c: any) => [c.id.toLowerCase(), c]));
+    for (const { index, uuid } of uuidEntries) {
+      const scry = idMap.get(uuid);
+      if (scry) {
+        // Verify name matches (case-insensitive) to prevent mismatches on shared sheet URLs
+        const importedNameNorm = cards[index].name.toLowerCase().trim().split('//')[0].trim();
+        const scryfallNameNorm = scry.name.toLowerCase().trim().split('//')[0].trim();
+        if (importedNameNorm === scryfallNameNorm) {
+          cards[index].scryfallId = scry.id;
+          cards[index].scryfallData = scry;
+          cards[index].imageUrl =
+            scry.image_uris?.png ??
+            scry.image_uris?.large ??
+            scry.card_faces?.[0]?.image_uris?.png ??
+            scry.card_faces?.[0]?.image_uris?.large ??
+            '';
+          continue;
+        }
+      }
+      // UUID not found or name mismatched — fall back to name lookup
+      uniqueNames.add(cards[index].name);
+      nameEntries.push({ index, name: cards[index].name });
+    }
+  }
+
+  // 2. Fetch remaining cards by name
+  if (uniqueNames.size > 0) {
+    const { found } = await getCardsBatch(Array.from(uniqueNames));
+    const nameMap = new Map<string, any>();
+    for (const c of found) {
+      nameMap.set(c.name.toLowerCase(), c);
+      if (c.name.includes('//')) {
+        nameMap.set(c.name.split('//')[0].trim().toLowerCase(), c);
+      }
+    }
+    for (const { index, name } of nameEntries) {
+      if (cards[index].scryfallData && cards[index].scryfallData.id) continue;
+      const scry = nameMap.get(name.toLowerCase()) ?? nameMap.get(name.split('//')[0].trim().toLowerCase());
+      if (scry) {
+        cards[index].scryfallId = scry.id;
+        cards[index].scryfallData = scry;
+        cards[index].imageUrl =
+          scry.image_uris?.png ??
+          scry.image_uris?.large ??
+          scry.card_faces?.[0]?.image_uris?.png ??
+          scry.card_faces?.[0]?.image_uris?.large ??
+          '';
+      }
+    }
+  }
+
+  // Populate categories correctly
+  const { getCardCategory } = require('./scryfall');
+  for (const card of cards) {
+    if (card.scryfallData && card.scryfallData.id) {
+      card.category = getCardCategory(card.scryfallData);
+    }
+  }
+
+  return cards;
+}
+
+/**
+ * Parse a legacy TTS JSON deck file and enrich it with Scryfall data.
+ * Returns a fully-formed SavedDeck ready for the UI.
+ */
+export async function parseLegacyTTSFile(jsonText: string, baseName: string): Promise<SavedDeck> {
+  const importResult = parseTTSJson(jsonText);
+
+  // Enrich each section
+  let cards = await enrichCardEntries(importResult.cards);
+  const tokens = await enrichCardEntries(importResult.tokens);
+  const sidedeck = await enrichCardEntries(importResult.sidedeck);
+
+  // Filter out resolved tokens from the mainboard cards list
+  cards = cards.filter((c) => {
+    if (c.scryfallData && c.scryfallData.id) {
+      return !isToken(c.scryfallData);
+    }
+    return true;
+  });
+
+  // Resolve commander scryfallId
+  const cmdCard = cards.find((c) => c.isCommander);
+  let commanderId = cmdCard ? cmdCard.scryfallId : null;
+  if (!commanderId && cards.length) {
+    commanderId = cards[cards.length - 1].scryfallId;
+    cards[cards.length - 1].isCommander = true;
+  }
+
+  return {
+    id: baseName,
+    deckName: baseName,
+    cards,
+    tokens,
+    sidedeck,
+    isSideDeckEnabled: sidedeck.length > 0,
+    commanderId,
+    coverCardId: commanderId,
+  } as SavedDeck;
+}
+
+/**
+ * Validates and repairs any SavedDeck that has incomplete or empty scryfallData.
+ * Automatically fetches the missing details from Scryfall to heal the deck.
+ */
+export async function ensureDeckEnriched(deck: SavedDeck): Promise<SavedDeck> {
+  const deduplicateSection = (section?: any[]): any[] => {
+    if (!section) return [];
+    const map = new Map<string, any>();
+    for (const card of section) {
+      const key = card.scryfallId || card.name;
+      const existing = map.get(key);
+      if (existing) {
+        if (card.isCommander || existing.isCommander) {
+          existing.isCommander = true;
+          existing.quantity = card.isCommander ? card.quantity : existing.quantity;
+        } else {
+          existing.quantity += card.quantity;
+        }
+      } else {
+        map.set(key, card);
+      }
+    }
+    return Array.from(map.values());
+  };
+
+  deck.cards = deduplicateSection(deck.cards);
+  if (deck.sidedeck) deck.sidedeck = deduplicateSection(deck.sidedeck);
+  if (deck.tokens) deck.tokens = deduplicateSection(deck.tokens);
+
+  const cardsToFetch: Array<{ name: string }> = [];
+
+  const isIncomplete = (card: any) => {
+    return (
+      !card.scryfallData ||
+      !card.scryfallData.id ||
+      (!card.scryfallData.image_uris && !card.scryfallData.card_faces)
+    );
+  };
+
+  const checkSection = (section?: any[]) => {
+    if (!section) return;
+    for (const card of section) {
+      if (isIncomplete(card)) {
+        cardsToFetch.push({ name: card.name });
+      }
+    }
+  };
+
+  checkSection(deck.cards);
+  checkSection(deck.sidedeck);
+  checkSection(deck.tokens);
+
+  if (cardsToFetch.length === 0) {
+    return deck;
+  }
+
+  console.log(`Self-healing deck "${deck.deckName}": enriching ${cardsToFetch.length} incomplete cards...`);
+
+  const uniqueNames = Array.from(new Set(cardsToFetch.map((c) => c.name)));
+  if (uniqueNames.length > 0) {
+    const { found } = await getCardsBatch(uniqueNames);
+    const nameMap = new Map<string, any>();
+    for (const c of found) {
+      nameMap.set(c.name.toLowerCase(), c);
+      if (c.name.includes('//')) {
+        nameMap.set(c.name.split('//')[0].trim().toLowerCase(), c);
+      }
+    }
+
+    const enrichCard = (card: any) => {
+      if (!isIncomplete(card)) return;
+      const scry = nameMap.get(card.name.toLowerCase()) ?? nameMap.get(card.name.split('//')[0].trim().toLowerCase());
+      if (scry) {
+        card.scryfallId = scry.id;
+        card.scryfallData = scry;
+        // Reset category to correct Scryfall-determined value if needed
+        const { getCardCategory } = require('./scryfall');
+        card.category = getCardCategory(scry);
+      }
+    };
+
+    deck.cards.forEach(enrichCard);
+    if (deck.sidedeck) deck.sidedeck.forEach(enrichCard);
+    if (deck.tokens) deck.tokens.forEach(enrichCard);
+  }
+
+  // Update commanderId / coverCardId to actual Scryfall IDs if they were names
+  if (deck.commanderId) {
+    const cmdCard = deck.cards.find((c) => c.name === deck.commanderId || c.scryfallId === deck.commanderId);
+    if (cmdCard && cmdCard.scryfallData?.id) {
+      deck.commanderId = cmdCard.scryfallData.id;
+    }
+  }
+  if (deck.coverCardId) {
+    const coverCard = deck.cards.find((c) => c.name === deck.coverCardId || c.scryfallId === deck.coverCardId);
+    if (coverCard && coverCard.scryfallData?.id) {
+      deck.coverCardId = coverCard.scryfallData.id;
+    }
+  }
+
+  return deck;
 }

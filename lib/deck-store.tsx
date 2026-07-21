@@ -34,6 +34,8 @@ export interface SavedDeck {
   tokens?: DeckCard[];
   sidedeck?: DeckCard[];
   isSideDeckEnabled?: boolean;
+  needsFullLoad?: boolean;
+  _sourceFileName?: string;
 }
 
 export interface CustomCard {
@@ -96,6 +98,7 @@ type DeckAction =
   | { type: 'MOVE_CARD_TO_MAINDECK'; scryfallId: string; deckId?: string }
   | { type: 'TOGGLE_SIDEDECK'; deckId?: string }
   | { type: 'SET_SIDEDECK_ENABLED'; enabled: boolean; deckId?: string }
+  | { type: 'UPDATE_LOADED_DECK'; deck: SavedDeck }
   | { type: 'SET_FAVORITE_ART'; favoriteArt: FavoriteArt }
   | { type: 'REMOVE_FAVORITE_ART'; cardName: string };
 
@@ -167,6 +170,13 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         ...state,
         activeDeckId: action.deckId,
       };
+
+    case 'UPDATE_LOADED_DECK': {
+      return {
+        ...state,
+        decks: state.decks.map((d) => (d.id === action.deck.id ? action.deck : d)),
+      };
+    }
 
     case 'CLOSE_DECK':
       return {

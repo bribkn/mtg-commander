@@ -124,12 +124,13 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
 
       {/* Grid of Decks */}
       {storageLoading ? (
-        <div className="w-full flex flex-col items-center justify-center py-20 gap-4">
+        /* Loading progress bar */
+        <div id="deck-load-progress" className="w-full flex flex-col items-center justify-center py-20 gap-4">
           <div className="relative w-16 h-20 rounded-lg border-2 border-primary/20 bg-card/40 flex items-center justify-center animate-pulse">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
           </div>
-          <p className="text-sm font-semibold text-muted-foreground animate-pulse tracking-wide font-medium">
-            Cargando los decks...
+          <p className="text-sm font-semibold text-muted-foreground tracking-wide font-medium">
+            Cargando decks: <span id="loaded">0</span> / <span id="total">0</span>
           </p>
         </div>
       ) : (

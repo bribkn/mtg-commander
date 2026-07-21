@@ -8,6 +8,10 @@ export class LocalStorageAdapter implements StorageAdapter {
     // No initialization needed for local storage
   }
 
+  async loadFullDeck(deck: SavedDeck): Promise<SavedDeck | null> {
+    return deck;
+  }
+
   async loadState(): Promise<DeckState | null> {
     if (typeof window === 'undefined') return null;
     

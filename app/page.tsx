@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DeckProvider, useDeck } from '@/lib/deck-store';
+import { storageManager } from '@/lib/storage/manager';
 import { DeckHeader } from '@/components/DeckHeader';
 import { CardSearchBar } from '@/components/CardSearchBar';
 import { CardList } from '@/components/CardList';
@@ -251,6 +252,7 @@ function AppContent() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportTargetDeckId, setExportTargetDeckId] = useState<string | undefined>(undefined);
   const [sidebarMode, setSidebarMode] = useState<'stats' | 'search'>('stats');
+  const [deckLoading, setDeckLoading] = useState(false);
 
   // Target deck ID for modals
   const [modalTargetDeckId, setModalTargetDeckId] = useState<string | undefined>(undefined);
@@ -386,6 +388,27 @@ function AppContent() {
       });
     }
   }
+
+  // Lazy loading full deck details
+  useEffect(() => {
+    async function checkLazyLoad() {
+      if (activeDeckId) {
+        const currentDeck = decks.find((d) => d.id === activeDeckId);
+        if (currentDeck && currentDeck.needsFullLoad) {
+          setDeckLoading(true);
+          const adapter = storageManager.getAdapter();
+          if (adapter && adapter.loadFullDeck) {
+            const fullyLoaded = await adapter.loadFullDeck(currentDeck);
+            if (fullyLoaded) {
+              dispatch({ type: 'UPDATE_LOADED_DECK', deck: fullyLoaded });
+            }
+          }
+          setDeckLoading(false);
+        }
+      }
+    }
+    checkLazyLoad();
+  }, [activeDeckId, decks, dispatch]);
 
   // Auto-fetch and sync referenced tokens in the background
   useEffect(() => {
@@ -887,6 +910,18 @@ function AppContent() {
   }
 
   // 3. Single Deck Editor View
+  if (deckLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Layers className="w-12 h-12 text-primary animate-pulse" />
+          <p className="text-muted-foreground text-sm font-medium animate-pulse">Loading deck data from Scryfall...</p>
+        </div>
+        {modals}
+      </div>
+    );
+  }
+
   const commander = state ? state.cards.find((c) => c.isCommander) ?? null : null;
   const bannerArt = getBannerArtForDeck(state);
   const totalCards = state ? state.cards.reduce((sum, c) => sum + c.quantity, 0) : 0;
