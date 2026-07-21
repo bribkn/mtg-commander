@@ -19,11 +19,14 @@ import {
     Flame,
     Info,
     Minimize2,
+    Maximize2,
     Trash2,
     ArrowRightLeft,
     Crown,
     Layers,
     Archive,
+    Grid,
+    AlignJustify,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -213,6 +216,8 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
     const [totalCardsCount, setTotalCardsCount] = useState<number | undefined>(undefined);
     const [searchError, setSearchError] = useState("");
     const [lastQuery, setLastQuery] = useState("");
+    const [searchViewMode, setSearchViewMode] = useState<"text" | "grid">("text");
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
     // Local card adding loading states
     const [addingIds, setAddingIds] = useState<Record<string, boolean>>({});
@@ -636,7 +641,11 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
             ref={containerRef}
             onMouseMove={handleMouseMove}
             className={`hidden lg:flex flex-col border-r border-border overflow-hidden bg-card/25 backdrop-blur-md transition-all duration-300 relative ${
-                mode === "search" ? "w-[420px]" : "w-64"
+                mode === "search"
+                    ? isSearchExpanded
+                        ? "w-1/2"
+                        : "w-[420px]"
+                    : "w-64"
             } shrink-0`}
         >
             {/* ─── STATS MODE ────────────────────────────────────────────────────────── */}
@@ -977,15 +986,31 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                     {/* Header row with stats & back link */}
                     <div className="p-3.5 border-b border-border bg-secondary/10 flex flex-col gap-2 shrink-0">
                         <div className="flex items-center justify-between">
-                            <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={() => onModeChange("stats")}
-                                className="text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/60 flex items-center gap-1 px-1.5 h-7"
-                            >
-                                <ArrowLeft className="w-3.5 h-3.5" />
-                                <span>Back to Stats</span>
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={() => onModeChange("stats")}
+                                    className="text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/60 flex items-center gap-1 px-1.5 h-7"
+                                >
+                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                    <span>Back to Stats</span>
+                                </Button>
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                                    className="w-7 h-7 text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-transform active:scale-95"
+                                    title={isSearchExpanded ? "Collapse Search Sidebar" : "Expand Search Sidebar"}
+                                >
+                                    {isSearchExpanded ? (
+                                        <Minimize2 className="w-3.5 h-3.5" />
+                                    ) : (
+                                        <Maximize2 className="w-3.5 h-3.5 animate-pulse" />
+                                    )}
+                                </Button>
+                            </div>
 
                             <Badge
                                 variant="outline"
@@ -1021,6 +1046,36 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                                     {isOracleMode ? "Search Rules (Oracle)" : "Search Cards (Name)"}
                                 </span>
                                 <div className="flex items-center gap-1">
+                                    {/* Search View Mode Selector */}
+                                    <div className="flex bg-secondary p-0.5 rounded-full border border-border/60 shrink-0 select-none">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearchViewMode("text")}
+                                            className={`p-0.5 px-1.5 rounded-full text-[8px] font-bold transition-all flex items-center gap-0.5 ${
+                                                searchViewMode === "text"
+                                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                            title="Text View"
+                                        >
+                                            <AlignJustify className="w-2.5 h-2.5" />
+                                            <span>List</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearchViewMode("grid")}
+                                            className={`p-0.5 px-1.5 rounded-full text-[8px] font-bold transition-all flex items-center gap-0.5 ${
+                                                searchViewMode === "grid"
+                                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                            title="Grid View"
+                                        >
+                                            <Grid className="w-2.5 h-2.5" />
+                                            <span>Grid</span>
+                                        </button>
+                                    </div>
+
                                     <button
                                         type="button"
                                         onClick={() => setIsLegendary(!isLegendary)}
@@ -1487,85 +1542,246 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                         )}
 
                         {/* Search Results List */}
-                        <div className="space-y-2">
-                            {results.map((card) => {
-                                const isGameChanger = isGameChangerCard(card.name);
-                                const qtyMain = getQuantityInMain(card);
-                                const qtySide = getQuantityInSide(card);
-                                return (
-                                    <div
-                                        key={card.id}
-                                        onMouseEnter={() => setPreviewCard(card)}
-                                        onMouseLeave={() => setPreviewCard(null)}
-                                        className="flex items-center justify-between gap-3 p-2 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/40 hover:border-primary/20 transition-all select-none group"
-                                    >
-                                        {/* Left side: Card artwork crop & name details */}
-                                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                                            <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-border/60 bg-black/40 flex items-center justify-center">
-                                                <CardMedia
-                                                    src={getFrontImageUrl(card) || ""}
-                                                    alt={card.name}
-                                                    className="w-full h-full object-cover select-none pointer-events-none group-hover:scale-105 transition-transform"
-                                                    onError={(e) => {
-                                                        (e.currentTarget as HTMLElement).style.display = "none";
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <span
-                                                    className={`text-xs font-semibold truncate block leading-tight ${isGameChanger ? "text-red-400 font-bold" : "text-foreground"}`}
-                                                >
-                                                    {card.name}
-                                                </span>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <span
-                                                        className={`text-[9px] px-1 py-0.2 rounded border ${RARITY_CLASSES[card.rarity] || "border-border text-muted-foreground"}`}
-                                                    >
-                                                        {card.rarity.slice(0, 3).toUpperCase()}
-                                                    </span>
-                                                    <span className="text-[9px] text-muted-foreground truncate max-w-[120px]">
-                                                        {card.type_line}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                        {searchViewMode === "grid" ? (
+                            <div className={`grid gap-2 ${
+                                isSearchExpanded
+                                    ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                                    : "grid-cols-2"
+                            }`}>
+                                {results.map((card) => {
+                                    const qtyMain = getQuantityInMain(card);
+                                    const qtySide = getQuantityInSide(card);
+                                    return (
+                                        <div
+                                            key={card.id}
+                                            onMouseEnter={() => setPreviewCard(card)}
+                                            onMouseLeave={() => setPreviewCard(null)}
+                                            className="relative aspect-[5/7] rounded-lg overflow-hidden border border-border/80 bg-secondary group transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:border-primary/30"
+                                        >
+                                            {/* Card Image */}
+                                            <CardMedia
+                                                src={getFrontImageUrl(card) || ""}
+                                                alt={card.name}
+                                                className="w-full h-full object-cover absolute inset-0 select-none pointer-events-none"
+                                                loading="lazy"
+                                            />
 
-                                        {/* Right side: Mana symbols + adding interactions */}
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            {/* Cost */}
-                                            {card.mana_cost && (
-                                                <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                                                    {card.mana_cost
-                                                        .match(/{[^{}]+}/g)
-                                                        ?.slice(0, 3)
-                                                        .map((sym, idx) => (
-                                                            <img
-                                                                key={idx}
-                                                                src={getManaSymbolUrl(sym)}
-                                                                alt={sym}
-                                                                className="w-3.5 h-3.5 select-none pointer-events-none"
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).style.display = "none";
-                                                                }}
-                                                            />
-                                                        ))}
+                                            {/* Quantity Badges (Top-Left) */}
+                                            {(qtyMain > 0 || qtySide > 0) && (
+                                                <div className="absolute top-1 left-1 z-10 flex flex-col gap-0.5 pointer-events-none select-none">
+                                                    {qtyMain > 0 && (
+                                                        <div className="bg-primary/95 text-primary-foreground text-[8px] font-extrabold font-mono px-1 py-0.2 rounded border border-primary/30 shadow-md">
+                                                            {qtyMain} MD
+                                                        </div>
+                                                    )}
+                                                    {qtySide > 0 && (
+                                                        <div className="bg-amber-500/95 text-white text-[8px] font-extrabold font-mono px-1 py-0.2 rounded border border-amber-500/30 shadow-md">
+                                                            {qtySide} SD
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
-                                            {/* Click to add interaction buttons */}
-                                            {state?.isSideDeckEnabled ? (
-                                                <div className="flex items-center gap-1">
-                                                    {/* Add to Main Deck */}
+                                            {/* Hover Overlay Controls */}
+                                            <div className="absolute inset-0 bg-black/85 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-2 z-10">
+                                                {/* Card Name */}
+                                                <div className="text-[9px] font-bold text-foreground text-center truncate mb-1.5 px-0.5">
+                                                    {card.name}
+                                                </div>
+
+                                                {/* Action buttons */}
+                                                <div className="flex gap-1 justify-center">
+                                                    {state?.isSideDeckEnabled ? (
+                                                        <>
+                                                            {/* Add to Main Deck */}
+                                                            <button
+                                                                onClick={() => handleAddCard(card, "main")}
+                                                                disabled={addingIds[`${card.id}-main`]}
+                                                                className={`flex-1 h-6 rounded text-[8px] font-bold transition-all border flex items-center justify-center gap-0.5 active:scale-95 ${
+                                                                    qtyMain > 0
+                                                                        ? "bg-primary/20 border-primary text-primary hover:bg-primary/30"
+                                                                        : "border-border hover:border-primary/50 text-muted-foreground hover:text-primary"
+                                                                }`}
+                                                            >
+                                                                {addingIds[`${card.id}-main`] ? (
+                                                                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                                                ) : (
+                                                                    <>
+                                                                        <Plus className="w-2.5 h-2.5" />
+                                                                        <span>MD</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+
+                                                            {/* Add to Side Deck */}
+                                                            <button
+                                                                onClick={() => handleAddCard(card, "side")}
+                                                                disabled={addingIds[`${card.id}-side`]}
+                                                                className={`flex-1 h-6 rounded text-[8px] font-bold transition-all border flex items-center justify-center gap-0.5 active:scale-95 ${
+                                                                    qtySide > 0
+                                                                        ? "bg-amber-500/20 border-amber-500/50 text-amber-500 hover:bg-amber-500/30"
+                                                                        : "border-border hover:border-amber-500/50 text-muted-foreground hover:text-amber-500"
+                                                                }`}
+                                                            >
+                                                                {addingIds[`${card.id}-side`] ? (
+                                                                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                                                ) : (
+                                                                    <>
+                                                                        <Archive className="w-2.5 h-2.5" />
+                                                                        <span>SD</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleAddCard(card, "main")}
+                                                            disabled={addingIds[`${card.id}-main`]}
+                                                            className={`w-full h-6 rounded text-[8px] font-bold transition-all border flex items-center justify-center gap-0.5 active:scale-95 ${
+                                                                qtyMain > 0
+                                                                    ? "bg-primary/20 border-primary text-primary hover:bg-primary/30"
+                                                                    : "border-border hover:border-primary/50 text-muted-foreground hover:text-primary"
+                                                            }`}
+                                                        >
+                                                            {addingIds[`${card.id}-main`] ? (
+                                                                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                                            ) : (
+                                                                <>
+                                                                    <Plus className="w-2.5 h-2.5" />
+                                                                    <span>Add</span>
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {results.map((card) => {
+                                    const isGameChanger = isGameChangerCard(card.name);
+                                    const qtyMain = getQuantityInMain(card);
+                                    const qtySide = getQuantityInSide(card);
+                                    return (
+                                        <div
+                                            key={card.id}
+                                            onMouseEnter={() => setPreviewCard(card)}
+                                            onMouseLeave={() => setPreviewCard(null)}
+                                            className="flex items-center justify-between gap-3 p-2 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/40 hover:border-primary/20 transition-all select-none group"
+                                        >
+                                            {/* Left side: Card artwork crop & name details */}
+                                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-border/60 bg-black/40 flex items-center justify-center">
+                                                    <CardMedia
+                                                        src={getFrontImageUrl(card) || ""}
+                                                        alt={card.name}
+                                                        className="w-full h-full object-cover select-none pointer-events-none group-hover:scale-105 transition-transform"
+                                                        onError={(e) => {
+                                                            (e.currentTarget as HTMLElement).style.display = "none";
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <span
+                                                        className={`text-xs font-semibold truncate block leading-tight ${isGameChanger ? "text-red-400 font-bold" : "text-foreground"}`}
+                                                    >
+                                                        {card.name}
+                                                    </span>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <span
+                                                            className={`text-[9px] px-1 py-0.2 rounded border ${RARITY_CLASSES[card.rarity] || "border-border text-muted-foreground"}`}
+                                                        >
+                                                            {card.rarity.slice(0, 3).toUpperCase()}
+                                                        </span>
+                                                        <span className="text-[9px] text-muted-foreground truncate max-w-[120px]">
+                                                            {card.type_line}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Right side: Mana symbols + adding interactions */}
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {/* Cost */}
+                                                {card.mana_cost && (
+                                                    <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        {card.mana_cost
+                                                            .match(/{[^{}]+}/g)
+                                                            ?.slice(0, 3)
+                                                            .map((sym, idx) => (
+                                                                <img
+                                                                    key={idx}
+                                                                    src={getManaSymbolUrl(sym)}
+                                                                    alt={sym}
+                                                                    className="w-3.5 h-3.5 select-none pointer-events-none"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).style.display = "none";
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Click to add interaction buttons */}
+                                                {state?.isSideDeckEnabled ? (
+                                                    <div className="flex items-center gap-1">
+                                                        {/* Add to Main Deck */}
+                                                        <button
+                                                            onClick={() => handleAddCard(card, "main")}
+                                                            disabled={addingIds[`${card.id}-main`]}
+                                                            title="Add to Main Deck"
+                                                            className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
+                                   ${
+                                       qtyMain > 0
+                                           ? "bg-primary/20 border-primary text-primary hover:bg-primary/30"
+                                           : "border-border hover:border-primary/50 text-muted-foreground hover:text-primary hover:bg-secondary"
+                                   }`}
+                                                        >
+                                                            {addingIds[`${card.id}-main`] ? (
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                                                            ) : qtyMain > 0 ? (
+                                                                <div className="flex flex-col items-center">
+                                                                    <span className="text-[10px] font-bold font-mono">{qtyMain}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
+
+                                                        {/* Add to Side Deck */}
+                                                        <button
+                                                            onClick={() => handleAddCard(card, "side")}
+                                                            disabled={addingIds[`${card.id}-side`]}
+                                                            title="Add to Side Deck"
+                                                            className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
+                                   ${
+                                       qtySide > 0
+                                           ? "bg-amber-500/20 border-amber-500/50 text-amber-500 hover:bg-amber-500/30"
+                                           : "border-border hover:border-amber-500/50 text-muted-foreground hover:text-amber-500 hover:bg-secondary"
+                                   }`}
+                                                        >
+                                                            {addingIds[`${card.id}-side`] ? (
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                                                            ) : qtySide > 0 ? (
+                                                                <div className="flex flex-col items-center">
+                                                                    <span className="text-[10px] font-bold font-mono">{qtySide}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <Archive className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                ) : (
                                                     <button
                                                         onClick={() => handleAddCard(card, "main")}
                                                         disabled={addingIds[`${card.id}-main`]}
-                                                        title="Add to Main Deck"
-                                                        className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
-                              ${
-                                  qtyMain > 0
-                                      ? "bg-primary/20 border-primary text-primary hover:bg-primary/30"
-                                      : "border-border hover:border-primary/50 text-muted-foreground hover:text-primary hover:bg-secondary"
-                              }`}
+                                                        className={qtyMain > 0
+                                                            ? "w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90 bg-primary/20 border-primary text-primary hover:bg-primary/30"
+                                                            : "w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90 border-border hover:border-primary/50 text-muted-foreground hover:text-primary hover:bg-secondary"
+                                                        }
                                                     >
                                                         {addingIds[`${card.id}-main`] ? (
                                                             <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
@@ -1577,56 +1793,13 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                                                             <Plus className="w-3.5 h-3.5" />
                                                         )}
                                                     </button>
-
-                                                    {/* Add to Side Deck */}
-                                                    <button
-                                                        onClick={() => handleAddCard(card, "side")}
-                                                        disabled={addingIds[`${card.id}-side`]}
-                                                        title="Add to Side Deck"
-                                                        className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
-                              ${
-                                  qtySide > 0
-                                      ? "bg-amber-500/20 border-amber-500/50 text-amber-500 hover:bg-amber-500/30"
-                                      : "border-border hover:border-amber-500/50 text-muted-foreground hover:text-amber-500 hover:bg-secondary"
-                              }`}
-                                                    >
-                                                        {addingIds[`${card.id}-side`] ? (
-                                                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
-                                                        ) : qtySide > 0 ? (
-                                                            <div className="flex flex-col items-center">
-                                                                <span className="text-[10px] font-bold font-mono">{qtySide}</span>
-                                                            </div>
-                                                        ) : (
-                                                            <Archive className="w-3.5 h-3.5" />
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleAddCard(card, "main")}
-                                                    disabled={addingIds[`${card.id}-main`]}
-                                                    className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center relative active:scale-90
-                            ${
-                                qtyMain > 0
-                                    ? "bg-primary/20 border-primary text-primary hover:bg-primary/30"
-                                    : "border-border hover:border-primary/50 text-muted-foreground hover:text-primary hover:bg-secondary"
-                            }`}
-                                                >
-                                                    {addingIds[`${card.id}-main`] ? (
-                                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                                                    ) : qtyMain > 0 ? (
-                                                        <div className="flex flex-col items-center">
-                                                            <span className="text-[10px] font-bold font-mono">{qtyMain}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <Plus className="w-3.5 h-3.5" />
-                                                    )}
-                                                </button>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
+                        )}
 
                             {/* Load More Button */}
                             {hasMore && (
@@ -1657,7 +1830,6 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                             )}
                         </div>
                     </div>
-                </div>
             )}
 
             {/* Floating Card Image Preview tooltip portal */}

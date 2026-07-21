@@ -21,9 +21,10 @@ import { CustomCardsModal } from '@/components/CustomCardsModal';
 import { CombosModal } from '@/components/CombosModal';
 import { ShareBannerModal } from '@/components/ShareBannerModal';
 import { ExportModal } from '@/components/ExportModal';
+import { PlaytestModal } from '@/components/PlaytestModal';
 import { getCardsBatchByIds } from '@/lib/scryfall';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers, Dices } from 'lucide-react';
 import { DECK_TAGS_LIST } from '@/lib/tags';
 import {
   Dialog,
@@ -250,6 +251,7 @@ function AppContent() {
   const [combosOpen, setCombosOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [playtestOpen, setPlaytestOpen] = useState(false);
   const [exportTargetDeckId, setExportTargetDeckId] = useState<string | undefined>(undefined);
   const [sidebarMode, setSidebarMode] = useState<'stats' | 'search'>('stats');
   const [deckLoading, setDeckLoading] = useState(false);
@@ -270,6 +272,11 @@ function AppContent() {
   function openExport(deckId?: string) {
     setExportTargetDeckId(deckId);
     setExportOpen(true);
+  }
+
+  function openPlaytest(deckId?: string) {
+    setModalTargetDeckId(deckId);
+    setPlaytestOpen(true);
   }
 
   // Split view states
@@ -501,6 +508,11 @@ function AppContent() {
         onClose={() => { setExportOpen(false); setExportTargetDeckId(undefined); }}
         deckId={exportTargetDeckId}
       />
+      <PlaytestModal
+        open={playtestOpen}
+        onClose={() => { setPlaytestOpen(false); setModalTargetDeckId(undefined); }}
+        deckId={modalTargetDeckId}
+      />
     </>
   );
 
@@ -694,6 +706,16 @@ function AppContent() {
                         <span>Share</span>
                       </Button>
                       <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openPlaytest(leftDeck.id)}
+                        className="text-[10px] h-7 px-2 border-border hover:border-primary/50 text-indigo-400 hover:bg-indigo-500/5 transition-colors flex items-center gap-1"
+                        title="Sample hand playtester"
+                      >
+                        <Dices className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Playtest</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleClearDeck(leftDeck.id)}
@@ -840,6 +862,16 @@ function AppContent() {
                         <span>Share</span>
                       </Button>
                       <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openPlaytest(rightDeck.id)}
+                        className="text-[10px] h-7 px-2 border-border hover:border-primary/50 text-indigo-400 hover:bg-indigo-500/5 transition-colors flex items-center gap-1"
+                        title="Sample hand playtester"
+                      >
+                        <Dices className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Playtest</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleClearDeck(rightDeck.id)}
@@ -951,6 +983,7 @@ function AppContent() {
         onCombosOpen={() => openCombos(state?.id)}
         onShareOpen={() => openShare(state?.id)}
         onSave={saveCurrentDeck}
+        onPlaytestOpen={() => openPlaytest(state?.id)}
       />
 
       <div className="flex flex-1 overflow-hidden w-full max-w-full px-2 sm:px-4">

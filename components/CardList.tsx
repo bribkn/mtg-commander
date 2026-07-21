@@ -58,6 +58,15 @@ import { CardMedia } from "./CardMedia";
 import { getEdhrecUrl } from "@/lib/utils";
 import { EdhrecSuggestionsModal } from "./EdhrecSuggestionsModal";
 
+function getMinPrice(card: DeckCard): number | null {
+    const usd = parseFloat(card.scryfallData?.prices?.usd || "") || null;
+    const foil = parseFloat(card.scryfallData?.prices?.usd_foil || "") || null;
+    if (usd !== null && foil !== null) {
+        return Math.min(usd, foil);
+    }
+    return usd ?? foil;
+}
+
 // Mana symbol colors
 const MANA_COLORS: Record<string, string> = {
     W: "bg-yellow-100 text-yellow-900",
@@ -99,9 +108,10 @@ interface CardRowProps {
     onGifAlterOpen?: (card: DeckCard) => void;
     onSuggestionsOpen?: (cardName: string) => void;
     section?: "main" | "side" | "tokens";
+    showUsdPrices?: boolean;
 }
 
-function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, onSuggestionsOpen, section = "main" }: CardRowProps) {
+function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, onSuggestionsOpen, section = "main", showUsdPrices = false }: CardRowProps) {
     const { state: globalState, decks, dispatch } = useDeck();
     const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
     const [imgError, setImgError] = useState(false);
@@ -165,6 +175,16 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, 
                     </span>
                 </div>
             </div>
+
+            {showUsdPrices && (() => {
+                const price = getMinPrice(card);
+                if (price === null) return null;
+                return (
+                    <span className="font-mono font-bold text-xs text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/15 shrink-0 select-none">
+                        ${price.toFixed(2)}
+                    </span>
+                );
+            })()}
 
             {/* Controls */}
             <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -353,6 +373,7 @@ function PremiumListRow({
     onGifAlterOpen,
     onSuggestionsOpen,
     section = "main",
+    showUsdPrices = false,
 }: {
     card: DeckCard;
     onVariantOpen: (card: DeckCard, section?: "main" | "side" | "tokens") => void;
@@ -361,6 +382,7 @@ function PremiumListRow({
     onGifAlterOpen?: (card: DeckCard) => void;
     onSuggestionsOpen?: (cardName: string) => void;
     section?: "main" | "side" | "tokens";
+    showUsdPrices?: boolean;
 }) {
     const { customCards, dispatch, state: globalState, decks } = useDeck();
     const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
@@ -436,6 +458,16 @@ function PremiumListRow({
 
             {/* Right Column: Mana cost & Actions */}
             <div className="flex items-center gap-2.5 shrink-0 pl-2">
+                {showUsdPrices && (() => {
+                    const price = getMinPrice(card);
+                    if (price === null) return null;
+                    return (
+                        <span className="font-mono font-bold text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/15 shrink-0 select-none">
+                            ${price.toFixed(2)}
+                        </span>
+                    );
+                })()}
+
                 {/* Mana Cost */}
                 {symbols.length > 0 && (
                     <div className="flex items-center gap-0.5 select-none">
@@ -600,6 +632,7 @@ function PremiumListSection({
     onGifAlterOpen,
     onSuggestionsOpen,
     section = "main",
+    showUsdPrices = false,
 }: {
     category: string;
     cards: DeckCard[];
@@ -609,10 +642,13 @@ function PremiumListSection({
     onGifAlterOpen?: (card: DeckCard) => void;
     onSuggestionsOpen?: (cardName: string) => void;
     section?: "main" | "side" | "tokens";
+    showUsdPrices?: boolean;
 }) {
     const totalQuantity = cards.reduce((sum, c) => sum + c.quantity, 0);
 
-    const IconComponent = CATEGORY_ICONS[category] || HelpCircle;
+    const isManaKey = !isNaN(Number(category)) || category === "7+";
+    const IconComponent = isManaKey ? Zap : (CATEGORY_ICONS[category] || HelpCircle);
+    const displayLabel = isManaKey ? `MANA VALUE ${category}` : category.toUpperCase();
 
     return (
         <div className="bg-background/25 border border-border/40 rounded-xl p-3.5 shadow-sm">
@@ -621,7 +657,7 @@ function PremiumListSection({
                 <div className="flex items-center gap-2 text-xs font-bold text-foreground uppercase tracking-wider">
                     <IconComponent className="w-4 h-4 text-purple-400 shrink-0" />
                     <span>
-                        {category.toUpperCase()} ({totalQuantity})
+                        {displayLabel} ({totalQuantity})
                     </span>
                 </div>
             </div>
@@ -638,6 +674,7 @@ function PremiumListSection({
                         onGifAlterOpen={onGifAlterOpen}
                         onSuggestionsOpen={onSuggestionsOpen}
                         section={section}
+                        showUsdPrices={showUsdPrices}
                     />
                 ))}
             </div>
@@ -878,6 +915,18 @@ function CategorySection({
                                             </div>
                                         )}
 
+                                        {showUsdPrices && (() => {
+                                            const price = getMinPrice(card);
+                                            if (price === null) return null;
+                                            return (
+                                                <div className="absolute top-1.5 right-1.5 bg-emerald-950/95 px-2 py-0.5 rounded border border-emerald-500/40 z-10 flex items-center justify-center shadow-md">
+                                                    <span className="text-[10px] font-bold text-emerald-400 font-mono">
+                                                        ${price.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
+
                                         {/* Centered Bottom Quantity Pill */}
                                         {section !== "tokens" && (
                                             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/85 px-3 py-1 rounded-full border border-border/40 z-10 flex items-center gap-1.5 shadow-md shadow-black/50 transition-opacity duration-300 group-hover/visual:opacity-0 select-none animate-fade-in">
@@ -891,11 +940,23 @@ function CategorySection({
                                         {/* Dark Crimson Hover Overlay */}
                                         <div className="absolute inset-0 bg-black/90 border border-primary/30 opacity-0 group-hover/visual:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-2.5 z-10 text-center">
                                             <div className="flex flex-col w-full">
-                                                <span
-                                                    className={`text-xs sm:text-sm font-bold leading-tight truncate px-0.5 border-b border-border/20 pb-1 ${isBanned ? "text-red-400 line-through" : "text-foreground"}`}
-                                                >
-                                                    {card.name}
-                                                </span>
+                                                <div className="flex items-center justify-between border-b border-border/20 pb-1 w-full gap-2">
+                                                    <span
+                                                        className={`text-xs sm:text-sm font-bold leading-tight truncate text-left ${isBanned ? "text-red-400 line-through" : "text-foreground"}`}
+                                                        style={{ maxWidth: "calc(100% - 60px)" }}
+                                                    >
+                                                        {card.name}
+                                                    </span>
+                                                    {showUsdPrices && (() => {
+                                                        const price = getMinPrice(card);
+                                                        if (price === null) return null;
+                                                        return (
+                                                            <span className="text-[10px] font-bold text-emerald-400 font-mono shrink-0">
+                                                                ${price.toFixed(2)}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </div>
                                                 {isBanned && (
                                                     <span className="text-[9px] text-red-500 font-extrabold uppercase tracking-wide bg-red-500/10 py-0.5 rounded border border-red-500/15 animate-pulse mt-0.5">
                                                         BANNED IN COMMANDER
@@ -1119,6 +1180,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
     const [showOnlyGameChangers, setShowOnlyGameChangers] = useState(false);
     const [showOnlyLegendary, setShowOnlyLegendary] = useState(false);
     const [showUsdPrices, setShowUsdPrices] = useState(false);
+    const [groupBy, setGroupBy] = useState<"type" | "mana" | "none">("type");
 
     // Variant selector states
     const [variantCard, setVariantCard] = useState<DeckCard | null>(null);
@@ -1354,18 +1416,41 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
         });
     };
 
+    const MANA_GROUPS = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+
+    const getCardGroupKey = (card: DeckCard, groupMode: "type" | "mana" | "none"): string => {
+        if (groupMode === "none") {
+            return "Deck";
+        }
+        if (groupMode === "mana") {
+            const cmc = card.scryfallData.cmc ?? 0;
+            if (cmc >= 7) return "7+";
+            return String(Math.floor(cmc));
+        }
+        if (viewMode === "text" && card.isCommander) {
+            return "Commander";
+        }
+        return card.category;
+    };
+
     // Group cards by category
     const grouped = new Map<string, DeckCard[]>();
-    grouped.set("Commander", []);
-    for (const cat of CATEGORY_ORDER) {
-        grouped.set(cat, []);
-    }
-    for (const card of filteredCards) {
-        if (viewMode === "text" && card.isCommander) {
-            grouped.get("Commander")?.push(card);
-        } else {
-            grouped.get(card.category)?.push(card);
+    if (groupBy === "none") {
+        grouped.set("Deck", []);
+    } else if (groupBy === "mana") {
+        for (const g of MANA_GROUPS) {
+            grouped.set(g, []);
         }
+    } else {
+        grouped.set("Commander", []);
+        for (const cat of CATEGORY_ORDER) {
+            grouped.set(cat, []);
+        }
+    }
+
+    for (const card of filteredCards) {
+        const groupKey = getCardGroupKey(card, groupBy);
+        grouped.get(groupKey)?.push(card);
     }
 
     // Sort each category
@@ -1488,6 +1573,48 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                         >
                             <span className="font-bold">USD</span>
                         </Button>
+
+                        {/* Group Selector */}
+                        <div className="flex items-center gap-1.5 shrink-0 select-none">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider hidden md:inline">
+                                Group by:
+                            </span>
+                            <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60">
+                                <button
+                                    onClick={() => setGroupBy("type")}
+                                    className={`p-1 px-2 rounded-md text-[10px] font-bold transition-all ${
+                                        groupBy === "type"
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                    title="Group by Type"
+                                >
+                                    Type
+                                </button>
+                                <button
+                                    onClick={() => setGroupBy("mana")}
+                                    className={`p-1 px-2 rounded-md text-[10px] font-bold transition-all ${
+                                        groupBy === "mana"
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                    title="Group by Mana Value"
+                                >
+                                    Mana
+                                </button>
+                                <button
+                                    onClick={() => setGroupBy("none")}
+                                    className={`p-1 px-2 rounded-md text-[10px] font-bold transition-all ${
+                                        groupBy === "none"
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                    title="Ungrouped list"
+                                >
+                                    None
+                                </button>
+                            </div>
+                        </div>
 
                         {/* Sort Selector */}
                         <div className="flex bg-secondary p-0.5 rounded-lg border border-border/60 shrink-0">
@@ -1715,76 +1842,170 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                         </div>
                     ) : viewMode === "text" ? (
                         <div className="space-y-6 px-4 py-2">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                                <div className="space-y-6">
-                                    {["Commander", "Planeswalker", "Creature"].map((cat) => {
-                                        const cards = grouped.get(cat) ?? [];
-                                        if (cards.length === 0) return null;
-                                        return (
-                                            <PremiumListSection
-                                                key={cat}
-                                                category={cat}
-                                                cards={cards}
-                                                onVariantOpen={(card, sect) => {
-                                                    setVariantCard(card);
-                                                    setVariantCardSection(sect || "main");
-                                                }}
-                                                deckId={deckId}
-                                                section="main"
-                                                onTransferCard={onTransferCard}
-                                                onGifAlterOpen={(card) => setGifAlterCard(card)}
-                                                onSuggestionsOpen={handleOpenSuggestions}
-                                            />
-                                        );
-                                    })}
+                            {groupBy === "none" ? (
+                                <div className="max-w-3xl mx-auto w-full">
+                                    <PremiumListSection
+                                        category="Deck"
+                                        cards={grouped.get("Deck") ?? []}
+                                        onVariantOpen={(card, sect) => {
+                                            setVariantCard(card);
+                                            setVariantCardSection(sect || "main");
+                                        }}
+                                        deckId={deckId}
+                                        section="main"
+                                        onTransferCard={onTransferCard}
+                                        onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                        onSuggestionsOpen={handleOpenSuggestions}
+                                        showUsdPrices={showUsdPrices}
+                                    />
                                 </div>
+                            ) : groupBy === "mana" ? (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                                    <div className="space-y-6">
+                                        {["0", "1", "2"].map((cat) => {
+                                            const cards = grouped.get(cat) ?? [];
+                                            if (cards.length === 0) return null;
+                                            return (
+                                                <PremiumListSection
+                                                    key={cat}
+                                                    category={cat}
+                                                    cards={cards}
+                                                    onVariantOpen={(card, sect) => {
+                                                        setVariantCard(card);
+                                                        setVariantCardSection(sect || "main");
+                                                    }}
+                                                    deckId={deckId}
+                                                    section="main"
+                                                    onTransferCard={onTransferCard}
+                                                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                    onSuggestionsOpen={handleOpenSuggestions}
+                                                    showUsdPrices={showUsdPrices}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="space-y-6">
+                                        {["3", "4", "5"].map((cat) => {
+                                            const cards = grouped.get(cat) ?? [];
+                                            if (cards.length === 0) return null;
+                                            return (
+                                                <PremiumListSection
+                                                    key={cat}
+                                                    category={cat}
+                                                    cards={cards}
+                                                    onVariantOpen={(card, sect) => {
+                                                        setVariantCard(card);
+                                                        setVariantCardSection(sect || "main");
+                                                    }}
+                                                    deckId={deckId}
+                                                    section="main"
+                                                    onTransferCard={onTransferCard}
+                                                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                    onSuggestionsOpen={handleOpenSuggestions}
+                                                    showUsdPrices={showUsdPrices}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="space-y-6">
+                                        {["6", "7+"].map((cat) => {
+                                            const cards = grouped.get(cat) ?? [];
+                                            if (cards.length === 0) return null;
+                                            return (
+                                                <PremiumListSection
+                                                    key={cat}
+                                                    category={cat}
+                                                    cards={cards}
+                                                    onVariantOpen={(card, sect) => {
+                                                        setVariantCard(card);
+                                                        setVariantCardSection(sect || "main");
+                                                    }}
+                                                    deckId={deckId}
+                                                    section="main"
+                                                    onTransferCard={onTransferCard}
+                                                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                    onSuggestionsOpen={handleOpenSuggestions}
+                                                    showUsdPrices={showUsdPrices}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                                    <div className="space-y-6">
+                                        {["Commander", "Planeswalker", "Creature"].map((cat) => {
+                                            const cards = grouped.get(cat) ?? [];
+                                            if (cards.length === 0) return null;
+                                            return (
+                                                <PremiumListSection
+                                                    key={cat}
+                                                    category={cat}
+                                                    cards={cards}
+                                                    onVariantOpen={(card, sect) => {
+                                                        setVariantCard(card);
+                                                        setVariantCardSection(sect || "main");
+                                                    }}
+                                                    deckId={deckId}
+                                                    section="main"
+                                                    onTransferCard={onTransferCard}
+                                                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                    onSuggestionsOpen={handleOpenSuggestions}
+                                                    showUsdPrices={showUsdPrices}
+                                                />
+                                            );
+                                        })}
+                                    </div>
 
-                                <div className="space-y-6">
-                                    {["Sorcery", "Instant", "Artifact"].map((cat) => {
-                                        const cards = grouped.get(cat) ?? [];
-                                        if (cards.length === 0) return null;
-                                        return (
-                                            <PremiumListSection
-                                                key={cat}
-                                                category={cat}
-                                                cards={cards}
-                                                onVariantOpen={(card, sect) => {
-                                                    setVariantCard(card);
-                                                    setVariantCardSection(sect || "main");
-                                                }}
-                                                deckId={deckId}
-                                                section="main"
-                                                onTransferCard={onTransferCard}
-                                                onGifAlterOpen={(card) => setGifAlterCard(card)}
-                                                onSuggestionsOpen={handleOpenSuggestions}
-                                            />
-                                        );
-                                    })}
-                                </div>
+                                    <div className="space-y-6">
+                                        {["Sorcery", "Instant", "Artifact"].map((cat) => {
+                                            const cards = grouped.get(cat) ?? [];
+                                            if (cards.length === 0) return null;
+                                            return (
+                                                <PremiumListSection
+                                                    key={cat}
+                                                    category={cat}
+                                                    cards={cards}
+                                                    onVariantOpen={(card, sect) => {
+                                                        setVariantCard(card);
+                                                        setVariantCardSection(sect || "main");
+                                                    }}
+                                                    deckId={deckId}
+                                                    section="main"
+                                                    onTransferCard={onTransferCard}
+                                                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                    onSuggestionsOpen={handleOpenSuggestions}
+                                                    showUsdPrices={showUsdPrices}
+                                                />
+                                            );
+                                        })}
+                                    </div>
 
-                                <div className="space-y-6">
-                                    {["Enchantment", "Land", "Battle", "Other"].map((cat) => {
-                                        const cards = grouped.get(cat) ?? [];
-                                        if (cards.length === 0) return null;
-                                        return (
-                                            <PremiumListSection
-                                                key={cat}
-                                                category={cat}
-                                                cards={cards}
-                                                onVariantOpen={(card, sect) => {
-                                                    setVariantCard(card);
-                                                    setVariantCardSection(sect || "main");
-                                                }}
-                                                deckId={deckId}
-                                                section="main"
-                                                onTransferCard={onTransferCard}
-                                                onGifAlterOpen={(card) => setGifAlterCard(card)}
-                                                onSuggestionsOpen={handleOpenSuggestions}
-                                            />
-                                        );
-                                    })}
+                                    <div className="space-y-6">
+                                        {["Enchantment", "Land", "Battle", "Other"].map((cat) => {
+                                            const cards = grouped.get(cat) ?? [];
+                                            if (cards.length === 0) return null;
+                                            return (
+                                                <PremiumListSection
+                                                    key={cat}
+                                                    category={cat}
+                                                    cards={cards}
+                                                    onVariantOpen={(card, sect) => {
+                                                        setVariantCard(card);
+                                                        setVariantCardSection(sect || "main");
+                                                    }}
+                                                    deckId={deckId}
+                                                    section="main"
+                                                    onTransferCard={onTransferCard}
+                                                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                    onSuggestionsOpen={handleOpenSuggestions}
+                                                    showUsdPrices={showUsdPrices}
+                                                />
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {state.isSideDeckEnabled && sortedSidedeck.length > 0 && (
                                 <div className="border-t border-border/30 pt-6">
@@ -1800,6 +2021,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                         onTransferCard={onTransferCard}
                                         onGifAlterOpen={(card) => setGifAlterCard(card)}
                                         onSuggestionsOpen={handleOpenSuggestions}
+                                        showUsdPrices={showUsdPrices}
                                     />
                                 </div>
                             )}
@@ -1818,36 +2040,80 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                         onTransferCard={onTransferCard}
                                         onGifAlterOpen={(card) => setGifAlterCard(card)}
                                         onSuggestionsOpen={handleOpenSuggestions}
+                                        showUsdPrices={showUsdPrices}
                                     />
                                 </div>
                             )}
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {CATEGORY_ORDER.map((cat) => {
-                                const cards = grouped.get(cat) ?? [];
-                                if (cards.length === 0) return null;
-                                return (
-                                    <div key={cat}>
-                                        <CategorySection
-                                            category={cat}
-                                            cards={cards}
-                                            viewMode={viewMode}
-                                            onVariantOpen={(card, sect) => {
-                                                setVariantCard(card);
-                                                setVariantCardSection(sect || "main");
-                                            }}
-                                            deckId={deckId}
-                                            section="main"
-                                            onTransferCard={onTransferCard}
-                                            onGifAlterOpen={(card) => setGifAlterCard(card)}
-                                            onSuggestionsOpen={handleOpenSuggestions}
-                                            showUsdPrices={showUsdPrices}
-                                        />
-                                        <Separator className="my-1 opacity-30" />
-                                    </div>
-                                );
-                            })}
+                            {groupBy === "none" ? (
+                                <CategorySection
+                                    category="Deck"
+                                    cards={grouped.get("Deck") ?? []}
+                                    viewMode={viewMode}
+                                    onVariantOpen={(card, sect) => {
+                                        setVariantCard(card);
+                                        setVariantCardSection(sect || "main");
+                                    }}
+                                    deckId={deckId}
+                                    section="main"
+                                    onTransferCard={onTransferCard}
+                                    onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                    onSuggestionsOpen={handleOpenSuggestions}
+                                    showUsdPrices={showUsdPrices}
+                                />
+                            ) : groupBy === "mana" ? (
+                                MANA_GROUPS.map((cat) => {
+                                    const cards = grouped.get(cat) ?? [];
+                                    if (cards.length === 0) return null;
+                                    return (
+                                        <div key={cat}>
+                                            <CategorySection
+                                                category={`${cat} Mana`}
+                                                cards={cards}
+                                                viewMode={viewMode}
+                                                onVariantOpen={(card, sect) => {
+                                                    setVariantCard(card);
+                                                    setVariantCardSection(sect || "main");
+                                                }}
+                                                deckId={deckId}
+                                                section="main"
+                                                onTransferCard={onTransferCard}
+                                                onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                onSuggestionsOpen={handleOpenSuggestions}
+                                                showUsdPrices={showUsdPrices}
+                                            />
+                                            <Separator className="my-1 opacity-30" />
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                CATEGORY_ORDER.map((cat) => {
+                                    const cards = grouped.get(cat) ?? [];
+                                    if (cards.length === 0) return null;
+                                    return (
+                                        <div key={cat}>
+                                            <CategorySection
+                                                category={cat}
+                                                cards={cards}
+                                                viewMode={viewMode}
+                                                onVariantOpen={(card, sect) => {
+                                                    setVariantCard(card);
+                                                    setVariantCardSection(sect || "main");
+                                                }}
+                                                deckId={deckId}
+                                                section="main"
+                                                onTransferCard={onTransferCard}
+                                                onGifAlterOpen={(card) => setGifAlterCard(card)}
+                                                onSuggestionsOpen={handleOpenSuggestions}
+                                                showUsdPrices={showUsdPrices}
+                                            />
+                                            <Separator className="my-1 opacity-30" />
+                                        </div>
+                                    );
+                                })
+                            )}
 
                             {state.isSideDeckEnabled && sortedSidedeck.length > 0 && (
                                 <div className="border-t border-border/30 pt-4">

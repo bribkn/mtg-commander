@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2, Archive, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2, Archive, Save, Loader2, CheckCircle2, Dices } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
@@ -18,6 +18,7 @@ interface DeckHeaderProps {
   onCombosOpen: () => void;
   onShareOpen: () => void;
   onSave?: () => Promise<boolean | void>;
+  onPlaytestOpen: () => void;
 }
 
 export function DeckHeader({
@@ -32,6 +33,7 @@ export function DeckHeader({
   onCombosOpen,
   onShareOpen,
   onSave,
+  onPlaytestOpen,
 }: DeckHeaderProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
@@ -157,6 +159,17 @@ export function DeckHeader({
           >
             <Share2 className={`w-4 h-4 text-emerald-400 ${commander ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline">Share</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onPlaytestOpen}
+            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
+            title="Sample hand playtester"
+          >
+            <Dices className="w-4 h-4 text-indigo-400 animate-pulse" />
+            <span className="hidden sm:inline">Playtest</span>
           </Button>
 
 
