@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Loader2, Plus, Minus, Check, Map } from 'lucide-react';
+import { Loader2, Plus, Minus, Check, Map, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDeck } from '@/lib/deck-store';
 import { getCardByExactName, getManaSymbolUrl } from '@/lib/scryfall';
+import tierrasJson from '@/todas_las_tierras_.json';
+import landColors from '@/lib/land-colors.json';
 
 interface AddLandModalProps {
   open: boolean;
@@ -16,211 +17,26 @@ interface AddLandModalProps {
   deckId?: string;
 }
 
-interface LandItem {
-  name: string;
-  colors: string[];
+interface JsonCard {
+  Nickname?: string;
 }
 
-const LAND_CATEGORIES: Record<string, { label: string; lands: LandItem[] }> = {
-  basics: {
-    label: 'Basic Lands',
-    lands: [
-      { name: 'Plains', colors: ['W'] },
-      { name: 'Island', colors: ['U'] },
-      { name: 'Swamp', colors: ['B'] },
-      { name: 'Mountain', colors: ['R'] },
-      { name: 'Forest', colors: ['G'] },
-      { name: 'Wastes', colors: ['C'] },
-    ],
-  },
-  rainbow: {
-    label: '5-Color Lands',
-    lands: [
-      { name: 'Command Tower', colors: ['W', 'U', 'B', 'R', 'G'] },
-      { name: 'Exotic Orchard', colors: ['W', 'U', 'B', 'R', 'G'] },
-      { name: 'Path of Ancestry', colors: ['W', 'U', 'B', 'R', 'G'] },
-      { name: 'Reflecting Pool', colors: ['W', 'U', 'B', 'R', 'G'] },
-      { name: 'Mana Confluence', colors: ['W', 'U', 'B', 'R', 'G'] },
-      { name: 'City of Brass', colors: ['W', 'U', 'B', 'R', 'G'] },
-      { name: 'Plaza of Heroes', colors: ['W', 'U', 'B', 'R', 'G'] },
-      { name: 'The World Tree', colors: ['W', 'U', 'B', 'R', 'G'] },
-    ],
-  },
-  fetch: {
-    label: 'Fetch Lands',
-    lands: [
-      { name: 'Prismatic Vista', colors: ['C'] },
-      { name: 'Fabled Passage', colors: ['C'] },
-      { name: 'Evolving Wilds', colors: ['C'] },
-      { name: 'Terramorphic Expanse', colors: ['C'] },
-      { name: 'Flooded Strand', colors: ['W', 'U'] },
-      { name: 'Polluted Delta', colors: ['U', 'B'] },
-      { name: 'Bloodstained Mire', colors: ['B', 'R'] },
-      { name: 'Wooded Foothills', colors: ['R', 'G'] },
-      { name: 'Windswept Heath', colors: ['G', 'W'] },
-      { name: 'Marsh Flats', colors: ['W', 'B'] },
-      { name: 'Scalding Tarn', colors: ['U', 'R'] },
-      { name: 'Verdant Catacombs', colors: ['B', 'G'] },
-      { name: 'Arid Mesa', colors: ['R', 'W'] },
-      { name: 'Misty Rainforest', colors: ['G', 'U'] },
-    ],
-  },
-  shock: {
-    label: 'Shock Lands',
-    lands: [
-      { name: 'Hallowed Fountain', colors: ['W', 'U'] },
-      { name: 'Watery Grave', colors: ['U', 'B'] },
-      { name: 'Blood Crypt', colors: ['B', 'R'] },
-      { name: 'Stomping Ground', colors: ['R', 'G'] },
-      { name: 'Temple Garden', colors: ['G', 'W'] },
-      { name: 'Godless Shrine', colors: ['W', 'B'] },
-      { name: 'Steam Vents', colors: ['U', 'R'] },
-      { name: 'Overgrown Tomb', colors: ['B', 'G'] },
-      { name: 'Sacred Foundry', colors: ['R', 'W'] },
-      { name: 'Breeding Pool', colors: ['G', 'U'] },
-    ],
-  },
-  bond: {
-    label: 'Bond Lands',
-    lands: [
-      { name: 'Sea of Clouds', colors: ['W', 'U'] },
-      { name: 'Morphic Pool', colors: ['U', 'B'] },
-      { name: 'Luxury Suite', colors: ['B', 'R'] },
-      { name: 'Spire Garden', colors: ['R', 'G'] },
-      { name: 'Bountiful Promenade', colors: ['G', 'W'] },
-      { name: 'Spectator Seating', colors: ['R', 'W'] },
-      { name: 'Training Center', colors: ['U', 'R'] },
-      { name: 'Undergrowth Stadium', colors: ['B', 'G'] },
-      { name: 'Vault of Champions', colors: ['W', 'B'] },
-      { name: 'Rejuvenating Springs', colors: ['G', 'U'] },
-    ],
-  },
-  slow: {
-    label: 'Slow Lands',
-    lands: [
-      { name: 'Deserted Beach', colors: ['W', 'U'] },
-      { name: 'Shipwreck Marsh', colors: ['U', 'B'] },
-      { name: 'Haunted Ridge', colors: ['B', 'R'] },
-      { name: 'Rockfall Vale', colors: ['R', 'G'] },
-      { name: 'Overgrown Farmland', colors: ['G', 'W'] },
-      { name: 'Sundown Pass', colors: ['R', 'W'] },
-      { name: 'Stormcarved Coast', colors: ['U', 'R'] },
-      { name: 'Deathcap Glade', colors: ['B', 'G'] },
-      { name: 'Shattered Sanctum', colors: ['W', 'B'] },
-      { name: 'Dreamroot Cascade', colors: ['G', 'U'] },
-    ],
-  },
-  check: {
-    label: 'Check Lands',
-    lands: [
-      { name: 'Glacial Fortress', colors: ['W', 'U'] },
-      { name: 'Drowned Catacomb', colors: ['U', 'B'] },
-      { name: 'Dragonskull Summit', colors: ['B', 'R'] },
-      { name: 'Rootbound Crag', colors: ['R', 'G'] },
-      { name: 'Sunpetal Grove', colors: ['G', 'W'] },
-      { name: 'Clifftop Retreat', colors: ['R', 'W'] },
-      { name: 'Sulfur Falls', colors: ['U', 'R'] },
-      { name: 'Woodland Cemetery', colors: ['B', 'G'] },
-      { name: 'Isolated Chapel', colors: ['W', 'B'] },
-      { name: 'Hinterland Harbor', colors: ['G', 'U'] },
-    ],
-  },
-  fast: {
-    label: 'Fast Lands',
-    lands: [
-      { name: 'Seachrome Coast', colors: ['W', 'U'] },
-      { name: 'Darkslick Shores', colors: ['U', 'B'] },
-      { name: 'Blackcleave Cliffs', colors: ['B', 'R'] },
-      { name: 'Copperline Gorge', colors: ['R', 'G'] },
-      { name: 'Razorverge Thicket', colors: ['G', 'W'] },
-      { name: 'Inspiring Vantage', colors: ['R', 'W'] },
-      { name: 'Spirebluff Canal', colors: ['U', 'R'] },
-      { name: 'Blooming Marsh', colors: ['B', 'G'] },
-      { name: 'Concealed Courtyard', colors: ['W', 'B'] },
-      { name: 'Botanical Sanctum', colors: ['G', 'U'] },
-    ],
-  },
-  battle: {
-    label: 'Battle Lands',
-    lands: [
-      { name: 'Prairie Stream', colors: ['W', 'U'] },
-      { name: 'Sunken Hollow', colors: ['U', 'B'] },
-      { name: 'Smoldering Marsh', colors: ['B', 'R'] },
-      { name: 'Cinder Glade', colors: ['R', 'G'] },
-      { name: 'Canopy Vista', colors: ['G', 'W'] },
-    ],
-  },
-  reveal: {
-    label: 'Reveal Lands',
-    lands: [
-      { name: 'Port Town', colors: ['W', 'U'] },
-      { name: 'Choked Estuary', colors: ['U', 'B'] },
-      { name: 'Foreboding Ruins', colors: ['B', 'R'] },
-      { name: 'Game Trail', colors: ['R', 'G'] },
-      { name: 'Fortified Village', colors: ['G', 'W'] },
-      { name: 'Furycalm Snarl', colors: ['R', 'W'] },
-      { name: 'Frostboil Snarl', colors: ['U', 'R'] },
-      { name: 'Necroblossom Snarl', colors: ['B', 'G'] },
-      { name: 'Shineshadow Snarl', colors: ['W', 'B'] },
-      { name: 'Vineglimmer Snarl', colors: ['G', 'U'] },
-    ],
-  },
-  unlucky: {
-    label: 'Unlucky Lands',
-    lands: [
-      { name: 'Lakeside Shack', colors: ['W', 'U'] },
-      { name: 'Murky Sewer', colors: ['U', 'B'] },
-      { name: 'Neglected Manor', colors: ['B', 'R'] },
-      { name: 'Razortrap Gorge', colors: ['R', 'G'] },
-      { name: 'Abandoned Campground', colors: ['G', 'W'] },
-      { name: 'Raucous Carnival', colors: ['R', 'W'] },
-      { name: 'Peculiar Lighthouse', colors: ['U', 'R'] },
-      { name: 'Bleeding Woods', colors: ['B', 'G'] },
-      { name: 'Etched Cornfield', colors: ['W', 'B'] },
-      { name: 'Strangled Cemetery', colors: ['W', 'B'] },
-    ],
-  },
-  typal: {
-    label: 'Typal Lands',
-    lands: [
-      { name: 'Wanderwine Hub', colors: ['W', 'U'] },
-      { name: 'Secluded Glen', colors: ['U', 'B'] },
-      { name: 'Auntie\'s Hovel', colors: ['B', 'R'] },
-      { name: 'Gilt-Leaf Palace', colors: ['B', 'G'] },
-      { name: 'Rustic Clachan', colors: ['G', 'W'] },
-    ],
-  },
-  utility: {
-    label: 'Utility Lands',
-    lands: [
-      { name: 'Reliquary Tower', colors: ['C'] },
-      { name: 'Rogue\'s Passage', colors: ['C'] },
-      { name: 'Bojuka Bog', colors: ['B'] },
-      { name: 'Temple of the False God', colors: ['C'] },
-      { name: 'War Room', colors: ['C'] },
-      { name: 'Ghost Quarter', colors: ['C'] },
-      { name: 'Strip Mine', colors: ['C'] },
-      { name: 'Arcane Lighthouse', colors: ['C'] },
-      { name: 'Myriad Landscape', colors: ['C'] },
-      { name: 'Homeward Path', colors: ['C'] },
-    ],
-  },
-};
+const UNIQUE_BARNY_LANDS = Array.from(
+  new Set(
+    ((tierrasJson.ObjectStates?.[0]?.ContainedObjects ?? []) as JsonCard[])
+      .map((card) => card.Nickname)
+  )
+)
+  .filter((name): name is string => typeof name === 'string' && name.length > 0)
+  .sort((a, b) => a.localeCompare(b));
 
-const COLOR_CLASSES: Record<string, string> = {
-  W: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  U: 'bg-blue-600/20 text-blue-400 border-blue-500/30',
-  B: 'bg-neutral-800 text-neutral-300 border-neutral-700',
-  R: 'bg-red-600/20 text-red-400 border-red-500/30',
-  G: 'bg-green-600/20 text-green-400 border-green-500/30',
-  C: 'bg-secondary text-muted-foreground border-border',
-};
+const LAND_COLOR_MAP = landColors as Record<string, string[]>;
 
 export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
   const { state: globalState, decks, dispatch } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
 
-  const [activeCategory, setActiveCategory] = useState<string>('basics');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [colorFilter, setColorFilter] = useState<string | null>(null);
   const [loadingLandName, setLoadingLandName] = useState<string | null>(null);
   const [previewLand, setPreviewLand] = useState<string | null>(null);
@@ -297,6 +113,23 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
     }
   }
 
+  const filteredLands = UNIQUE_BARNY_LANDS
+    .map((landName) => {
+      const colors = LAND_COLOR_MAP[landName] || ['C'];
+      return { name: landName, colors };
+    })
+    .filter((land) => {
+      if (searchQuery.trim() !== '') {
+        if (!land.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return false;
+        }
+      }
+      if (colorFilter !== null) {
+        return land.colors.includes(colorFilter);
+      }
+      return true;
+    });
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
@@ -308,35 +141,32 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
           <DialogTitle className="flex items-center justify-between gap-4 text-gradient-red text-xl font-bold">
             <div className="flex items-center gap-2">
               <Map className="w-5 h-5 text-primary" />
-              Add Lands to Deck
+              Add Barny Lands to Deck
             </div>
             <Badge variant="outline" className="text-xs font-mono border-primary text-primary bg-primary/5 uppercase px-2 py-0.5 shrink-0">
               Total Lands: {totalLandsInDeck}
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            Quickly adjust your deck's land counts and mana base. Select a category below and add or remove lands in one click.
+            Quickly adjust your deck&apos;s custom Barny lands. Use the search bar or filter by color, then add or remove lands in one click.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Category switcher tabs */}
-        <div className="flex flex-wrap gap-1.5 border-b border-border/40 pb-3 mt-2 shrink-0">
-          {Object.entries(LAND_CATEGORIES).map(([key, category]) => {
-            const isActive = activeCategory === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveCategory(key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                    : 'border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-                }`}
-              >
-                {category.label}
-              </button>
-            );
-          })}
+        {/* Search bar & statistics */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 border-b border-border/40 pb-3 mt-2 shrink-0">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search custom lands..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 w-full bg-secondary/20 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs text-muted-foreground font-medium">
+            <span>Showing {filteredLands.length} lands</span>
+          </div>
         </div>
 
         {/* Color Identity Filter */}
@@ -368,6 +198,7 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
                   }`}
                   title={`Show lands producing ${color}`}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={getManaSymbolUrl(color)}
                     alt={color}
@@ -383,16 +214,9 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
         </div>
 
         {/* Land selection grid */}
-        <ScrollArea onMouseMove={handleMouseMove} className="flex-1 pr-2 py-4">
+        <div onMouseMove={handleMouseMove} className="flex-1 overflow-y-auto pr-2 py-4 custom-scrollbar">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pr-1">
-            {LAND_CATEGORIES[activeCategory].lands
-              .filter((land) => {
-                if (colorFilter !== null) {
-                  return land.colors.includes(colorFilter);
-                }
-                return true;
-              })
-              .map((land) => {
+            {filteredLands.map((land) => {
               const cardInDeck = state?.cards.find((c) => c.name === land.name);
               const qty = cardInDeck ? cardInDeck.quantity : 0;
               const isLoading = loadingLandName === land.name;
@@ -424,6 +248,7 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
                     </span>
                     <div className="flex items-center gap-1 mt-1">
                       {land.colors.map((c) => (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           key={c}
                           src={getManaSymbolUrl(c)}
@@ -478,7 +303,7 @@ export function AddLandModal({ open, onClose, deckId }: AddLandModalProps) {
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex justify-end border-t border-border/40 pt-4 shrink-0">
           <Button variant="outline" onClick={onClose}>

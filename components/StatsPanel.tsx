@@ -131,7 +131,13 @@ export function StatsPanel({ deckId }: { deckId?: string } = {}) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatBox label="Total Cards" value={String(totalCards)} sublabel="main deck" highlight={totalCards > 0} />
                 <StatBox label="Average CMC" value={avgCmc} sublabel="non-lands" highlight={avgCmc !== "—"} />
-                <StatBox label="Game Changers" value={String(gameChangerCount)} sublabel="in deck" highlight={gameChangerCount > 0} isGameChanger={true} />
+                <StatBox
+                    label="Game Changers"
+                    value={String(gameChangerCount)}
+                    sublabel="in deck"
+                    highlight={gameChangerCount > 0}
+                    isGameChanger={true}
+                />
                 <StatBox label="Banned" value={String(bannedCount)} sublabel="in deck" highlight={bannedCount > 0} />
             </div>
 

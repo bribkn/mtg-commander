@@ -172,7 +172,7 @@ export function CardSearchBar({ deckId }: CardSearchBarProps = {}) {
         className="h-9 text-xs gap-1.5 shrink-0 px-3 border-border hover:border-primary/50 hover:text-primary transition-all active:scale-95"
       >
         <Map className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-        <span>Add Land</span>
+        <span>Add Barny Lands</span>
       </Button>
 
       <AddLandModal

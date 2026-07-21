@@ -657,7 +657,7 @@ export function SearchSidebar({ mode, onModeChange, deckId }: SearchSidebarProps
                             className="w-full border-border hover:border-primary/50 hover:text-primary transition-all flex items-center justify-center gap-2"
                         >
                             <MapIcon className="w-4 h-4 text-emerald-400 animate-pulse" />
-                            <span>Add Lands</span>
+                            <span>Add Barny Lands</span>
                         </Button>
                     </div>
 

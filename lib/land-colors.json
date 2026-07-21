@@ -1,0 +1,1358 @@
+{
+  "Bojuka Bog": [
+    "B"
+  ],
+  "Dryad Arbor": [
+    "G"
+  ],
+  "Fire Nation Palace": [
+    "R"
+  ],
+  "Ancient Ziggurat": [
+    "C"
+  ],
+  "Kavaron, Memorial World": [
+    "R"
+  ],
+  "Kessig Wolf Run": [
+    "G",
+    "R"
+  ],
+  "Leechridden Swamp": [
+    "B"
+  ],
+  "Three Tree City": [
+    "C"
+  ],
+  "Unclaimed Territory": [
+    "C"
+  ],
+  "Valakut, the Molten Pinnacle": [
+    "R"
+  ],
+  "Vesuva": [
+    "C"
+  ],
+  "Witch's Clinic": [
+    "C"
+  ],
+  "Yavimaya Hollow": [
+    "G"
+  ],
+  "Abandoned Air Temple": [
+    "W"
+  ],
+  "Academy Ruins": [
+    "U"
+  ],
+  "Adagia, Windswept Bastion": [
+    "W"
+  ],
+  "Alchemist's Refuge": [
+    "G",
+    "U"
+  ],
+  "Ancient Den": [
+    "W"
+  ],
+  "Ancient Tomb": [
+    "C"
+  ],
+  "Arcane Sanctum": [
+    "B",
+    "U",
+    "W"
+  ],
+  "Archway of Innovation": [
+    "U"
+  ],
+  "Arena of Glory": [
+    "R"
+  ],
+  "Ash Barrens": [
+    "C"
+  ],
+  "Blood Crypt": [
+    "B",
+    "R"
+  ],
+  "Boseiju, Who Endures": [
+    "G"
+  ],
+  "Boseiju, Who Shelters All": [
+    "C"
+  ],
+  "Cabal Coffers": [
+    "B"
+  ],
+  "Cabal Stronghold": [
+    "B"
+  ],
+  "Castle Locthwain": [
+    "B"
+  ],
+  "Cathedral of War": [
+    "C"
+  ],
+  "Cavern of Souls": [
+    "C"
+  ],
+  "City of Brass": [
+    "C"
+  ],
+  "Command Beacon": [
+    "C"
+  ],
+  "Command Tower": [
+    "C"
+  ],
+  "Abstergo Entertainment": [
+    "C"
+  ],
+  "Abundant Countryside": [
+    "C"
+  ],
+  "Accursed Duneyard": [
+    "C"
+  ],
+  "Agna Qel'a": [
+    "U"
+  ],
+  "Amonkhet Raceway": [
+    "C"
+  ],
+  "Animal Sanctuary": [
+    "C"
+  ],
+  "Badlands": [
+    "B",
+    "R"
+  ],
+  "Barkchannel Pathway // Tidechannel Pathway": [
+    "G",
+    "U"
+  ],
+  "Blast Zone": [
+    "C"
+  ],
+  "Blighted Woodland": [
+    "G"
+  ],
+  "Bonders' Enclave": [
+    "C"
+  ],
+  "Canyon Slough": [
+    "B",
+    "R"
+  ],
+  "Castle Garenbrig": [
+    "G"
+  ],
+  "Castle Vantress": [
+    "U"
+  ],
+  "Celestial Colonnade": [
+    "U",
+    "W"
+  ],
+  "Cephalid Coliseum": [
+    "U"
+  ],
+  "Centaur Garden": [
+    "G"
+  ],
+  "Chocobo Camp": [
+    "G"
+  ],
+  "City of Traitors": [
+    "C"
+  ],
+  "Clive's Hideaway": [
+    "C"
+  ],
+  "Contested Cliffs": [
+    "G",
+    "R"
+  ],
+  "Coral Atoll": [
+    "U"
+  ],
+  "Crawling Barrens": [
+    "C"
+  ],
+  "Crosis's Catacombs": [
+    "B",
+    "R",
+    "U"
+  ],
+  "Crypt of Agadeem": [
+    "B"
+  ],
+  "Crystal Vein": [
+    "C"
+  ],
+  "Crystal Quarry": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+  ],
+  "Daily Bugle Building": [
+    "C"
+  ],
+  "Dark Depths": [
+    "C"
+  ],
+  "Darkmoss Bridge": [
+    "B",
+    "G"
+  ],
+  "Demolition Field": [
+    "C"
+  ],
+  "Desert": [
+    "C"
+  ],
+  "Deserted Beach": [
+    "U",
+    "W"
+  ],
+  "Desolate Lighthouse": [
+    "R",
+    "U"
+  ],
+  "Deserted Temple": [
+    "C"
+  ],
+  "Dreadship Reef": [
+    "B",
+    "U"
+  ],
+  "Drownyard Temple": [
+    "C"
+  ],
+  "Dunes of the Dead": [
+    "C"
+  ],
+  "Duskmantle, House of Shadow": [
+    "B",
+    "U"
+  ],
+  "Dust Bowl": [
+    "C"
+  ],
+  "Dwarven Mine": [
+    "R"
+  ],
+  "Ebon Stronghold": [
+    "B"
+  ],
+  "Eclipsed Realms": [
+    "C"
+  ],
+  "Eiganjo Castle": [
+    "W"
+  ],
+  "Eldrazi Temple": [
+    "C"
+  ],
+  "Eiganjo, Seat of the Empire": [
+    "W"
+  ],
+  "Elegant Parlor": [
+    "R",
+    "W"
+  ],
+  "Emergence Zone": [
+    "C"
+  ],
+  "Emeria, the Sky Ruin": [
+    "W"
+  ],
+  "Endless Sands": [
+    "C"
+  ],
+  "Escape Tunnel": [
+    "C"
+  ],
+  "Esper Panorama": [
+    "C"
+  ],
+  "Evendo, Waking Haven": [
+    "G"
+  ],
+  "Eumidian Hatchery": [
+    "B"
+  ],
+  "Evolving Wilds": [
+    "C"
+  ],
+  "Everglades": [
+    "B"
+  ],
+  "Exotic Orchard": [
+    "C"
+  ],
+  "Eye of Ugin": [
+    "C"
+  ],
+  "Fabled Passage": [
+    "C"
+  ],
+  "Faceless Haven": [
+    "C"
+  ],
+  "Fertile Thicket": [
+    "G"
+  ],
+  "Field of Ruin": [
+    "C"
+  ],
+  "Field of the Dead": [
+    "C"
+  ],
+  "Flamekin Village": [
+    "R"
+  ],
+  "Flagstones of Trokair": [
+    "W"
+  ],
+  "Fomori Vault": [
+    "C"
+  ],
+  "Fogwell's Gym": [
+    "R"
+  ],
+  "Forbidding Watchtower": [
+    "W"
+  ],
+  "Forbidden Orchard": [
+    "C"
+  ],
+  "Forge of Heroes": [
+    "C"
+  ],
+  "Fortified Beachhead": [
+    "U",
+    "W"
+  ],
+  "Fortified Village": [
+    "G",
+    "W"
+  ],
+  "Forum of Amity": [
+    "B",
+    "W"
+  ],
+  "Fountainport": [
+    "C"
+  ],
+  "Fountain of Cho": [
+    "W"
+  ],
+  "Fungal Reaches": [
+    "G",
+    "R"
+  ],
+  "Gaea's Cradle": [
+    "G"
+  ],
+  "Gates of Istfell": [
+    "U",
+    "W"
+  ],
+  "Gateway Plaza": [
+    "C"
+  ],
+  "Geier Reach Sanitarium": [
+    "C"
+  ],
+  "Gavony Township": [
+    "G",
+    "W"
+  ],
+  "Gemstone Caverns": [
+    "C"
+  ],
+  "Gemstone Mine": [
+    "C"
+  ],
+  "Geothermal Crevice": [
+    "B",
+    "G",
+    "R"
+  ],
+  "Gingerbread Cabin": [
+    "G"
+  ],
+  "Glimmerpost": [
+    "C"
+  ],
+  "Glimmervoid": [
+    "C"
+  ],
+  "Gnottvold Slumbermound": [
+    "G",
+    "R"
+  ],
+  "Goblin Burrows": [
+    "R"
+  ],
+  "Godless Shrine": [
+    "B",
+    "W"
+  ],
+  "Grand Coliseum": [
+    "C"
+  ],
+  "Great Hall of the Biblioplex": [
+    "C"
+  ],
+  "Great Hall of the Citadel": [
+    "C"
+  ],
+  "Halimar Depths": [
+    "U"
+  ],
+  "Guildmages' Forum": [
+    "C"
+  ],
+  "Hall of Heliod's Generosity": [
+    "W"
+  ],
+  "Hall of Oracles": [
+    "C"
+  ],
+  "Hall of Storm Giants": [
+    "U"
+  ],
+  "Hall of Tagsin": [
+    "C"
+  ],
+  "Hall of the Bandit Lord": [
+    "C"
+  ],
+  "Hammerheim": [
+    "R"
+  ],
+  "Hanweir Battlements": [
+    "R"
+  ],
+  "Haunted Fengraf": [
+    "C"
+  ],
+  "Haven of the Spirit Dragon": [
+    "C"
+  ],
+  "Havenwood Battleground": [
+    "G"
+  ],
+  "Heap Gate": [
+    "C"
+  ],
+  "Hellion Crucible": [
+    "R"
+  ],
+  "Hidden Cataract": [
+    "U"
+  ],
+  "Hidden Courtyard": [
+    "W"
+  ],
+  "Hidden Hideout": [
+    "C"
+  ],
+  "High Market": [
+    "C"
+  ],
+  "Holdout Settlement": [
+    "C"
+  ],
+  "Homeward Path": [
+    "C"
+  ],
+  "Horizon of Progress": [
+    "C"
+  ],
+  "Hostile Hostel // Creeping Inn": [
+    "B"
+  ],
+  "Idyllic Grange": [
+    "W"
+  ],
+  "Ifnir Deadlands": [
+    "B"
+  ],
+  "Inkmoth Nexus": [
+    "C"
+  ],
+  "Interplanar Beacon": [
+    "C"
+  ],
+  "Ipnu Rivulet": [
+    "U"
+  ],
+  "Inventors' Fair": [
+    "C"
+  ],
+  "Ishgard, the Holy See // Faith & Grief": [
+    "W"
+  ],
+  "Isolated Watchtower": [
+    "C"
+  ],
+  "Jidoor, Aristocratic Capital // Overture": [
+    "U"
+  ],
+  "Jetmir's Garden": [
+    "G",
+    "R",
+    "W"
+  ],
+  "Junktown": [
+    "R"
+  ],
+  "Karn's Bastion": [
+    "C"
+  ],
+  "Khalni Garden": [
+    "G"
+  ],
+  "Ketria Triome": [
+    "G",
+    "R",
+    "U"
+  ],
+  "Kishla Village": [
+    "G"
+  ],
+  "Kor Haven": [
+    "W"
+  ],
+  "Lair of the Hydra": [
+    "G"
+  ],
+  "Labyrinth of Skophos": [
+    "C"
+  ],
+  "Lake of the Dead": [
+    "B"
+  ],
+  "Lazotep Quarry": [
+    "C"
+  ],
+  "Lilypad Village": [
+    "U"
+  ],
+  "Lindblum, Industrial Regency // Mage Siege": [
+    "R"
+  ],
+  "Littjara Mirrorlake": [
+    "G",
+    "U"
+  ],
+  "Llanowar Reborn": [
+    "G"
+  ],
+  "Lonely Sandbar": [
+    "U"
+  ],
+  "Lotus Field": [
+    "C"
+  ],
+  "Lupinflower Village": [
+    "W"
+  ],
+  "Madblind Mountain": [
+    "R"
+  ],
+  "Maelstrom of the Spirit Dragon": [
+    "C"
+  ],
+  "Mage-Ring Network": [
+    "C"
+  ],
+  "Magosi, the Waterveil": [
+    "U"
+  ],
+  "Mana Confluence": [
+    "C"
+  ],
+  "Marsh Flats": [
+    "C"
+  ],
+  "Mariposa Military Base": [
+    "C"
+  ],
+  "Maze of Shadows": [
+    "C"
+  ],
+  "Maze of Ith": [
+    "C"
+  ],
+  "Maze's End": [
+    "C"
+  ],
+  "Mech Hangar": [
+    "C"
+  ],
+  "Memorial to Genius": [
+    "U"
+  ],
+  "Memorial to Folly": [
+    "B"
+  ],
+  "Memorial to Unity": [
+    "G"
+  ],
+  "Mercadian Bazaar": [
+    "R"
+  ],
+  "Memorial to War": [
+    "R"
+  ],
+  "Meteor Crater": [
+    "C"
+  ],
+  "Midgar, City of Mako // Reactor Raid": [
+    "B"
+  ],
+  "Mikokoro, Center of the Sea": [
+    "C"
+  ],
+  "Minas Morgul, Dark Fortress": [
+    "B"
+  ],
+  "Minamo, School at Water's Edge": [
+    "U"
+  ],
+  "Minas Tirith": [
+    "W"
+  ],
+  "Mines of Moria": [
+    "R"
+  ],
+  "Miren, the Moaning Well": [
+    "C"
+  ],
+  "Mirage Mesa": [
+    "C"
+  ],
+  "Mirrodin's Core": [
+    "C"
+  ],
+  "Mirrex": [
+    "C"
+  ],
+  "Mirrorpool": [
+    "C"
+  ],
+  "Mishra's Factory": [
+    "C"
+  ],
+  "Mishra's Foundry": [
+    "C"
+  ],
+  "Mistrise Village": [
+    "U"
+  ],
+  "Mishra's Workshop": [
+    "C"
+  ],
+  "Mistvault Bridge": [
+    "B",
+    "U"
+  ],
+  "Mistveil Plains": [
+    "W"
+  ],
+  "Misty Rainforest": [
+    "C"
+  ],
+  "Mobilized District": [
+    "C"
+  ],
+  "Molten Slagheap": [
+    "B",
+    "R"
+  ],
+  "Moonring Island": [
+    "U"
+  ],
+  "Moorland Haunt": [
+    "U",
+    "W"
+  ],
+  "Mortuary Mire": [
+    "B"
+  ],
+  "Mount Doom": [
+    "B",
+    "R"
+  ],
+  "Mosswort Bridge": [
+    "G"
+  ],
+  "Mouth of Ronom": [
+    "C"
+  ],
+  "Multiversal Passage": [
+    "C"
+  ],
+  "Mudflat Village": [
+    "B"
+  ],
+  "Muraganda Raceway": [
+    "C"
+  ],
+  "Murmuring Bosk": [
+    "B",
+    "G",
+    "W"
+  ],
+  "Mutavault": [
+    "C"
+  ],
+  "Mystic Sanctuary": [
+    "U"
+  ],
+  "Mystifying Maze": [
+    "C"
+  ],
+  "Nearby Planet": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+  ],
+  "New Benalia": [
+    "W"
+  ],
+  "Night Market": [
+    "C"
+  ],
+  "Nimbus Maze": [
+    "U",
+    "W"
+  ],
+  "Nivix, Aerie of the Firemind": [
+    "R",
+    "U"
+  ],
+  "Nomad Stadium": [
+    "W"
+  ],
+  "Northampton Farm": [
+    "C"
+  ],
+  "Novijen, Heart of Progress": [
+    "G",
+    "U"
+  ],
+  "Nykthos, Shrine to Nyx": [
+    "C"
+  ],
+  "Nurturing Peatland": [
+    "B",
+    "G"
+  ],
+  "Oakhollow Village": [
+    "G"
+  ],
+  "Oboro, Palace in the Clouds": [
+    "U"
+  ],
+  "Okina, Temple to the Grandfathers": [
+    "G"
+  ],
+  "Opal Palace": [
+    "C"
+  ],
+  "Ominous Cemetery": [
+    "C"
+  ],
+  "Oran-Rief, the Vastwood": [
+    "G"
+  ],
+  "Orzhova, the Church of Deals": [
+    "B",
+    "W"
+  ],
+  "Otawara, Soaring City": [
+    "U"
+  ],
+  "Overgrown Tomb": [
+    "B",
+    "G"
+  ],
+  "Paliano, the High City": [
+    "C"
+  ],
+  "Path of Ancestry": [
+    "C"
+  ],
+  "Peat Bog": [
+    "B"
+  ],
+  "Pendelhaven": [
+    "G"
+  ],
+  "Petrified Field": [
+    "C"
+  ],
+  "Petrified Hamlet": [
+    "C"
+  ],
+  "Phyrexia's Core": [
+    "C"
+  ],
+  "Pillar of the Paruns": [
+    "C"
+  ],
+  "Phyrexian Tower": [
+    "B"
+  ],
+  "Plateau": [
+    "R",
+    "W"
+  ],
+  "Plaza of Harmony": [
+    "C"
+  ],
+  "Plaza of Heroes": [
+    "C"
+  ],
+  "Port of Karfell": [
+    "B",
+    "U"
+  ],
+  "Power Depot": [
+    "C"
+  ],
+  "Prahv, Spires of Order": [
+    "U",
+    "W"
+  ],
+  "Primal Beyond": [
+    "C"
+  ],
+  "Prismatic Vista": [
+    "C"
+  ],
+  "Public Thoroughfare": [
+    "C"
+  ],
+  "Quicksand": [
+    "C"
+  ],
+  "Raffine's Tower": [
+    "B",
+    "U",
+    "W"
+  ],
+  "Rain-Slicked Copse": [
+    "G",
+    "U"
+  ],
+  "Raugrin Triome": [
+    "R",
+    "U",
+    "W"
+  ],
+  "Reef Roads": [
+    "U"
+  ],
+  "Realm of Koh": [
+    "B"
+  ],
+  "Reflecting Pool": [
+    "C"
+  ],
+  "Reliquary Tower": [
+    "C"
+  ],
+  "Rejuvenating Springs": [
+    "G",
+    "U"
+  ],
+  "Remote Isle": [
+    "U"
+  ],
+  "Remote Farm": [
+    "W"
+  ],
+  "Restless Bivouac": [
+    "R",
+    "W"
+  ],
+  "Restless Fortress": [
+    "B",
+    "W"
+  ],
+  "Restless Anchorage": [
+    "U",
+    "W"
+  ],
+  "Restless Prairie": [
+    "G",
+    "W"
+  ],
+  "Restless Reef": [
+    "B",
+    "U"
+  ],
+  "Restless Ridgeline": [
+    "G",
+    "R"
+  ],
+  "Restless Spire": [
+    "R",
+    "U"
+  ],
+  "Restless Vents": [
+    "B",
+    "R"
+  ],
+  "Restless Vinestalk": [
+    "G",
+    "U"
+  ],
+  "Rimewood Falls": [
+    "G",
+    "U"
+  ],
+  "Rishadan Port": [
+    "C"
+  ],
+  "Riptide Laboratory": [
+    "U"
+  ],
+  "Rivendell": [
+    "U"
+  ],
+  "Riveteers Overlook": [
+    "C"
+  ],
+  "Roadside Reliquary": [
+    "C"
+  ],
+  "Rix Maadi, Dungeon Palace": [
+    "B",
+    "R"
+  ],
+  "Ruins of Oran-Rief": [
+    "C"
+  ],
+  "Rushwood Grove": [
+    "G"
+  ],
+  "Rustic Clachan": [
+    "W"
+  ],
+  "Saltcrusted Steppe": [
+    "G",
+    "W"
+  ],
+  "Sanctum of Ugin": [
+    "C"
+  ],
+  "Sanctum of Eternity": [
+    "C"
+  ],
+  "Sandstone Needle": [
+    "R"
+  ],
+  "Sandstone Bridge": [
+    "W"
+  ],
+  "Saprazzan Cove": [
+    "U"
+  ],
+  "Sandstorm Verge": [
+    "C"
+  ],
+  "Saprazzan Skerry": [
+    "U"
+  ],
+  "Savannah": [
+    "G",
+    "W"
+  ],
+  "Savai Triome": [
+    "B",
+    "R",
+    "W"
+  ],
+  "Scavenger Grounds": [
+    "C"
+  ],
+  "Scene of the Crime": [
+    "C"
+  ],
+  "Scorched Ruins": [
+    "C"
+  ],
+  "Scrying Sheets": [
+    "C"
+  ],
+  "Sea of Clouds": [
+    "U",
+    "W"
+  ],
+  "Sea Gate Wreckage": [
+    "C"
+  ],
+  "Seaside Haven": [
+    "U",
+    "W"
+  ],
+  "Secluded Courtyard": [
+    "C"
+  ],
+  "Secluded Steppe": [
+    "W"
+  ],
+  "Secluded Starforge": [
+    "C"
+  ],
+  "Secret Tunnel": [
+    "C"
+  ],
+  "Sejiri Steppe": [
+    "W"
+  ],
+  "Sequestered Stash": [
+    "C"
+  ],
+  "Seraph Sanctuary": [
+    "C"
+  ],
+  "Serra's Sanctum": [
+    "W"
+  ],
+  "Shelldock Isle": [
+    "U"
+  ],
+  "Shifting Woodland": [
+    "G"
+  ],
+  "Shinka, the Bloodsoaked Keep": [
+    "R"
+  ],
+  "Shivan Gorge": [
+    "R"
+  ],
+  "Shrine of the Forsaken Gods": [
+    "C"
+  ],
+  "Shizo, Death's Storehouse": [
+    "B"
+  ],
+  "Silent Clearing": [
+    "B",
+    "W"
+  ],
+  "Skemfar Elderhall": [
+    "B",
+    "G"
+  ],
+  "Skarrg, the Rage Pits": [
+    "G",
+    "R"
+  ],
+  "Skycoach Waypoint": [
+    "C"
+  ],
+  "Skyline Cascade": [
+    "U"
+  ],
+  "Slayers' Stronghold": [
+    "R",
+    "W"
+  ],
+  "Smoldering Spires": [
+    "R"
+  ],
+  "Soaring Seacliff": [
+    "U"
+  ],
+  "Sokenzan, Crucible of Defiance": [
+    "R"
+  ],
+  "Sorrow's Path": [
+    "C"
+  ],
+  "Spara's Headquarters": [
+    "G",
+    "U",
+    "W"
+  ],
+  "Spawning Pool": [
+    "B"
+  ],
+  "Spawning Bed": [
+    "C"
+  ],
+  "Spinerock Knoll": [
+    "R"
+  ],
+  "Spymaster's Vault": [
+    "B"
+  ],
+  "Springjack Pasture": [
+    "C"
+  ],
+  "Starlit Sanctum": [
+    "B",
+    "W"
+  ],
+  "Study Hall": [
+    "C"
+  ],
+  "Subterranean Hangar": [
+    "B"
+  ],
+  "Sulfur Vent": [
+    "B",
+    "R",
+    "U"
+  ],
+  "Sunhome, Fortress of the Legion": [
+    "R",
+    "W"
+  ],
+  "Sunken Citadel": [
+    "C"
+  ],
+  "Sunken Palace": [
+    "U"
+  ],
+  "Surtland Frostpyre": [
+    "R",
+    "U"
+  ],
+  "Susur Secundi, Void Altar": [
+    "B"
+  ],
+  "Svogthos, the Restless Tomb": [
+    "B",
+    "G"
+  ],
+  "Swarmyard": [
+    "C"
+  ],
+  "Takenuma, Abandoned Mire": [
+    "B"
+  ],
+  "Talon Gates of Madara": [
+    "C"
+  ],
+  "Tarnation Vista": [
+    "C"
+  ],
+  "Teferi's Isle": [
+    "U"
+  ],
+  "Teetering Peaks": [
+    "R"
+  ],
+  "Temple of the Dragon Queen": [
+    "C"
+  ],
+  "Terrain Generator": [
+    "C"
+  ],
+  "Thawing Glaciers": [
+    "C"
+  ],
+  "The Biblioplex": [
+    "C"
+  ],
+  "The Black Gate": [
+    "B"
+  ],
+  "The Gold Saucer": [
+    "C"
+  ],
+  "The Grey Havens": [
+    "C"
+  ],
+  "The Great Mound": [
+    "C"
+  ],
+  "The Monumental Facade": [
+    "C"
+  ],
+  "The Mycosynth Gardens": [
+    "C"
+  ],
+  "The Shire": [
+    "G"
+  ],
+  "The Seedcore": [
+    "C"
+  ],
+  "The Surgical Bay": [
+    "U"
+  ],
+  "The World Tree": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+  ],
+  "Thespian's Stage": [
+    "C"
+  ],
+  "Thriving Isle": [
+    "U"
+  ],
+  "Throne of the High City": [
+    "C"
+  ],
+  "Tolaria West": [
+    "U"
+  ],
+  "Tomb Fortress": [
+    "B"
+  ],
+  "Tomb of the Spirit Dragon": [
+    "C"
+  ],
+  "Tower of the Magistrate": [
+    "C"
+  ],
+  "Tranquil Thicket": [
+    "G"
+  ],
+  "Treasure Vault": [
+    "C"
+  ],
+  "Trenchpost": [
+    "C"
+  ],
+  "Trenzalore Clocktower": [
+    "U"
+  ],
+  "Turbulent Moor": [
+    "B",
+    "W"
+  ],
+  "Turbulent Fen": [
+    "B",
+    "G"
+  ],
+  "Turbulent Springs": [
+    "R",
+    "U"
+  ],
+  "Turbulent Steppe": [
+    "R",
+    "W"
+  ],
+  "Turbulent Wilderness": [
+    "G",
+    "U"
+  ],
+  "Turntimber Grove": [
+    "G"
+  ],
+  "Ugin's Labyrinth": [
+    "C"
+  ],
+  "Underdark Rift": [
+    "C"
+  ],
+  "Untaidake, the Cloud Keeper": [
+    "C"
+  ],
+  "Urborg": [
+    "B"
+  ],
+  "Urban Retreat": [
+    "G",
+    "U",
+    "W"
+  ],
+  "Urborg, Tomb of Yawgmoth": [
+    "C"
+  ],
+  "Urza's Cave": [
+    "C"
+  ],
+  "Urza's Factory": [
+    "C"
+  ],
+  "Urza's Mine": [
+    "C"
+  ],
+  "Urza's Power Plant": [
+    "C"
+  ],
+  "Urza's Saga": [
+    "C"
+  ],
+  "Urza's Tower": [
+    "C"
+  ],
+  "Urza's Workshop": [
+    "C"
+  ],
+  "Uthros, Titanic Godcore": [
+    "U"
+  ],
+  "Valgavoth's Lair": [
+    "C"
+  ],
+  "Vault of Whispers": [
+    "B"
+  ],
+  "Vivid Grove": [
+    "G"
+  ],
+  "Voldaren Estate": [
+    "C"
+  ],
+  "Volrath's Stronghold": [
+    "B"
+  ],
+  "Wandering Fumarole": [
+    "R",
+    "U"
+  ],
+  "War Room": [
+    "C"
+  ],
+  "Windbrisk Heights": [
+    "W"
+  ],
+  "Winding Canyons": [
+    "C"
+  ],
+  "Wintermoon Mesa": [
+    "C"
+  ],
+  "Wirewood Lodge": [
+    "G"
+  ],
+  "Witch's Cottage": [
+    "B"
+  ],
+  "Xander's Lounge": [
+    "B",
+    "R",
+    "U"
+  ],
+  "Yavimaya, Cradle of Growth": [
+    "C"
+  ],
+  "Zanarkand, Ancient Metropolis // Lasting Fayth": [
+    "G"
+  ],
+  "Zoetic Cavern": [
+    "C"
+  ]
+}
