@@ -8,6 +8,11 @@ export interface StorageAdapter {
   init(): Promise<void>;
 
   /**
+   * Checks if permission is currently granted (optional).
+   */
+  hasPermission?(): Promise<boolean>;
+
+  /**
    * Loads the full state from the storage medium.
    * Return null if no state exists (new user).
    */

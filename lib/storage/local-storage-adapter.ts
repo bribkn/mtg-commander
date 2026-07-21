@@ -8,6 +8,10 @@ export class LocalStorageAdapter implements StorageAdapter {
     // No initialization needed for local storage
   }
 
+  async hasPermission(): Promise<boolean> {
+    return true;
+  }
+
   async loadFullDeck(deck: SavedDeck): Promise<SavedDeck | null> {
     return deck;
   }

@@ -890,6 +890,8 @@ interface DeckContextValue {
   storagePreference: StoragePreference;
   setStoragePreference: (pref: StoragePreference) => Promise<boolean>;
   storageLoading: boolean;
+  isFolderAuthorized: boolean;
+  requestFolderPermission: () => Promise<boolean>;
 
   // Manual save
   saveCurrentDeck: () => Promise<boolean>;
@@ -901,6 +903,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const [state, rawDispatch] = useReducer(deckReducer, initialState, init);
   const [storagePreference, setPref] = useState<StoragePreference>(null);
   const [storageLoading, setStorageLoading] = useState(true);
+  const [isFolderAuthorized, setIsFolderAuthorized] = useState<boolean>(true);
 
   // Initialize storage state
   useEffect(() => {
@@ -911,13 +914,26 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       if (pref) {
         const adapter = storageManager.getAdapter();
         if (adapter) {
-          const loadedState = await adapter.loadState();
-          if (loadedState) {
-            rawDispatch({ type: 'LOAD_STORE', state: loadedState });
-          } else if (pref === 'folder') {
-            // Permission not granted or directory handle lost on page reload!
-            // Set preference to null to show the onboarding modal immediately.
-            setPref(null);
+          await adapter.init();
+          
+          if (pref === 'folder') {
+            const hasPerm = await adapter.hasPermission?.() ?? true;
+            setIsFolderAuthorized(hasPerm);
+            
+            if (hasPerm) {
+              const loadedState = await adapter.loadState();
+              if (loadedState) {
+                rawDispatch({ type: 'LOAD_STORE', state: loadedState });
+              }
+            } else {
+              console.log('Folder exists in storage, but needs permission activation.');
+            }
+          } else {
+            setIsFolderAuthorized(true);
+            const loadedState = await adapter.loadState();
+            if (loadedState) {
+              rawDispatch({ type: 'LOAD_STORE', state: loadedState });
+            }
           }
         }
       }
@@ -931,6 +947,11 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     const success = await storageManager.setPreference(pref);
     if (success) {
       setPref(pref);
+      if (pref === 'folder') {
+        setIsFolderAuthorized(true);
+      } else {
+        setIsFolderAuthorized(true);
+      }
       const adapter = storageManager.getAdapter();
       if (adapter) {
         const loadedState = await adapter.loadState();
@@ -946,6 +967,31 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     }
     setStorageLoading(false);
     return success;
+  };
+
+  const requestFolderPermission = async (): Promise<boolean> => {
+    const adapter = storageManager.getAdapter();
+    if (adapter && (adapter as any).ensureAccess) {
+      setStorageLoading(true);
+      try {
+        const success = await (adapter as any).ensureAccess();
+        if (success) {
+          setIsFolderAuthorized(true);
+          const loadedState = await adapter.loadState();
+          if (loadedState) {
+            rawDispatch({ type: 'LOAD_STORE', state: loadedState });
+          } else {
+            rawDispatch({ type: 'LOAD_STORE', state: initialState });
+          }
+          setStorageLoading(false);
+          return true;
+        }
+      } catch (err) {
+        console.error('Failed to request folder permission:', err);
+      }
+      setStorageLoading(false);
+    }
+    return false;
   };
 
   const dispatch = async (action: DeckAction) => {
@@ -1036,6 +1082,8 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         storagePreference,
         setStoragePreference,
         storageLoading,
+        isFolderAuthorized,
+        requestFolderPermission,
         saveCurrentDeck,
       }}
     >

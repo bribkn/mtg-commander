@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns, Share2, Cloud, Database, Loader2, Settings } from "lucide-react";
+import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns, Share2, Cloud, Database, Loader2, Settings, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +16,11 @@ interface DeckDashboardProps {
 }
 
 export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps = {}) {
-    const { decks, dispatch, storagePreference, setStoragePreference, storageLoading } = useDeck();
+    const { decks, dispatch, storagePreference, setStoragePreference, storageLoading, isFolderAuthorized, requestFolderPermission } = useDeck();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [createDeckSource, setCreateDeckSource] = useState<string>("new");
+    const [reconnecting, setReconnecting] = useState(false);
 
     // Helper to extract art crop (bypassing WebM video alters for dashboard preview compatibility)
     function getDeckArt(deck: SavedDeck): string {
@@ -143,6 +144,47 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
                     <p className="text-sm font-semibold text-muted-foreground tracking-wide font-medium">
                         Cargando decks: <span id="loaded">0</span> / <span id="total">0</span>
                     </p>
+                </div>
+            ) : storagePreference === "folder" && !isFolderAuthorized ? (
+                /* RECONNECT SCREEN */
+                <div className="w-full flex flex-col items-center justify-center py-16 px-4">
+                    <div className="w-full max-w-md bg-secondary/15 border border-border/60 rounded-2xl p-6 text-center flex flex-col items-center gap-5 shadow-xl shadow-black/40 animate-fade-in-up">
+                        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center text-primary mb-1">
+                            <FolderOpen className="w-7 h-7" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-lg font-bold text-foreground">Acceso a la Carpeta Local Suspendido</h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Por seguridad, el navegador requiere que confirmes los permisos de acceso a tus archivos locales al recargar la página. 
+                                Haz clic a continuación para reconectar tus mazos sin tener que volver a elegir la carpeta.
+                            </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full mt-2">
+                            <Button 
+                                onClick={async () => {
+                                    setReconnecting(true);
+                                    await requestFolderPermission();
+                                    setReconnecting(false);
+                                }}
+                                disabled={reconnecting}
+                                className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                            >
+                                {reconnecting ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <FolderOpen className="w-4 h-4" />
+                                )}
+                                Reconectar Carpeta
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setStoragePreference(null)}
+                                className="border-border hover:bg-secondary text-xs"
+                            >
+                                Cambiar Destino
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <>

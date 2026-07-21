@@ -42,6 +42,16 @@ export class FileSystemAdapter implements StorageAdapter {
     }
   }
 
+  async hasPermission(): Promise<boolean> {
+    if (!this.directoryHandle) return false;
+    try {
+      const perm = await this.directoryHandle.queryPermission({ mode: 'readwrite' });
+      return perm === 'granted';
+    } catch (e) {
+      return false;
+    }
+  }
+
   /**
    * Prompts the user to select a directory if we don't have one, or if permission is needed.
    */
