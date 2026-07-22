@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2, Archive, Save, Loader2, CheckCircle2, Dices } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2, Archive, Save, Loader2, CheckCircle2, Dices, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
@@ -19,6 +19,7 @@ interface DeckHeaderProps {
   onShareOpen: () => void;
   onSave?: () => Promise<boolean | void>;
   onPlaytestOpen: () => void;
+  onApplyFavorites?: () => void;
 }
 
 export function DeckHeader({
@@ -34,8 +35,9 @@ export function DeckHeader({
   onShareOpen,
   onSave,
   onPlaytestOpen,
+  onApplyFavorites,
 }: DeckHeaderProps) {
-  const { state: globalState, decks, dispatch } = useDeck();
+  const { state: globalState, decks, dispatch, favoriteArts } = useDeck();
   const state = deckId ? (decks.find((d) => d.id === deckId) ?? null) : globalState;
   const totalCards = state ? state.cards.reduce((sum, c) => sum + c.quantity, 0) : 0;
   const commander = state ? state.cards.find((c) => c.isCommander) ?? null : null;
@@ -137,6 +139,19 @@ export function DeckHeader({
             <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
             <span className="hidden sm:inline">Custom</span>
           </Button>
+
+          {favoriteArts && favoriteArts.length > 0 && onApplyFavorites && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onApplyFavorites}
+              className="gap-2 border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+              title="Apply global favorite arts to all cards in this deck"
+            >
+              <Star className="w-4 h-4 text-amber-500 fill-amber-500/10" />
+              <span className="hidden sm:inline">Apply Favorites</span>
+            </Button>
+          )}
 
           <Button
             variant="outline"

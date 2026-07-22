@@ -24,7 +24,7 @@ import { ExportModal } from '@/components/ExportModal';
 import { PlaytestModal } from '@/components/PlaytestModal';
 import { getCardsBatchByIds } from '@/lib/scryfall';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers, Dices } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers, Dices, Star } from 'lucide-react';
 import { DECK_TAGS_LIST } from '@/lib/tags';
 import {
   Dialog,
@@ -244,7 +244,7 @@ function DeckTagsEditor({ deckId }: { deckId?: string } = {}) {
 }
 
 function AppContent() {
-  const { state, activeDeckId, decks, dispatch, saveCurrentDeck } = useDeck();
+  const { state, activeDeckId, decks, dispatch, saveCurrentDeck, favoriteArts } = useDeck();
   const [importOpen, setImportOpen] = useState(false);
   const [cardbackOpen, setCardbackOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -330,6 +330,45 @@ function AppContent() {
     if (!targetDeck || targetDeck.cards.length === 0) return;
     if (confirm(`Clear the entire deck "${targetDeck.deckName}"? This cannot be undone.`)) {
       dispatch({ type: 'CLEAR_DECK', deckId: targetId });
+    }
+  }
+
+  function handleApplyFavorites(deckId?: string) {
+    const targetId = deckId || activeDeckId;
+    if (!targetId) return;
+    const targetDeck = decks.find((d) => d.id === targetId);
+    if (!targetDeck) return;
+
+    const favArts = favoriteArts || [];
+    if (favArts.length === 0) {
+      alert("You don't have any favorite arts configured.");
+      return;
+    }
+
+    const mainCards = targetDeck.cards || [];
+    const sideCards = targetDeck.sidedeck || [];
+    const tokenCards = targetDeck.tokens || [];
+    const allCards = [...mainCards, ...sideCards, ...tokenCards];
+
+    const updatableCount = allCards.filter(c => {
+      const normName = c.name.toLowerCase().trim().split('//')[0].trim();
+      const fav = favArts.find(f => f.cardName === normName);
+      if (!fav) return false;
+      const isCustomAlter = !!fav.imageUrl;
+      if (isCustomAlter) {
+        const currentImg = c.scryfallData.image_uris?.normal || c.scryfallData.card_faces?.[0]?.image_uris?.normal || '';
+        return fav.imageUrl !== currentImg || fav.scryfallId !== c.scryfallId;
+      }
+      return fav.scryfallId !== c.scryfallId;
+    }).length;
+
+    if (updatableCount === 0) {
+      alert("All cards in this deck are already using your favorite art.");
+      return;
+    }
+
+    if (confirm(`Apply favorite arts to ${updatableCount} card(s) in "${targetDeck.deckName}"?`)) {
+      dispatch({ type: 'APPLY_FAVORITE_ARTS', deckId: targetId });
     }
   }
 
@@ -724,6 +763,18 @@ function AppContent() {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
+
+                      {favoriteArts && favoriteArts.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleApplyFavorites(leftDeck.id)}
+                          className="w-7 h-7 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
+                          title="Apply global favorite arts to all cards in this deck"
+                        >
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500/10" />
+                        </Button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5">
@@ -880,6 +931,18 @@ function AppContent() {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
+
+                      {favoriteArts && favoriteArts.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleApplyFavorites(rightDeck.id)}
+                          className="w-7 h-7 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
+                          title="Apply global favorite arts to all cards in this deck"
+                        >
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500/10" />
+                        </Button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5">
@@ -984,6 +1047,7 @@ function AppContent() {
         onShareOpen={() => openShare(state?.id)}
         onSave={saveCurrentDeck}
         onPlaytestOpen={() => openPlaytest(state?.id)}
+        onApplyFavorites={() => handleApplyFavorites(state?.id)}
       />
 
       <div className="flex flex-1 overflow-hidden w-full max-w-full px-2 sm:px-4">

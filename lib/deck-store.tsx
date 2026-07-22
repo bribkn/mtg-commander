@@ -100,7 +100,8 @@ type DeckAction =
   | { type: 'SET_SIDEDECK_ENABLED'; enabled: boolean; deckId?: string }
   | { type: 'UPDATE_LOADED_DECK'; deck: SavedDeck }
   | { type: 'SET_FAVORITE_ART'; favoriteArt: FavoriteArt }
-  | { type: 'REMOVE_FAVORITE_ART'; cardName: string };
+  | { type: 'REMOVE_FAVORITE_ART'; cardName: string }
+  | { type: 'APPLY_FAVORITE_ARTS'; deckId?: string };
 
 const STORE_STORAGE_KEY = 'mtg-commander-decks-store';
 
@@ -761,6 +762,72 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         decks: state.decks.map((d) =>
           d.id === targetId ? { ...d, isSideDeckEnabled: action.enabled } : d
         ),
+      };
+    }
+
+    case 'APPLY_FAVORITE_ARTS': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+
+      const favArts = state.favoriteArts || [];
+      if (favArts.length === 0) return state;
+
+      return {
+        ...state,
+        decks: state.decks.map((d) => {
+          if (d.id !== targetId) return d;
+
+          const mapCard = (c: DeckCard) => {
+            const updatedScryfallData = applyFavoriteArt(c.scryfallData, favArts);
+            if (updatedScryfallData.id === c.scryfallId && c.scryfallData === updatedScryfallData) {
+              return c;
+            }
+            return {
+              ...c,
+              scryfallId: updatedScryfallData.id,
+              name: updatedScryfallData.name,
+              scryfallData: updatedScryfallData,
+              category: getCardCategory(updatedScryfallData),
+            };
+          };
+
+          const updatedCards = d.cards.map(mapCard);
+          const updatedSide = d.sidedeck ? d.sidedeck.map(mapCard) : d.sidedeck;
+          const updatedTokens = d.tokens ? d.tokens.map(mapCard) : d.tokens;
+
+          let newCommanderId = d.commanderId;
+          if (d.commanderId) {
+            const oldCard = d.cards.find(c => c.scryfallId === d.commanderId);
+            if (oldCard) {
+              const newCard = updatedCards.find(c => c.name === oldCard.name);
+              if (newCard) {
+                newCommanderId = newCard.scryfallId;
+              }
+            }
+          }
+
+          let newCoverCardId = d.coverCardId;
+          if (d.coverCardId) {
+            const allOld = [...d.cards, ...(d.sidedeck || []), ...(d.tokens || [])];
+            const oldCard = allOld.find(c => c.scryfallId === d.coverCardId);
+            if (oldCard) {
+              const allNew = [...updatedCards, ...(updatedSide || []), ...(updatedTokens || [])];
+              const newCard = allNew.find(c => c.name === oldCard.name);
+              if (newCard) {
+                newCoverCardId = newCard.scryfallId;
+              }
+            }
+          }
+
+          return {
+            ...d,
+            cards: updatedCards,
+            sidedeck: updatedSide,
+            tokens: updatedTokens,
+            commanderId: newCommanderId,
+            coverCardId: newCoverCardId,
+          };
+        }),
       };
     }
 
