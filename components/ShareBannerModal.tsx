@@ -173,34 +173,34 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
   const [cardImage, setCardImage] = useState<HTMLImageElement | null>(null);
   const [manaImages, setManaImages] = useState<Record<string, HTMLImageElement>>({});
 
-  if (!state) return null;
-
-  const commanderCard = state.cards.find((c) => c.isCommander) ?? null;
-  const totalCards = state.cards.reduce((sum, c) => sum + c.quantity, 0);
+  const commanderCard = state ? (state.cards.find((c) => c.isCommander) ?? null) : null;
+  const totalCards = state ? state.cards.reduce((sum, c) => sum + c.quantity, 0) : 0;
 
   // Stats Parsers
-  const nonLandCards = state.cards.filter((c) => !c.scryfallData.type_line?.toLowerCase().includes('land'));
+  const nonLandCards = state ? state.cards.filter((c) => !c.scryfallData.type_line?.toLowerCase().includes('land')) : [];
   const nonLandCount = nonLandCards.reduce((sum, c) => sum + c.quantity, 0);
   const totalCMC = nonLandCards.reduce((sum, c) => sum + (c.scryfallData.cmc || 0) * c.quantity, 0);
   const averageCMC = nonLandCount > 0 ? (totalCMC / nonLandCount).toFixed(2) : '0.00';
 
   // Game Changer Count
   let gameChangerCount = 0;
-  for (const card of state.cards) {
-    if (isGameChangerCard(card.name)) {
-      gameChangerCount += card.quantity;
+  if (state) {
+    for (const card of state.cards) {
+      if (isGameChangerCard(card.name)) {
+        gameChangerCount += card.quantity;
+      }
     }
   }
 
   const typeCounts = {
-    creatures: state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('creature')).reduce((sum, c) => sum + c.quantity, 0),
-    instants: state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('instant')).reduce((sum, c) => sum + c.quantity, 0),
-    sorceries: state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('sorcery')).reduce((sum, c) => sum + c.quantity, 0),
-    lands: state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('land')).reduce((sum, c) => sum + c.quantity, 0),
-    other: state.cards.filter((c) => {
+    creatures: state ? state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('creature')).reduce((sum, c) => sum + c.quantity, 0) : 0,
+    instants: state ? state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('instant')).reduce((sum, c) => sum + c.quantity, 0) : 0,
+    sorceries: state ? state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('sorcery')).reduce((sum, c) => sum + c.quantity, 0) : 0,
+    lands: state ? state.cards.filter((c) => c.scryfallData.type_line?.toLowerCase().includes('land')).reduce((sum, c) => sum + c.quantity, 0) : 0,
+    other: state ? state.cards.filter((c) => {
       const type = c.scryfallData.type_line?.toLowerCase() || '';
       return !type.includes('creature') && !type.includes('instant') && !type.includes('sorcery') && !type.includes('land');
-    }).reduce((sum, c) => sum + c.quantity, 0),
+    }).reduce((sum, c) => sum + c.quantity, 0) : 0,
   };
 
   const colorIdentity = commanderCard?.scryfallData.color_identity || ['C'];
@@ -1058,6 +1058,8 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
       }
     }, 'image/png');
   }
+
+  if (!state) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

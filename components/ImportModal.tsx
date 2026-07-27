@@ -467,6 +467,9 @@ export function ImportModal({ open, onClose, createNewDeck, deckId }: ImportModa
       const deckName = ttsFile.name.replace(/\.json$/i, '').trim() || 'Imported Deck';
       ensureActiveDeck(deckName);
 
+      // Update the deck name to match the imported JSON file name
+      dispatch({ type: 'SET_DECK_NAME', name: deckName, deckId: deckId || activeDeckId || undefined });
+
       if (sidedeck.length > 0) {
         dispatch({ type: 'SET_SIDEDECK_ENABLED', enabled: true });
       }
