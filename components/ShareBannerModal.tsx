@@ -207,7 +207,7 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
   // Asynchronously load images and all unique mana symbols when commander or decklist changes
   useEffect(() => {
-    if (!open || !commanderCard) return;
+    if (!open || !commanderCard || !state) return;
 
     setIsLoading(true);
     setError('');
@@ -316,7 +316,7 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
   // Redraw Promo Banner Canvas when preloaded images, theme, or state changes
   useEffect(() => {
-    if (!open || !canvasRef.current || activeTab !== 'banner') return;
+    if (!open || !canvasRef.current || activeTab !== 'banner' || !state) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -588,7 +588,7 @@ export function ShareBannerModal({ open, onClose, deckId }: ShareBannerModalProp
 
   // Redraw Decklist Infographic Canvas when preloaded images, theme, or state changes
   useEffect(() => {
-    if (!open || !decklistCanvasRef.current || activeTab !== 'decklist') return;
+    if (!open || !decklistCanvasRef.current || activeTab !== 'decklist' || !state) return;
 
     const canvas = decklistCanvasRef.current;
     const ctx = canvas.getContext('2d');
