@@ -2549,7 +2549,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                         <div className="hidden md:flex w-[420px] lg:w-[540px] shrink-0 border-l border-border/40 pl-6 flex-col justify-center items-center select-none animate-fade-in bg-secondary/5 p-4 rounded-xl border border-border/20">
                             {previewCard ? (
                                 <div className="flex flex-col items-center text-center space-y-4 w-full h-full justify-center">
-                                    <div className="relative w-full aspect-[5/7] rounded-xl overflow-hidden shadow-2xl border border-primary/20 bg-secondary flex items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:border-primary/40">
+                                    <div className="flex-1 w-full min-h-0 flex items-center justify-center">
                                         <CardMedia
                                             src={
                                                 previewCard.image_uris?.large ||
@@ -2559,10 +2559,10 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                                 "https://i.imgur.com/Hg8CwwU.jpeg"
                                             }
                                             alt={previewCard.name}
-                                            className="w-full h-full object-cover absolute inset-0 select-none"
+                                            className="max-w-full max-h-full aspect-[5/7] object-contain rounded-xl shadow-2xl border border-primary/20 bg-secondary transition-all duration-300 hover:scale-[1.02] hover:border-primary/40 select-none"
                                         />
                                     </div>
-                                    <div className="space-y-1.5 w-full">
+                                    <div className="space-y-1.5 w-full shrink-0">
                                         <h4 className="font-bold text-sm text-foreground truncate">{previewCard.name}</h4>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {previewCard.set_name} ({previewCard.set?.toUpperCase()})
