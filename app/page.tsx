@@ -25,7 +25,7 @@ import { ExportModal } from '@/components/ExportModal';
 import { PlaytestModal } from '@/components/PlaytestModal';
 import { getCardsBatchByIds } from '@/lib/scryfall';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers, Dices, Star, Box, LayoutGrid } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers, Dices, Star, Box, LayoutGrid, Cloud, Database, Settings, Loader2 } from 'lucide-react';
 import { DECK_TAGS_LIST } from '@/lib/tags';
 import {
   Dialog,
@@ -245,7 +245,7 @@ function DeckTagsEditor({ deckId }: { deckId?: string } = {}) {
 }
 
 function AppContent() {
-  const { state, activeDeckId, decks, dispatch, saveCurrentDeck, favoriteArts } = useDeck();
+  const { state, activeDeckId, decks, dispatch, saveCurrentDeck, favoriteArts, storagePreference, setStoragePreference, storageLoading } = useDeck();
   const [importOpen, setImportOpen] = useState(false);
   const [cardbackOpen, setCardbackOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -561,9 +561,44 @@ function AppContent() {
   if (!splitMode && (!state || !activeDeckId)) {
     return (
       <div className="min-h-screen bg-background flex flex-col relative">
-        {/* Floating Toggle Button for 3D/Normal View */}
-        <div className="absolute top-4 right-4 z-40 sm:top-6 sm:right-6 md:right-8">
-          <div className="inline-flex rounded-lg border border-border bg-black/60 p-1 backdrop-blur-md shadow-lg shadow-black/40 animate-fade-in-down">
+        {/* Floating Controls for 3D/Normal View & Storage Preference */}
+        <div className="absolute top-4 right-4 z-40 sm:top-6 sm:right-6 md:right-8 flex items-center gap-3">
+          
+          {/* Storage Preference Widget (only in 3D view mode to avoid duplication with Normal View welcome banner) */}
+          {viewMode === '3d' && (
+            <div className="animate-fade-in-down">
+              {storageLoading ? (
+                <Button disabled variant="outline" className="gap-2 h-10 text-xs bg-black/60 border-border/80 text-muted-foreground backdrop-blur-md">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Loading Storage...</span>
+                </Button>
+              ) : storagePreference ? (
+                <div className="flex items-center gap-2 bg-black/60 border border-border/80 rounded-lg p-1 pr-3 backdrop-blur-md shadow-lg shadow-black/40 h-10 select-none">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                    {storagePreference === "folder" ? <Cloud className="w-4 h-4" /> : <Database className="w-4 h-4" />}
+                  </div>
+                  <div className="flex flex-col items-start hidden sm:flex leading-none">
+                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Storage</span>
+                    <span className="text-xs text-foreground font-medium mt-0.5">
+                      {storagePreference === "folder" ? "Local Folder" : "Browser Storage"}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setStoragePreference(null)}
+                    className="w-7 h-7 text-muted-foreground hover:text-primary rounded ml-1 cursor-pointer shrink-0"
+                    title="Change Storage Preference"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* View mode switcher */}
+          <div className="inline-flex rounded-lg border border-border bg-black/60 p-1 backdrop-blur-md shadow-lg shadow-black/40 animate-fade-in-down h-10 items-center">
             <Button
               variant={viewMode === '3d' ? 'default' : 'ghost'}
               size="sm"

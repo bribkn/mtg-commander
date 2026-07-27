@@ -317,7 +317,7 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
       <div className="w-full max-w-6xl relative z-10 flex flex-col items-center">
         
         {/* Carousel Showcase Row */}
-        <div className="w-full flex items-center justify-center gap-4 sm:gap-8 px-4 h-[340px] sm:h-[460px] relative">
+        <div className="w-full flex items-center justify-center gap-4 sm:gap-8 px-4 h-[380px] sm:h-[520px] relative">
           
           {/* Left Navigation Arrow */}
           <Button
@@ -331,7 +331,7 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
           </Button>
 
           {/* 3D Container viewport */}
-          <div className="flex-1 h-full flex items-center justify-center relative [perspective:1200px] overflow-visible">
+          <div className="flex-1 h-full flex items-center justify-center relative [perspective:1200px] [transform-style:preserve-3d] overflow-visible">
             {decks.map((deck, idx) => {
               // Calculate index difference in circular array
               let diff = idx - activeIndex;
@@ -352,10 +352,23 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
               const scale = 1 - Math.abs(diff) * 0.12;
               const opacity = isCurrent ? 1 : 0.65 - Math.abs(diff) * 0.15;
               const zIndex = 20 - Math.abs(diff);
-
               const commander = deck.cards.find((c) => c.isCommander);
               const commanderImg = commander ? getFrontImageUrl(commander.scryfallData) : null;
               const cardback = deck.customCardbackUrl || MTG_CARD_BACK;
+
+              const boxStyle = {
+                "--box-w": isMobile ? "150px" : "260px",
+                "--box-h": isMobile ? "210px" : "364px",
+                "--box-d": isMobile ? "30px" : "48px",
+                "--box-half-w": isMobile ? "75px" : "130px",
+                "--box-half-h": isMobile ? "105px" : "182px",
+                "--box-half-d": isMobile ? "15px" : "24px",
+                "--box-neg-half-d": isMobile ? "-15px" : "-24px",
+                "--box-right-left": isMobile ? "135px" : "236px",
+                "--box-left-left": isMobile ? "-15px" : "-24px",
+                "--box-top-top": isMobile ? "-15px" : "-24px",
+                "--box-bottom-top": isMobile ? "195px" : "340px",
+              } as React.CSSProperties;
 
               return (
                 <div
@@ -366,29 +379,42 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
                       setDeletingId(null);
                     }
                   }}
-                  className={`absolute transition-all duration-500 flex items-center justify-center select-none ${
-                    isCurrent ? "cursor-default" : "cursor-pointer hover:opacity-90"
+                  className={`absolute flex items-center justify-center select-none ${
+                    isCurrent ? "cursor-default" : "cursor-pointer hover:opacity-95"
                   }`}
                   style={{
                     transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
-                    opacity: Math.max(0, opacity),
                     zIndex: zIndex,
                     transformStyle: "preserve-3d",
+                    transition: "transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
+                    width: isMobile ? "150px" : "260px",
+                    height: isMobile ? "210px" : "364px",
                   }}
                 >
-                  {/* Deck Bundle Layout */}
-                  <div className={`relative flex items-center gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl transition-all duration-500 border ${
-                    isCurrent 
-                      ? "bg-secondary/40 border-primary/45 shadow-2xl shadow-primary/10 ring-1 ring-primary/20 backdrop-blur-md" 
-                      : "bg-secondary/10 border-border/10 filter brightness-75"
-                  }`}>
+                  {/* 3D Box and Card Wrapper */}
+                  <div 
+                    className="relative w-full h-full" 
+                    style={{ 
+                      transformStyle: "preserve-3d",
+                      ...boxStyle
+                    }}
+                  >
                     
-                    {/* 1. Commander Card */}
-                    <div className={`relative w-[130px] sm:w-[210px] md:w-[230px] aspect-[5/7] rounded-xl overflow-hidden shadow-2xl border select-none transition-all duration-500 ${
-                      isCurrent 
-                        ? "border-primary/50 shadow-primary/10 scale-102" 
-                        : "border-border/40"
-                    }`}>
+                    {/* 1. Commander Card (slides out to the left when active) */}
+                    <div 
+                      className={`absolute inset-0 rounded-xl overflow-hidden border select-none`}
+                      style={{
+                        transformStyle: "preserve-3d",
+                        transform: isCurrent 
+                          ? (isMobile ? "translate3d(-80px, -10px, 45px) rotateY(12deg) rotateZ(-3deg) scale(1.05)" : "translate3d(-150px, -15px, 60px) rotateY(12deg) rotateZ(-3deg) scale(1.05)")
+                          : "translate3d(0, 0, -5px) scale(0.92)",
+                        opacity: isCurrent ? 1 : 0,
+                        pointerEvents: isCurrent ? "auto" : "none",
+                        transition: "transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease-out",
+                        borderColor: isCurrent ? "var(--primary)" : "transparent",
+                        boxShadow: isCurrent ? "0 25px 50px -12px rgba(0,0,0,0.85), 0 0 30px rgba(239,68,68,0.25)" : "none"
+                      }}
+                    >
                       {commanderImg ? (
                         <CardMedia 
                           src={commanderImg} 
@@ -397,7 +423,7 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
                           loading="eager"
                         />
                       ) : (
-                        <div className="w-full h-full bg-secondary/80 flex flex-col items-center justify-center p-4 text-center">
+                        <div className="w-full h-full bg-secondary/80 flex flex-col items-center justify-center p-4 text-center rounded-xl border border-white/10">
                           <Crown className="w-8 h-8 text-muted-foreground/30 mb-2" />
                           <span className="text-xs text-muted-foreground font-semibold">No Commander</span>
                         </div>
@@ -405,38 +431,132 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
                       
                       {/* Active indicator badge */}
                       {isCurrent && commander && (
-                        <div className="absolute top-2 left-2 bg-primary/95 text-primary-foreground text-[9px] font-extrabold uppercase px-2 py-0.5 rounded shadow-md flex items-center gap-1 animate-pulse">
+                        <div className="absolute top-2 left-2 bg-primary/95 text-primary-foreground text-[9px] font-extrabold uppercase px-2 py-0.5 rounded shadow-md flex items-center gap-1 animate-pulse z-30">
                           <Crown className="w-3.5 h-3.5" />
                           <span>Commander</span>
                         </div>
                       )}
                     </div>
 
-                    {/* 2. Stack of Deck Cardbacks */}
-                    <div className="relative w-[130px] sm:w-[210px] md:w-[230px] aspect-[5/7] select-none shrink-0">
-                      {/* Stack card layers underneath */}
+                    {/* 2. 3D Deck Box (pivots to the right when active) */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        transformStyle: "preserve-3d",
+                        transform: isCurrent 
+                          ? (isMobile ? "translate3d(80px, 0, -20px) rotateY(-20deg) rotateX(10deg)" : "translate3d(150px, 0, -25px) rotateY(-22deg) rotateX(10deg)")
+                          : "translate3d(0, 0, 0) rotateY(0deg) rotateX(0deg)",
+                        transition: "transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)"
+                      }}
+                    >
+                      {/* Shadow below the deck box */}
                       <div 
-                        className="absolute top-[8px] left-[8px] w-full h-full rounded-xl border border-black/50 bg-cover bg-center shadow-sm brightness-75 transition-all" 
-                        style={{ backgroundImage: `url(${cardback})` }} 
+                        className="absolute left-1/2 -translate-x-1/2 bg-black/80 blur-md rounded-full transition-all duration-700 pointer-events-none" 
+                        style={{
+                          bottom: "-25px",
+                          width: "var(--box-w)",
+                          height: "var(--box-d)",
+                          transform: "rotateX(90deg)",
+                          opacity: isCurrent ? 0.85 : 0.45
+                        }}
                       />
+
+                      {/* Box Faces */}
+                      {/* Front Face */}
                       <div 
-                        className="absolute top-[5px] left-[5px] w-full h-full rounded-xl border border-black/50 bg-cover bg-center shadow-sm brightness-90 transition-all" 
-                        style={{ backgroundImage: `url(${cardback})` }} 
-                      />
+                        className="absolute inset-0 rounded-xl overflow-hidden border border-white/10 shadow-2xl"
+                        style={{ 
+                          transform: "translate3d(0, 0, var(--box-half-d))",
+                          backfaceVisibility: "hidden"
+                        }}
+                      >
+                        <CardMedia src={cardback} alt="Box Front" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/12" />
+                        <div 
+                          className="absolute inset-0 bg-neutral-950 transition-opacity duration-700 pointer-events-none" 
+                          style={{ opacity: isCurrent ? 0 : 0.55 }} 
+                        />
+                      </div>
+
+                      {/* Back Face */}
                       <div 
-                        className="absolute top-[2px] left-[2px] w-full h-full rounded-xl border border-black/50 bg-cover bg-center shadow-sm transition-all" 
-                        style={{ backgroundImage: `url(${cardback})` }} 
-                      />
-                      
-                      {/* Top card of the stack */}
-                      <div className={`absolute top-0 left-0 w-full h-full rounded-xl overflow-hidden border shadow-2xl transition-all duration-500 ${
-                        isCurrent ? "border-white/10" : "border-border/30"
-                      }`}>
-                        <CardMedia 
-                          src={cardback} 
-                          alt="Deck Cardback Stack" 
-                          className="w-full h-full object-cover"
-                          loading="eager"
+                        className="absolute inset-0 rounded-xl overflow-hidden border border-white/10"
+                        style={{ 
+                          transform: "translate3d(0, 0, var(--box-neg-half-d)) rotateY(180deg)",
+                          backfaceVisibility: "hidden"
+                        }}
+                      >
+                        <CardMedia src={cardback} alt="Box Back" className="w-full h-full object-cover" />
+                        <div 
+                          className="absolute inset-0 bg-neutral-950 transition-opacity duration-700 pointer-events-none" 
+                          style={{ opacity: isCurrent ? 0 : 0.55 }} 
+                        />
+                      </div>
+
+                      {/* Left Side Face */}
+                      <div 
+                        className="absolute top-0 bottom-0 bg-gradient-to-b from-neutral-800 to-neutral-950 border-y border-white/10 flex items-center justify-center [writing-mode:vertical-rl] px-1 text-[8px] sm:text-[10px] font-extrabold text-amber-400/90 tracking-widest uppercase select-none font-sans"
+                        style={{ 
+                          width: "var(--box-d)", 
+                          left: "var(--box-left-left)", 
+                          transform: "rotateY(-90deg)",
+                          transformOrigin: "center"
+                        }}
+                      >
+                        {deck.deckName.slice(0, 20)}
+                        <div 
+                          className="absolute inset-0 bg-neutral-950 transition-opacity duration-700 pointer-events-none" 
+                          style={{ opacity: isCurrent ? 0 : 0.55 }} 
+                        />
+                      </div>
+
+                      {/* Right Side Face */}
+                      <div 
+                        className="absolute top-0 bottom-0 bg-gradient-to-b from-neutral-800 to-neutral-950 border-y border-white/10 flex items-center justify-center [writing-mode:vertical-rl] px-1 text-[8px] sm:text-[10px] font-bold text-neutral-400 tracking-wider uppercase select-none"
+                        style={{ 
+                          width: "var(--box-d)", 
+                          left: "var(--box-right-left)", 
+                          transform: "rotateY(90deg)",
+                          transformOrigin: "center"
+                        }}
+                      >
+                        PLAYING CARDS
+                        <div 
+                          className="absolute inset-0 bg-neutral-950 transition-opacity duration-700 pointer-events-none" 
+                          style={{ opacity: isCurrent ? 0 : 0.55 }} 
+                        />
+                      </div>
+
+                      {/* Top Lid Face (opens when active) */}
+                      <div 
+                        className="absolute left-0 right-0 bg-neutral-800 border-x border-white/10 flex items-center justify-center"
+                        style={{ 
+                          height: "var(--box-d)", 
+                          top: "var(--box-top-top)", 
+                          transformOrigin: "bottom",
+                          transform: isCurrent ? "rotateX(145deg) translateY(-8px)" : "rotateX(90deg)",
+                          transition: "transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)"
+                        }}
+                      >
+                        <div className="w-4/5 h-[2px] bg-neutral-950/80 rounded" />
+                        <div 
+                          className="absolute inset-0 bg-neutral-950 transition-opacity duration-700 pointer-events-none" 
+                          style={{ opacity: isCurrent ? 0 : 0.55 }} 
+                        />
+                      </div>
+
+                      {/* Bottom Face */}
+                      <div 
+                        className="absolute left-0 right-0 bg-neutral-950 border-x border-white/10"
+                        style={{ 
+                          height: "var(--box-d)", 
+                          top: "var(--box-bottom-top)", 
+                          transform: "rotateX(-90deg)"
+                        }}
+                      >
+                        <div 
+                          className="absolute inset-0 bg-neutral-950 transition-opacity duration-700 pointer-events-none" 
+                          style={{ opacity: isCurrent ? 0 : 0.55 }} 
                         />
                       </div>
                     </div>
@@ -446,8 +566,6 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
               );
             })}
           </div>
-
-          {/* Right Navigation Arrow */}
           <Button
             variant="ghost"
             size="icon"
