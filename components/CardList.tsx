@@ -2353,7 +2353,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                                                         dispatch({ type: "DELETE_CUSTOM_CARD", id: custom.id });
                                                                     }
                                                                 }}
-                                                                className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/75 hover:bg-destructive text-white border border-white/10 hover:border-destructive/50 transition-all duration-200 z-20 shadow active:scale-95 opacity-0 group-hover/print:opacity-100 flex items-center justify-center"
+                                                                className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-black/75 hover:bg-destructive text-white border border-white/10 hover:border-destructive/50 transition-all duration-200 z-20 shadow active:scale-95 opacity-0 group-hover/print:opacity-100 flex items-center justify-center"
                                                                 title="Delete Custom Alter"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -2412,7 +2412,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
                                                                                 });
                                                                             }
                                                                         }}
-                                                                        className={`absolute bottom-2 left-2 p-1 rounded-full transition-all duration-200 z-20 shadow flex items-center justify-center ${
+                                                                        className={`absolute top-2 left-2 p-1 rounded-full transition-all duration-200 z-20 shadow flex items-center justify-center ${
                                                                             isFav
                                                                                 ? "bg-amber-500 text-white opacity-100 scale-110"
                                                                                 : "bg-black/60 text-muted-foreground opacity-0 group-hover/print:opacity-100 hover:text-amber-400 hover:bg-black/80"
