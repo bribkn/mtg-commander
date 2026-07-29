@@ -428,14 +428,6 @@ export function DeckShowcase3D({ onOpenSplit, onShareOpen, onImportOpen }: DeckS
                           <span className="text-xs text-muted-foreground font-semibold">No Commander</span>
                         </div>
                       )}
-                      
-                      {/* Active indicator badge */}
-                      {isCurrent && commander && (
-                        <div className="absolute top-2 left-2 bg-primary/95 text-primary-foreground text-[9px] font-extrabold uppercase px-2 py-0.5 rounded shadow-md flex items-center gap-1 animate-pulse z-30">
-                          <Crown className="w-3.5 h-3.5" />
-                          <span>Commander</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* 2. 3D Deck Box (pivots to the right when active) */}
