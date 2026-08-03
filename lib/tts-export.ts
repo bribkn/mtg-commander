@@ -279,9 +279,10 @@ export async function generateTTSExport(
   tokens?: DeckCard[],
   sidedeck?: DeckCard[]
 ): Promise<ExportResult> {
-  // 1. Separate commander from the rest
+  // 1. Separate commander and secondary commander from the rest
   const commanderCards = deckCards.filter((c) => c.isCommander);
-  const regularCards = deckCards.filter((c) => !c.isCommander);
+  const secondaryCommanderCards = deckCards.filter((c) => c.isSecondaryCommander);
+  const regularCards = deckCards.filter((c) => !c.isCommander && !c.isSecondaryCommander);
  
   // 2. Expand quantities into individual card entries
   function expandCards(cards: DeckCard[]): DeckCard[] {
@@ -299,9 +300,10 @@ export async function generateTTSExport(
     a.name.localeCompare(b.name)
   );
  
-  // 4. Commander goes last
+  // 4. Commander goes last, with secondary commander directly behind/underneath it
   const allMainExpanded = [
     ...expandCards(sortedRegular),
+    ...expandCards(secondaryCommanderCards),
     ...expandCards(commanderCards),
   ];
  

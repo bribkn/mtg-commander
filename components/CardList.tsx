@@ -140,6 +140,11 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, 
                         <Crown className="w-3.5 h-3.5 text-primary drop-shadow" />
                     </div>
                 )}
+                {!card.isCommander && card.isSecondaryCommander && (
+                    <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                        <Crown className="w-3.5 h-3.5 text-purple-400 drop-shadow" />
+                    </div>
+                )}
             </div>
 
             {/* Card name & mana */}
@@ -151,6 +156,7 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, 
                         {card.name}
                     </span>
                     {card.isCommander && <Crown className="w-3.5 h-3.5 text-primary shrink-0" />}
+                    {card.isSecondaryCommander && <Crown className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
                     {isBanned && (
                         <Badge
                             variant="outline"
@@ -246,6 +252,27 @@ function CardRow({ card, onVariantOpen, deckId, onTransferCard, onGifAlterOpen, 
                         className="w-6 h-6 text-muted-foreground hover:text-primary"
                         title="Set as Commander"
                         onClick={() => dispatch({ type: "SET_COMMANDER", scryfallId: card.scryfallId, deckId })}
+                    >
+                        <Crown className="w-3.5 h-3.5" />
+                    </Button>
+                )}
+
+                {/* Second Commander / Background */}
+                {section === "main" && !card.isCommander && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`w-6 h-6 transition-colors ${
+                            card.isSecondaryCommander ? "text-purple-400 bg-purple-500/10" : "text-muted-foreground hover:text-purple-400"
+                        }`}
+                        title={card.isSecondaryCommander ? "Remove as Second Commander / Background" : "Set as Second Commander / Background"}
+                        onClick={() => {
+                            if (card.isSecondaryCommander) {
+                                dispatch({ type: "UNSET_SECONDARY_COMMANDER", deckId });
+                            } else {
+                                dispatch({ type: "SET_SECONDARY_COMMANDER", scryfallId: card.scryfallId, deckId });
+                            }
+                        }}
                     >
                         <Crown className="w-3.5 h-3.5" />
                     </Button>
@@ -541,6 +568,25 @@ function PremiumListRow({
                             onClick={() => dispatch({ type: "SET_COMMANDER", scryfallId: card.scryfallId, deckId })}
                             className="p-0.5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
                             title="Set as Commander"
+                        >
+                            <Crown className="w-3 h-3" />
+                        </button>
+                    )}
+
+                    {/* Second Commander / Background set */}
+                    {section === "main" && !card.isCommander && (
+                        <button
+                            onClick={() => {
+                                if (card.isSecondaryCommander) {
+                                    dispatch({ type: "UNSET_SECONDARY_COMMANDER", deckId });
+                                } else {
+                                    dispatch({ type: "SET_SECONDARY_COMMANDER", scryfallId: card.scryfallId, deckId });
+                                }
+                            }}
+                            className={`p-0.5 rounded active:scale-95 transition-transform ${
+                                card.isSecondaryCommander ? "bg-purple-500/20 text-purple-400" : "bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-foreground"
+                            }`}
+                            title={card.isSecondaryCommander ? "Remove as Second Commander / Background" : "Set as Second Commander / Background"}
                         >
                             <Crown className="w-3 h-3" />
                         </button>
@@ -909,7 +955,13 @@ function CategorySection({
                                             </div>
                                         )}
 
-                                        {isCover && !card.isCommander && !isBanned && (
+                                        {!card.isCommander && card.isSecondaryCommander && !isBanned && (
+                                            <div className="absolute top-1.5 left-1.5 bg-black/85 p-0.5 rounded border border-purple-500/40 z-10 flex items-center justify-center" title="Segundo Commander / Background">
+                                                <Crown className="w-4 h-4 text-purple-400" />
+                                            </div>
+                                        )}
+
+                                        {isCover && !card.isCommander && !card.isSecondaryCommander && !isBanned && (
                                             <div className="absolute top-1.5 left-1.5 bg-black/85 p-0.5 rounded border border-primary/40 z-10 flex items-center justify-center">
                                                 <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                                             </div>
@@ -1032,6 +1084,30 @@ function CategorySection({
                                                             }
                                                             className="p-2 rounded-lg bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary transition-all duration-200 border border-border/20 shadow-sm active:scale-95"
                                                             title="Set as Commander"
+                                                        >
+                                                            <Crown className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+
+                                                    {section === "main" && !card.isCommander && (
+                                                        <button
+                                                            onClick={() => {
+                                                                if (card.isSecondaryCommander) {
+                                                                    dispatch({ type: "UNSET_SECONDARY_COMMANDER", deckId });
+                                                                } else {
+                                                                    dispatch({
+                                                                        type: "SET_SECONDARY_COMMANDER",
+                                                                        scryfallId: card.scryfallId,
+                                                                        deckId,
+                                                                    });
+                                                                }
+                                                            }}
+                                                            className={`p-2 rounded-lg transition-all duration-200 border border-border/20 shadow-sm active:scale-95 ${
+                                                                card.isSecondaryCommander
+                                                                    ? "bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30"
+                                                                    : "bg-secondary/80 hover:bg-primary/30 text-muted-foreground hover:text-primary"
+                                                            }`}
+                                                            title={card.isSecondaryCommander ? "Remove as Second Commander / Background" : "Set as Second Commander / Background"}
                                                         >
                                                             <Crown className="w-5 h-5" />
                                                         </button>
@@ -1399,6 +1475,8 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
         return [...list].sort((a, b) => {
             if (a.isCommander && !b.isCommander) return -1;
             if (!a.isCommander && b.isCommander) return 1;
+            if (a.isSecondaryCommander && !b.isSecondaryCommander) return -1;
+            if (!a.isSecondaryCommander && b.isSecondaryCommander) return 1;
             if (sortBy === "mana") {
                 const cmcA = a.scryfallData.cmc ?? 0;
                 const cmcB = b.scryfallData.cmc ?? 0;
@@ -1427,7 +1505,7 @@ export function CardList({ deckId, onTransferCard }: CardListProps = {}) {
             if (cmc >= 7) return "7+";
             return String(Math.floor(cmc));
         }
-        if (viewMode === "text" && card.isCommander) {
+        if (viewMode === "text" && (card.isCommander || card.isSecondaryCommander)) {
             return "Commander";
         }
         return card.category;

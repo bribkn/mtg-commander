@@ -61,8 +61,8 @@ export interface FindMyCombosResponse {
 }
 
 export async function findMyCombos(cards: DeckCard[]): Promise<FindMyCombosResponse> {
-  const mainCards = cards.filter((c) => !c.isCommander);
-  const commandersList = cards.filter((c) => c.isCommander);
+  const mainCards = cards.filter((c) => !c.isCommander && !c.isSecondaryCommander);
+  const commandersList = cards.filter((c) => c.isCommander || c.isSecondaryCommander);
 
   const mainPayload = mainCards.map((c) => ({ card: c.name }));
   const commandersPayload = commandersList.map((c) => ({ card: c.name }));

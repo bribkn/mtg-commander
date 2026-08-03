@@ -36,7 +36,7 @@ export function compressDeck(deck: SavedDeck): string {
     const fields: string[] = [
       card.scryfallId,
       String(card.quantity),
-      card.isCommander ? '1' : '0'
+      card.isCommander ? '1' : card.isSecondaryCommander ? '2' : '0'
     ];
     if (alter.imageUrl) {
       // Replace commas with encoded counterpart to prevent split issues
@@ -154,6 +154,7 @@ export async function fetchSharedDeckDetails(payload: SharedDeckPayload): Promis
       scryfallData: scryCard,
       category: getCardCategory(scryCard),
       isCommander: isCommFlag === 1,
+      isSecondaryCommander: isCommFlag === 2,
     });
   });
 
@@ -165,6 +166,7 @@ export async function fetchSharedDeckDetails(payload: SharedDeckPayload): Promis
     deckName: payload.n,
     cards: resolvedCards,
     commanderId: payload.cv || resolvedCards.find((c) => c.isCommander)?.scryfallId || null,
+    secondaryCommanderId: resolvedCards.find((c) => c.isSecondaryCommander)?.scryfallId || null,
     coverCardId: payload.cv || null,
     customCardbackUrl: payload.cb || null,
     wins: payload.w || 0,

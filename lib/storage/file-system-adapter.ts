@@ -196,6 +196,7 @@ export class FileSystemAdapter implements StorageAdapter {
                 deckName: baseName,
                 cards: [],
                 commanderId: null,
+                secondaryCommanderId: null,
                 tokens: [],
                 sidedeck: [],
                 isSideDeckEnabled: false,
@@ -282,7 +283,7 @@ export class FileSystemAdapter implements StorageAdapter {
           }
           return Array.from(seen.values()).map((c) => ({
             ...c,
-            quantity: c.isCommander || isLandCard(c) ? c.quantity : 1,
+            quantity: c.isCommander || c.isSecondaryCommander || isLandCard(c) ? c.quantity : 1,
           }));
         };
         deck.cards = dedupeCards(deck.cards);

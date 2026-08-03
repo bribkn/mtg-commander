@@ -19,6 +19,7 @@ export interface DeckCard {
   scryfallData: ScryfallCard;
   category: CardCategory;
   isCommander: boolean;
+  isSecondaryCommander?: boolean;
 }
 
 export interface SavedDeck {
@@ -26,6 +27,7 @@ export interface SavedDeck {
   deckName: string;
   cards: DeckCard[];
   commanderId: string | null; // scryfallId of the commander
+  secondaryCommanderId?: string | null; // scryfallId of the secondary commander
   coverCardId?: string | null; // scryfallId of the custom cover art card
   customCardbackUrl?: string | null; // Custom cardback URL
   wins?: number;   // Number of wins
@@ -82,6 +84,8 @@ type DeckAction =
   | { type: 'DECREMENT_QUANTITY'; scryfallId: string; deckId?: string; targetSection?: 'main' | 'side' | 'tokens' }
   | { type: 'SET_COMMANDER'; scryfallId: string; deckId?: string }
   | { type: 'UNSET_COMMANDER'; deckId?: string }
+  | { type: 'SET_SECONDARY_COMMANDER'; scryfallId: string; deckId?: string }
+  | { type: 'UNSET_SECONDARY_COMMANDER'; deckId?: string }
   | { type: 'SET_COVER_CARD'; scryfallId: string; deckId?: string }
   | { type: 'UNSET_COVER_CARD'; deckId?: string }
   | { type: 'SET_CUSTOM_CARDBACK'; url: string | null; deckId?: string }
@@ -117,6 +121,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         deckName: action.name || 'New Commander Deck',
         cards: [],
         commanderId: null,
+        secondaryCommanderId: null,
         coverCardId: null,
         customCardbackUrl: null,
         wins: 0,
@@ -142,6 +147,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
         deckName: `${source.deckName} (Copia)`,
         cards: source.cards.map((c) => ({ ...c })), // deep copy
         commanderId: source.commanderId,
+        secondaryCommanderId: source.secondaryCommanderId || null,
         coverCardId: source.coverCardId || null,
         customCardbackUrl: source.customCardbackUrl || null,
         wins: source.wins || 0,
@@ -247,6 +253,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
               scryfallData: action.card,
               category: getCardCategory(action.card),
               isCommander: section === 'main' ? (action.isCommander ?? false) : false,
+              isSecondaryCommander: false,
             };
             updatedList = [...cardsList, newCard];
           }
@@ -311,6 +318,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
             scryfallData: card,
             category: getCardCategory(card),
             isCommander: section === 'main' ? (isCommander ?? false) : false,
+            isSecondaryCommander: false,
           };
           cardsList = [...cardsList, newCard];
         }
@@ -361,6 +369,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
               ...d,
               cards: filtered,
               commanderId: d.commanderId === action.scryfallId ? null : d.commanderId,
+              secondaryCommanderId: d.secondaryCommanderId === action.scryfallId ? null : d.secondaryCommanderId,
               coverCardId: d.coverCardId === action.scryfallId ? null : (d.coverCardId || null),
             };
           }
@@ -388,6 +397,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
               ...d,
               cards: filtered,
               commanderId: d.commanderId === action.scryfallId ? null : d.commanderId,
+              secondaryCommanderId: d.secondaryCommanderId === action.scryfallId ? null : d.secondaryCommanderId,
               coverCardId: d.coverCardId === action.scryfallId ? null : (d.coverCardId || null),
             };
           }
@@ -447,6 +457,7 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
               ...d,
               cards: filtered,
               commanderId: d.commanderId === action.scryfallId ? null : d.commanderId,
+              secondaryCommanderId: d.secondaryCommanderId === action.scryfallId ? null : d.secondaryCommanderId,
               coverCardId: d.coverCardId === action.scryfallId ? null : (d.coverCardId || null),
             };
           }
@@ -472,11 +483,13 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
           const updatedCards = d.cards.map((c) => ({
             ...c,
             isCommander: c.scryfallId === action.scryfallId,
+            isSecondaryCommander: c.scryfallId === action.scryfallId ? false : c.isSecondaryCommander,
           }));
           return {
             ...d,
             cards: updatedCards,
             commanderId: action.scryfallId,
+            secondaryCommanderId: d.secondaryCommanderId === action.scryfallId ? null : d.secondaryCommanderId,
           };
         }),
       };
@@ -493,6 +506,44 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
             ...d,
             cards: d.cards.map((c) => ({ ...c, isCommander: false })),
             commanderId: null,
+          };
+        }),
+      };
+    }
+
+    case 'SET_SECONDARY_COMMANDER': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+      return {
+        ...state,
+        decks: state.decks.map((d) => {
+          if (d.id !== targetId) return d;
+          const updatedCards = d.cards.map((c) => ({
+            ...c,
+            isSecondaryCommander: c.scryfallId === action.scryfallId,
+            isCommander: c.scryfallId === action.scryfallId ? false : c.isCommander,
+          }));
+          return {
+            ...d,
+            cards: updatedCards,
+            secondaryCommanderId: action.scryfallId,
+            commanderId: d.commanderId === action.scryfallId ? null : d.commanderId,
+          };
+        }),
+      };
+    }
+
+    case 'UNSET_SECONDARY_COMMANDER': {
+      const targetId = action.deckId || state.activeDeckId;
+      if (!targetId) return state;
+      return {
+        ...state,
+        decks: state.decks.map((d) => {
+          if (d.id !== targetId) return d;
+          return {
+            ...d,
+            cards: d.cards.map((c) => ({ ...c, isSecondaryCommander: false })),
+            secondaryCommanderId: null,
           };
         }),
       };
@@ -690,16 +741,18 @@ function deckReducer(state: DeckState, action: DeckAction): DeckState {
               c.scryfallId === action.scryfallId ? { ...c, quantity: c.quantity + 1 } : c
             );
           } else {
-            updatedSide = [...sidedeckList, { ...cardToMove, quantity: 1, isCommander: false }];
+            updatedSide = [...sidedeckList, { ...cardToMove, quantity: 1, isCommander: false, isSecondaryCommander: false }];
           }
 
           const isCommanderRemoved = d.commanderId === action.scryfallId && !updatedCards.some((c) => c.scryfallId === action.scryfallId);
+          const isSecondaryCommanderRemoved = d.secondaryCommanderId === action.scryfallId && !updatedCards.some((c) => c.scryfallId === action.scryfallId);
 
           return {
             ...d,
             cards: updatedCards,
             sidedeck: updatedSide,
             commanderId: isCommanderRemoved ? null : d.commanderId,
+            secondaryCommanderId: isSecondaryCommanderRemoved ? null : d.secondaryCommanderId,
             coverCardId: d.coverCardId === action.scryfallId && !updatedCards.some((c) => c.scryfallId === action.scryfallId) ? null : d.coverCardId,
           };
         }),
