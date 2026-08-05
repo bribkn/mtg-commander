@@ -560,7 +560,7 @@ function AppContent() {
   // 1. Dashboard View
   if (!splitMode && (!state || !activeDeckId)) {
     return (
-      <div className="min-h-screen bg-background flex flex-col relative">
+      <div className={`bg-background flex flex-col relative ${viewMode === '3d' ? 'h-screen max-h-screen overflow-hidden' : 'min-h-screen'}`}>
         {/* Floating Controls for 3D/Normal View & Storage Preference */}
         <div className="absolute top-4 right-4 z-40 sm:top-6 sm:right-6 md:right-8 flex items-center gap-3">
           
