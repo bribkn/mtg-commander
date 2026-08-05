@@ -1,10 +1,11 @@
 'use client';
 
-import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2, Archive, Save, Loader2, CheckCircle2, Dices, Star } from 'lucide-react';
+import { Crown, Layers, Download, Trash2, Plus, ArrowLeft, Images, Sparkles, Columns, Flame, Share2, Archive, Save, Loader2, CheckCircle2, Dices, Star, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDeck } from '@/lib/deck-store';
 import { useState } from 'react';
+import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 interface DeckHeaderProps {
   deckId?: string;
@@ -118,98 +119,107 @@ export function DeckHeader({
             <span className="hidden sm:inline">Import</span>
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCardbackOpen}
-            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
-            title="Custom cardback image"
+          <DropdownMenu
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-border hover:border-primary/50 hover:text-primary transition-colors"
+                title="Deck customization and graphics"
+              >
+                <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                <span className="hidden sm:inline">Customize</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+              </Button>
+            }
           >
-            <Images className="w-4 h-4" />
-            <span className="hidden sm:inline">Cardback</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCustomOpen}
-            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
-            title="Custom card library (Alters / Proxies)"
-          >
-            <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-            <span className="hidden sm:inline">Custom</span>
-          </Button>
-
-          {favoriteArts && favoriteArts.length > 0 && onApplyFavorites && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onApplyFavorites}
-              className="gap-2 border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors"
-              title="Apply global favorite arts to all cards in this deck"
+            <DropdownMenuItem
+              onClick={onCustomOpen}
+              title="Custom card library (Alters / Proxies)"
             >
-              <Star className="w-4 h-4 text-amber-500 fill-amber-500/10" />
-              <span className="hidden sm:inline">Apply Favorites</span>
-            </Button>
-          )}
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>Custom Cards</span>
+            </DropdownMenuItem>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCombosOpen}
-            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
-            title="Deck combos and synergies finder"
-          >
-            <Flame className="w-4 h-4 text-primary animate-pulse" />
-            <span className="hidden sm:inline">Combos</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onShareOpen}
-            disabled={!commander}
-            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={commander ? "Share deck or generate card art visuals" : "Share deck or generate card art visuals (requires a selected commander)"}
-          >
-            <Share2 className={`w-4 h-4 text-emerald-400 ${commander ? 'animate-pulse' : ''}`} />
-            <span className="hidden sm:inline">Share</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onPlaytestOpen}
-            className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
-            title="Sample hand playtester"
-          >
-            <Dices className="w-4 h-4 text-indigo-400 animate-pulse" />
-            <span className="hidden sm:inline">Playtest</span>
-          </Button>
-
-
-          {!splitMode && onSplitOpen && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSplitOpen}
-              className="gap-2 border-border hover:border-primary/50 hover:text-primary transition-colors"
-              title="Open split view side-by-side"
+            <DropdownMenuItem
+              onClick={onCardbackOpen}
+              title="Custom cardback image"
             >
-              <Columns className="w-4 h-4 text-primary" />
-              <span className="hidden sm:inline">Split View</span>
-            </Button>
-          )}
+              <Images className="w-4 h-4 text-blue-400" />
+              <span>Cardback Image</span>
+            </DropdownMenuItem>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClear}
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            title="Clear deck"
+            {favoriteArts && favoriteArts.length > 0 && onApplyFavorites && (
+              <DropdownMenuItem
+                onClick={onApplyFavorites}
+                title="Apply global favorite arts to all cards in this deck"
+              >
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500/10" />
+                <span>Apply Favorites</span>
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuItem
+              onClick={onShareOpen}
+              disabled={!commander}
+              title={commander ? "Share deck or generate card art visuals" : "Share deck or generate card art visuals (requires a selected commander)"}
+            >
+              <Share2 className="w-4 h-4 text-emerald-400" />
+              <span>Share & Graphics</span>
+            </DropdownMenuItem>
+          </DropdownMenu>
+
+          <DropdownMenu
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-border hover:border-primary/50 hover:text-primary transition-colors"
+                title="Deck simulation and analysis tools"
+              >
+                <Dices className="w-4 h-4 text-indigo-400" />
+                <span className="hidden sm:inline">Tools</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+              </Button>
+            }
           >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+            <DropdownMenuItem
+              onClick={onPlaytestOpen}
+              title="Sample hand playtester"
+            >
+              <Dices className="w-4 h-4 text-indigo-400" />
+              <span>Playtest Hand</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={onCombosOpen}
+              title="Deck combos and synergies finder"
+            >
+              <Flame className="w-4 h-4 text-primary" />
+              <span>Synergies & Combos</span>
+            </DropdownMenuItem>
+
+            {!splitMode && onSplitOpen && (
+              <DropdownMenuItem
+                onClick={onSplitOpen}
+                title="Open split view side-by-side"
+              >
+                <Columns className="w-4 h-4 text-primary" />
+                <span>Split View</span>
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onClick={onClear}
+              variant="destructive"
+              title="Clear deck"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Clear Deck</span>
+            </DropdownMenuItem>
+          </DropdownMenu>
 
           {onSave && (
             <Button
