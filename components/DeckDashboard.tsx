@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns, Share2, Cloud, Database, Loader2, Settings, FolderOpen } from "lucide-react";
+import { Plus, Layers, Copy, Trash2, ShieldAlert, ArrowRight, Columns, Share2, Cloud, Database, Loader2, Settings, FolderOpen, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { SavedDeck, useDeck } from "@/lib/deck-store";
 import { isGameChangerCard } from "@/lib/scryfall";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -21,6 +22,7 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [createDeckSource, setCreateDeckSource] = useState<string>("new");
     const [reconnecting, setReconnecting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
     // Helper to extract art crop (bypassing WebM video alters for dashboard preview compatibility)
     function getDeckArt(deck: SavedDeck): string {
@@ -82,6 +84,14 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
     function countBannedCards(deck: SavedDeck): number {
         return deck.cards.filter((c) => c.scryfallData.legalities?.commander === "banned").reduce((sum, c) => sum + c.quantity, 0);
     }
+
+    const filteredDecks = decks.filter((deck) => {
+        const deckNameMatch = deck.deckName.toLowerCase().includes(searchTerm.toLowerCase());
+        const commanderName = getCommanderName(deck).toLowerCase();
+        const commanderMatch = commanderName.includes(searchTerm.toLowerCase());
+        const tagMatch = (deck.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+        return deckNameMatch || commanderMatch || tagMatch;
+    });
 
     return (
         <div className="flex-1 w-full max-w-screen-2xl mx-auto px-4 py-8 overflow-y-auto">
@@ -188,28 +198,65 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
                 </div>
             ) : (
                 <>
+                    {/* Search and Filters Row */}
+                    {decks.length > 0 && (
+                        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+                            <div className="relative flex-1 max-w-md">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search decks by name, commander, or tag..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 pr-8 bg-secondary/40 border-border/80 focus:border-primary/50 text-sm h-10 w-full"
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={() => setSearchTerm("")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <div className="text-xs text-muted-foreground font-medium self-end sm:self-auto">
+                                {searchTerm ? (
+                                    <span>
+                                        Found {filteredDecks.length} of {decks.length} deck{decks.length === 1 ? "" : "s"}
+                                    </span>
+                                ) : (
+                                    <span>
+                                        Total: {decks.length} deck{decks.length === 1 ? "" : "s"}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-stretch">
                         {/* "Create Deck" Card Option */}
-                        <Card
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="w-full aspect-[21/9] sm:aspect-video flex flex-col items-center justify-center border-dashed border-2 border-border/80 hover:border-primary/60 hover:bg-primary/5 cursor-pointer transition-all duration-300 group rounded-xl bg-card/20 shadow-md relative overflow-hidden"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 group-hover:to-black/30 transition-all" />
-                            <div className="flex flex-col items-center gap-3 relative z-10 text-center p-4">
-                                <div className="w-12 h-12 rounded-full border border-border/80 group-hover:border-primary/50 group-hover:bg-primary/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-all duration-300">
-                                    <Plus className="w-6 h-6" />
+                        {!searchTerm && (
+                            <Card
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="w-full aspect-[21/9] sm:aspect-video flex flex-col items-center justify-center border-dashed border-2 border-border/80 hover:border-primary/60 hover:bg-primary/5 cursor-pointer transition-all duration-300 group rounded-xl bg-card/20 shadow-md relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 group-hover:to-black/30 transition-all" />
+                                <div className="flex flex-col items-center gap-3 relative z-10 text-center p-4">
+                                    <div className="w-12 h-12 rounded-full border border-border/80 group-hover:border-primary/50 group-hover:bg-primary/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-all duration-300">
+                                        <Plus className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-foreground/80 group-hover:text-primary transition-colors">
+                                            Create New Deck
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">Start a deck from scratch</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-foreground/80 group-hover:text-primary transition-colors">
-                                        Create New Deck
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">Start a deck from scratch</p>
-                                </div>
-                            </div>
-                        </Card>
+                            </Card>
+                        )}
 
                         {/* Existing Decks list */}
-                        {decks.map((deck) => {
+                        {filteredDecks.map((deck) => {
                             const totalQty = deck.cards.reduce((sum, c) => sum + c.quantity, 0);
                             const gcCount = countGameChangers(deck);
                             const bannedCount = countBannedCards(deck);
@@ -375,6 +422,17 @@ export function DeckDashboard({ onOpenSplit, onShareOpen }: DeckDashboardProps =
                             <h3 className="text-sm font-semibold text-foreground/80">You don't have any saved decks</h3>
                             <p className="text-xs text-muted-foreground mt-1 px-4">
                                 Create a new one using the buttons above to start designing your Commander deck.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* No Search Results found message */}
+                    {decks.length > 0 && filteredDecks.length === 0 && (
+                        <div className="text-center py-16 border border-border/30 rounded-2xl bg-secondary/5 mt-8 max-w-md mx-auto">
+                            <Search className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-60 animate-pulse" />
+                            <h3 className="text-sm font-semibold text-foreground/80">No decks match your search</h3>
+                            <p className="text-xs text-muted-foreground mt-1 px-4">
+                                Try searching for a different keyword, commander, or tag.
                             </p>
                         </div>
                     )}
