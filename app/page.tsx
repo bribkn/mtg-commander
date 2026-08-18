@@ -16,7 +16,6 @@ import { CardbackModal } from '@/components/CardbackModal';
 import { SearchSidebar } from '@/components/SearchSidebar';
 import { StatsPanel } from '@/components/StatsPanel';
 import { DeckDashboard } from '@/components/DeckDashboard';
-import { DeckShowcase3D } from '@/components/DeckShowcase3D';
 import { StorageOnboardingModal } from '@/components/StorageOnboardingModal';
 import { CustomCardsModal } from '@/components/CustomCardsModal';
 import { CombosModal } from '@/components/CombosModal';
@@ -25,7 +24,7 @@ import { ExportModal } from '@/components/ExportModal';
 import { PlaytestModal } from '@/components/PlaytestModal';
 import { getCardsBatchByIds } from '@/lib/scryfall';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers, Dices, Star, Box, LayoutGrid, Cloud, Database, Settings, Loader2 } from 'lucide-react';
+import { Pencil, Check, Crown, Columns, ArrowRightLeft, Minimize2, Trash2, ArrowLeft, Flame, ImageIcon, Tag, Search, Plus, X, Share2, Layers, Dices, Star, Cloud, Database, Settings, Loader2 } from 'lucide-react';
 import { DECK_TAGS_LIST } from '@/lib/tags';
 import {
   Dialog,
@@ -256,7 +255,6 @@ function AppContent() {
   const [exportTargetDeckId, setExportTargetDeckId] = useState<string | undefined>(undefined);
   const [sidebarMode, setSidebarMode] = useState<'stats' | 'search'>('stats');
   const [deckLoading, setDeckLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'normal' | '3d'>('3d');
 
   // Target deck ID for modals
   const [modalTargetDeckId, setModalTargetDeckId] = useState<string | undefined>(undefined);
@@ -560,85 +558,10 @@ function AppContent() {
   // 1. Dashboard View
   if (!splitMode && (!state || !activeDeckId)) {
     return (
-      <div className={`bg-background flex flex-col relative ${viewMode === '3d' ? 'h-screen max-h-screen overflow-hidden' : 'min-h-screen'}`}>
-        {/* Floating Controls for 3D/Normal View & Storage Preference */}
-        <div className="absolute top-4 right-4 z-40 sm:top-6 sm:right-6 md:right-8 flex items-center gap-3">
-          
-          {/* Storage Preference Widget (only in 3D view mode to avoid duplication with Normal View welcome banner) */}
-          {viewMode === '3d' && (
-            <div className="animate-fade-in-down">
-              {storageLoading ? (
-                <Button disabled variant="outline" className="gap-2 h-10 text-xs bg-black/60 border-border/80 text-muted-foreground backdrop-blur-md">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Loading Storage...</span>
-                </Button>
-              ) : storagePreference ? (
-                <div className="flex items-center gap-2 bg-black/60 border border-border/80 rounded-lg p-1 pr-3 backdrop-blur-md shadow-lg shadow-black/40 h-10 select-none">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                    {storagePreference === "folder" ? <Cloud className="w-4 h-4" /> : <Database className="w-4 h-4" />}
-                  </div>
-                  <div className="flex flex-col items-start hidden sm:flex leading-none">
-                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Storage</span>
-                    <span className="text-xs text-foreground font-medium mt-0.5">
-                      {storagePreference === "folder" ? "Local Folder" : "Browser Storage"}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setStoragePreference(null)}
-                    className="w-7 h-7 text-muted-foreground hover:text-primary rounded ml-1 cursor-pointer shrink-0"
-                    title="Change Storage Preference"
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {/* View mode switcher */}
-          <div className="inline-flex rounded-lg border border-border bg-black/60 p-1 backdrop-blur-md shadow-lg shadow-black/40 animate-fade-in-down h-10 items-center">
-            <Button
-              variant={viewMode === '3d' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('3d')}
-              className={`gap-1.5 text-xs font-semibold px-4 h-8 transition-all duration-200 cursor-pointer ${
-                viewMode === '3d' 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Box className="w-3.5 h-3.5" />
-              <span>3D View</span>
-            </Button>
-            <Button
-              variant={viewMode === 'normal' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('normal')}
-              className={`gap-1.5 text-xs font-semibold px-4 h-8 transition-all duration-200 cursor-pointer ${
-                viewMode === 'normal' 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Normal View</span>
-            </Button>
-          </div>
+      <div className="bg-background flex flex-col relative min-h-screen">
+        <div className="pt-16 sm:pt-20 flex-1 flex flex-col">
+          <DeckDashboard onOpenSplit={handleOpenSplit} onShareOpen={openShare} />
         </div>
-
-        {viewMode === '3d' ? (
-          <DeckShowcase3D 
-            onOpenSplit={handleOpenSplit} 
-            onShareOpen={openShare} 
-            onImportOpen={openImport}
-          />
-        ) : (
-          <div className="pt-16 sm:pt-20 flex-1 flex flex-col">
-            <DeckDashboard onOpenSplit={handleOpenSplit} onShareOpen={openShare} />
-          </div>
-        )}
         <StorageOnboardingModal />
         {modals}
       </div>
