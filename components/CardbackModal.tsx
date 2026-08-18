@@ -1,12 +1,68 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Images, Trash2, Check, X, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDeck } from '@/lib/deck-store';
 import { MTG_CARD_BACK } from '@/lib/scryfall';
+import { CardMedia } from '@/components/CardMedia';
+
+interface CardbackGalleryItemProps {
+  url: string;
+  isActive: boolean;
+  onSelect: (url: string | null) => void;
+  onDelete: (url: string, e: React.MouseEvent) => void;
+  index: number;
+}
+
+function CardbackGalleryItem({ url, isActive, onSelect, onDelete, index }: CardbackGalleryItemProps) {
+  const [src, setSrc] = useState(url);
+
+  useEffect(() => {
+    setSrc(url);
+  }, [url]);
+
+  return (
+    <div
+      onClick={() => onSelect(url)}
+      className={`relative aspect-[5/7] rounded-lg overflow-hidden cursor-pointer border transition-all duration-200 group/item hover:scale-[1.03] ${
+        isActive
+          ? 'border-primary ring-2 ring-primary bg-primary/5 shadow-md'
+          : 'border-border/60 hover:border-primary/50'
+      }`}
+      title={url}
+    >
+      <CardMedia
+        src={src}
+        alt={`Saved cardback ${index + 1}`}
+        className="w-full h-full object-cover"
+        onError={() => {
+          if (src !== MTG_CARD_BACK) {
+            setSrc(MTG_CARD_BACK);
+          }
+        }}
+      />
+
+      {/* Active crown/check overlay */}
+      {isActive && (
+        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+          <Check className="w-5 h-5 text-primary drop-shadow" />
+        </div>
+      )}
+
+      {/* Delete hover button */}
+      <button
+        onClick={(e) => onDelete(url, e)}
+        className="absolute top-1 right-1 p-1 rounded bg-black/80 text-muted-foreground hover:text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity duration-200"
+        title="Delete from gallery"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 interface CardbackModalProps {
   open: boolean;
@@ -21,6 +77,13 @@ export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState('');
+
+  const currentCardback = state?.customCardbackUrl || MTG_CARD_BACK;
+  const [previewUrl, setPreviewUrl] = useState(currentCardback);
+
+  useEffect(() => {
+    setPreviewUrl(currentCardback);
+  }, [currentCardback]);
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     setErrorMsg('');
@@ -74,8 +137,6 @@ export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
   }
 
   if (!state) return null;
-
-  const currentCardback = state.customCardbackUrl || MTG_CARD_BACK;
 
   function handleSave() {
     setErrorMsg('');
@@ -133,20 +194,21 @@ export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
                 Preview
               </span>
               <div className="relative w-[130px] aspect-[5/7] rounded-xl overflow-hidden border border-border/80 shadow-2xl bg-secondary group/preview">
-                {/* Image element with object-cover to automatically clip and scale wider/taller cardbacks perfectly */}
-                <img
-                  src={currentCardback}
+                {/* Media element (handles both image and video) with object-cover to automatically clip and scale wider/taller cardbacks perfectly */}
+                <CardMedia
+                  src={previewUrl}
                   alt="Cardback Preview"
                   className="w-full h-full object-cover select-none"
-                  onError={(e) => {
-                    // Fallback if image fails to load
-                    (e.target as HTMLImageElement).src = MTG_CARD_BACK;
+                  onError={() => {
+                    if (previewUrl !== MTG_CARD_BACK) {
+                      setPreviewUrl(MTG_CARD_BACK);
+                    }
                   }}
                 />
                 
                 {state.customCardbackUrl && (
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-200 flex items-center justify-center p-2 text-center text-[10px] text-white font-mono leading-tight">
-                    Adjusted Image (5:7)
+                    Adjusted Media (5:7)
                   </div>
                 )}
               </div>
@@ -210,7 +272,7 @@ export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
                     <input
                       type="file"
                       id="cardback-file-input"
-                      accept="image/*"
+                      accept="image/*,video/webm"
                       onChange={handleFileUpload}
                       className="hidden"
                       disabled={uploading}
@@ -272,42 +334,14 @@ export function CardbackModal({ open, onClose, deckId }: CardbackModalProps) {
                 {savedCardbacks.map((url, i) => {
                   const isActive = state.customCardbackUrl === url;
                   return (
-                    <div
+                    <CardbackGalleryItem
                       key={i}
-                      onClick={() => handleSelect(url)}
-                      className={`relative aspect-[5/7] rounded-lg overflow-hidden cursor-pointer border transition-all duration-200 group/item hover:scale-[1.03] ${
-                        isActive
-                          ? 'border-primary ring-2 ring-primary bg-primary/5 shadow-md'
-                          : 'border-border/60 hover:border-primary/50'
-                      }`}
-                      title={url}
-                    >
-                      {/* Image render with object-cover */}
-                      <img
-                        src={url}
-                        alt={`Saved cardback ${i + 1}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = MTG_CARD_BACK;
-                        }}
-                      />
-
-                      {/* Active crown/check overlay */}
-                      {isActive && (
-                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                          <Check className="w-5 h-5 text-primary drop-shadow" />
-                        </div>
-                      )}
-
-                      {/* Delete hover button */}
-                      <button
-                        onClick={(e) => handleDelete(url, e)}
-                        className="absolute top-1 right-1 p-1 rounded bg-black/80 text-muted-foreground hover:text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity duration-200"
-                        title="Delete from gallery"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
+                      url={url}
+                      isActive={isActive}
+                      onSelect={handleSelect}
+                      onDelete={handleDelete}
+                      index={i}
+                    />
                   );
                 })}
               </div>
